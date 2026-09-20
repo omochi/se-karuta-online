@@ -1,6 +1,8 @@
-# Swift Evolution Karuta — Product / Development Handoff
+# Swift Evolution Karuta Online — Product / Development Handoff
 
 Swift Evolution のイベント向けクイズゲームを作る。
+
+正式なプロダクト名は「Swift Evolution Karuta Online」とする。画面上のロゴや短い呼び名には、略称「SE Karuta」を使う。
 
 既存の「Swift Evolution カルタ」は、テーブル上に Proposal の断片を書いた札を並べ、進行役が Proposal title を読み上げ、参加者が対応する札を取るゲームだった。
 
