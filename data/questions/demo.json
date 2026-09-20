@@ -1,0 +1,42 @@
+{
+  "name": "SE Karuta 試遊大会",
+  "displayPassword": "display-karuta",
+  "questions": [
+    {
+      "id": "demo-compact-map-values",
+      "bodyMarkdown": "この Dictionary の変換を、一度の呼び出しで書けるようにした Proposal は？\n\n```swift\nlet scores = [\"Swift\": \"100\", \"Mystery\": \"?\"]\nlet numbers = scores.compactMapValues(Int.init)\n// [\"Swift\": 100]\n```",
+      "choices": {
+        "A": "SE-0345 · if let shorthand for shadowing an existing optional variable",
+        "B": "SE-0218 · Introduce compactMapValues to Dictionary",
+        "C": "SE-0296 · Async/await",
+        "D": "SE-0380 · if and switch expressions"
+      },
+      "correctChoice": "B",
+      "explanationMarkdown": "SE-0218 は Dictionary の値を変換し、nil になった要素を取り除く compactMapValues を追加しました。Swift 5.0 で実装されています。\n\n[Proposal を読む](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0218-introduce-compact-map-values.md)"
+    },
+    {
+      "id": "demo-if-let",
+      "bodyMarkdown": "右辺の変数名を省いて、こう書けるようにした Proposal は？\n\n```swift\nlet nickname: String? = \"Swifty\"\nif let nickname {\n    print(\"Hello, \\(nickname)!\")\n}\n```",
+      "choices": {
+        "A": "SE-0296 · Async/await",
+        "B": "SE-0380 · if and switch expressions",
+        "C": "SE-0345 · if let shorthand for shadowing an existing optional variable",
+        "D": "SE-0218 · Introduce compactMapValues to Dictionary"
+      },
+      "correctChoice": "C",
+      "explanationMarkdown": "SE-0345 では、同名の Optional を取り出す if let nickname = nickname を if let nickname と省略できるようになりました。\n\n[Proposal を読む](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0345-if-let-shorthand.md)"
+    },
+    {
+      "id": "demo-if-expression",
+      "bodyMarkdown": "if の分岐から直接値を作る。この書き方を導入した Proposal は？\n\n```swift\nlet score = 100\nlet message = if score == 100 {\n    \"Perfect!\"\n} else {\n    \"Try again\"\n}\n```",
+      "choices": {
+        "A": "SE-0380 · if and switch expressions",
+        "B": "SE-0345 · if let shorthand for shadowing an existing optional variable",
+        "C": "SE-0218 · Introduce compactMapValues to Dictionary",
+        "D": "SE-0296 · Async/await"
+      },
+      "correctChoice": "A",
+      "explanationMarkdown": "SE-0380 によって、if と switch を式として使い、変数の初期化などに利用できるようになりました。\n\n[Proposal を読む](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0380-if-switch-expressions.md)"
+    }
+  ]
+}
