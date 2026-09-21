@@ -198,6 +198,15 @@ it("URLで指定した問題集もloaderで取得してから表示する", asyn
   await start("/questions?event=game");
   expect(html()).toContain("LOADED QUESTION");
 });
+it("Displayプレビューの直リンクは案内を表示し、大会接続や問題取得を行わない", async () => {
+  await start("/questions/display-preview");
+  expect(html()).toContain("Displayプレビュー");
+  expect(html()).toContain("問題ビューワで問題集を読み込み");
+  expect(Socket.all).toHaveLength(0);
+  expect(vi.mocked(fetch).mock.calls.map(([path]) => path)).toEqual([
+    "/api/config",
+  ]);
+});
 it("通信エラーを未認証扱いせずエラー画面に表示する", async () => {
   eventResponse = async () => json({ error: "取得に失敗" }, 503);
   await start();

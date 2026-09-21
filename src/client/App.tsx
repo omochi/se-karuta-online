@@ -7,7 +7,6 @@ import type { TimingSettings } from "../shared/types";
 import { useRoom, type RoomConnection } from "./useRoom";
 import { api } from "./api";
 import {
-  Brand,
   Choices,
   ConnectionBadge,
   ErrorBox,
@@ -19,6 +18,7 @@ import {
   Ranking,
 } from "./components";
 import { GameProgress } from "./GameProgress";
+import { DisplayScreen } from "./DisplayScreen";
 import { useGameProgress } from "./useGameProgress";
 import { PlayerAnswerStatus } from "./PlayerAnswerStatus";
 export function Home() {
@@ -657,54 +657,13 @@ export function Control({ room }: { room: RoomConnection }) {
   );
 }
 export function Display({ room }: { room: RoomConnection }) {
-  const v = room.view!;
-  const q = v.question;
   const progress = useGameProgress(room);
-  const revealing = ["answerRevealed", "rankingShown"].includes(v.phase);
   return (
-    <div className="display-page">
-      <header className="display-header">
-        <Brand small />
-        <span className="display-event">{v.name}</span>
-        <ConnectionBadge connected={room.connected} />
-      </header>
-      <main className={`display-content phase-${progress.phase}`}>
-        <GameProgress progress={progress} layout="display" />
-        {v.phase === "waiting" ? (
-          <div className="display-welcome">
-            <JoinCode url={v.urls.play} />
-          </div>
-        ) : v.phase === "finished" && v.results ? (
-          <FinalResults results={v.results} compact />
-        ) : v.phase === "rankingShown" ? (
-          <div className="display-ranking">
-            <p>
-              正解 {q?.correctChoice} ·{" "}
-              {q?.correctChoice && q.choices?.[q.correctChoice]}
-            </p>
-            <Ranking rows={v.rankings ?? []} limit={8} />
-          </div>
-        ) : v.phase !== "questionVoided" && v.phase !== "finished" ? (
-          <>
-            {!progress.closed && q?.bodyMarkdown && (
-              <section className="question-body">
-                <MarkdownBody text={q.bodyMarkdown} />
-              </section>
-            )}
-            {q && <Choices question={q} showCorrect={revealing} />}
-            {revealing && q?.explanationMarkdown && (
-              <div className="display-explanation">
-                <strong>正解 {q.correctChoice}</strong>
-                <MarkdownBody text={q.explanationMarkdown} />
-              </div>
-            )}
-          </>
-        ) : null}
-      </main>
-      <footer className="display-footer">
-        <span>Swift Evolution Karuta Online</span>
-      </footer>
-    </div>
+    <DisplayScreen
+      view={room.view!}
+      progress={progress}
+      status={<ConnectionBadge connected={room.connected} />}
+    />
   );
 }
 export function Player({ room }: { room: RoomConnection }) {

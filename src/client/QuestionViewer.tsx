@@ -11,6 +11,8 @@ import {
 import { Link, useBlocker, useLoaderData, useRevalidator } from "react-router";
 import type { ViewerData } from "./route-loaders";
 import { api } from "./api";
+import { useDisplayPreview } from "./useDisplayPreview";
+import type { DisplayPreviewPhase } from "./display-preview";
 import {
   readQuestionDocument,
   writeQuestionDocument,
@@ -50,6 +52,23 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
   const [paste, setPaste] = useState("");
   const [sourcesOpen, setSourcesOpen] = useState(!initial.document);
   const [notice, setNotice] = useState("");
+  const [displayPhase, setDisplayPhase] =
+    useState<DisplayPreviewPhase>("acceptingAnswers");
+  const q = document?.questions[selected];
+  const displayPreviewUrl = useDisplayPreview(
+    document && q
+      ? {
+          name:
+            typeof document.metadata?.name === "string"
+              ? document.metadata.name
+              : source,
+          question: q,
+          questionNumber: selected + 1,
+          totalQuestions: document.questions.length,
+          phase: displayPhase,
+        }
+      : null,
+  );
   const blocker = useBlocker(dirty);
   useEffect(() => {
     if (!dirty) return;
@@ -149,7 +168,6 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
       validation = (e as Error).message;
     }
   }
-  const q = document?.questions[selected];
   const filtered =
     document?.questions
       .map((question, index) => ({ question, index }))
@@ -367,6 +385,34 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
                     {!filtered.length && <p>一致する問題がありません。</p>}
                   </aside>
                   <div className="viewer-detail">
+                    <div className="viewer-display-toolbar">
+                      <a
+                        className="secondary"
+                        href={displayPreviewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Displayプレビューを開く ↗
+                      </a>
+                      <label>
+                        Displayの表示状態
+                        <select
+                          value={displayPhase}
+                          onChange={(e) =>
+                            setDisplayPhase(
+                              e.target.value as DisplayPreviewPhase,
+                            )
+                          }
+                        >
+                          <option value="choicesReading">選択肢公開</option>
+                          <option value="acceptingAnswers">出題中</option>
+                          <option value="answerRevealed">正解発表</option>
+                        </select>
+                      </label>
+                      <p className="muted">
+                        選択・編集を自動で反映。タブを別ウィンドウに移して、大きさを変えて確認できます。
+                      </p>
+                    </div>
                     <div className="viewer-toolbar">
                       <div>
                         <button

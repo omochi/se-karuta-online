@@ -8,6 +8,7 @@ import {
 } from "react-router";
 import { Home, GamePage } from "./App";
 import QuestionViewer from "./QuestionViewer";
+import QuestionDisplayPreview from "./QuestionDisplayPreview";
 import { Header } from "./components";
 import { createRouteLoaders } from "./route-loaders";
 export function InitialScreen() {
@@ -65,6 +66,10 @@ export function createAppRoutes(
       errorElement: <RouteError loaders={loaders} />,
       children: [
         { index: true, loader: loaders.home, Component: Home },
+        {
+          path: "questions/display-preview",
+          Component: QuestionDisplayPreview,
+        },
         {
           path: "questions",
           loader: loaders.viewer,
