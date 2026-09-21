@@ -1,0 +1,37 @@
+name: 運営向けスライドをGitHub Pagesへ公開
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/guide/**"
+      - ".github/workflows/guide-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guide-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          # 運営資料だけを公開し、ゲーム本体や開発用データは含めない。
+          path: docs/guide
+      - uses: actions/deploy-pages@v4
+        id: deployment

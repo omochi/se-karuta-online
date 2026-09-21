@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#292628" />
+    <meta name="description" content="Swift Evolution Karuta Onlineの遊び方と当日の運営。実画面と構成図で紹介する、説明つきの16枚のスライドです。" />
+    <title>SE Karuta — 遊び方と当日の運営</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script type="module" src="./slides.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#explanation">説明文へ移動</a>
+    <header class="toolbar" aria-label="スライド操作">
+      <a class="brand" href="#1">SE Karuta <span>運営共有資料</span></a>
+      <div class="paging">
+        <button id="previous" type="button" aria-label="前のスライド">←</button>
+        <label class="visually-hidden" for="jump">スライドを選ぶ</label>
+        <select id="jump" aria-label="スライドを選ぶ"></select>
+        <button id="next" type="button" aria-label="次のスライド">→</button>
+      </div>
+      <div class="view-options">
+        <button id="present" type="button" aria-pressed="false">発表モード</button>
+        <button id="overview" type="button" aria-pressed="false">一覧で読む</button>
+        <button id="fullscreen" type="button">全画面</button>
+      </div>
+    </header>
+    <main id="deck" aria-busy="true">
+      <p class="loading" role="status">資料を読み込んでいます…</p>
+    </main>
+    <footer class="help">左右の矢印キー、または画面上のボタンで移動できます。画面・名前・成績はデモです。</footer>
+    <p id="announcement" class="visually-hidden" role="status" aria-live="polite"></p>
+    <dialog id="screenshot-dialog" aria-label="実画面のスクリーンショット">
+      <button id="close-screenshot" type="button" autofocus>閉じる ×</button>
+      <img id="screenshot-large" alt="" />
+      <p>実装のスクリーンショット（デモデータ）</p>
+    </dialog>
+    <noscript><p class="loading">スライドを表示するにはJavaScriptを有効にしてください。</p></noscript>
+  </body>
+</html>

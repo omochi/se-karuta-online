@@ -2,6 +2,8 @@
 
 Swift Evolution の4択カルタを、進行役・会場ディスプレイ・参加者のスマートフォンで遊ぶ Web アプリ。略称は **SE Karuta**。
 
+運営への共有には、実画面と構成図を使った[説明つきスライド](docs/organizer-guide.md)を用意しています。GitHub Pagesで公開できる静的なWeb資料で、遊び方と当日の進行を16枚にまとめています。
+
 React + Cloudflare Workers / Durable Objects / D1。ローカルで大会作成から出題・回答・最終表彰まで一通り試遊できます。4種類の表彰・大会最速回答、問題ビューワでの編集・JSON保存、Displayプレビューも実装済みです。Cloudflare の本番リソースは作成・変更していません。
 
 ## ローカル起動
