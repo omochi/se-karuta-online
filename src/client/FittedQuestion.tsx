@@ -1,13 +1,16 @@
 import { useLayoutEffect, useRef } from "react";
-import { MarkdownBody } from "./MarkdownBody";
+import type { Difficulty } from "../shared/types";
+import { QuestionBody } from "./QuestionBody";
 import { fitQuestion, type QuestionFit } from "./fit-question";
 
 export function FittedQuestion({
   text,
+  difficulty,
   layoutKey,
   onFit,
 }: {
   text: string;
+  difficulty?: Difficulty;
   layoutKey: string;
   onFit?: (fit: QuestionFit) => void;
 }) {
@@ -49,12 +52,12 @@ export function FittedQuestion({
       document.fonts.removeEventListener("loadingdone", fit);
       content.removeEventListener("load", fit, true);
     };
-  }, [text, layoutKey, onFit]);
+  }, [text, difficulty, layoutKey, onFit]);
 
   return (
     <section className="question-body fitted-question" ref={viewportRef}>
       <div className="question-fit-content" ref={contentRef}>
-        <MarkdownBody text={text} />
+        <QuestionBody text={text} difficulty={difficulty} />
       </div>
     </section>
   );

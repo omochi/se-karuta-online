@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "setup": "node scripts/setup.mjs",
     "db:migrate": "wrangler d1 migrations apply DB --local",
-    "seed": "node scripts/create-tournament.mjs data/questions/demo.json",
+    "seed": "node scripts/create-tournament.mjs data/questions/vol-01.json",
     "questions:check": "node --import tsx scripts/validate-questions.ts",
     "test": "vitest run",
     "test:integration": "node --import tsx --test tests/integration.test.ts",

@@ -391,7 +391,10 @@ export function viewFor(
             ? { choices: r.question.choices }
             : {}),
           ...(showBody && role !== "player"
-            ? { bodyMarkdown: r.question.bodyMarkdown }
+            ? {
+                bodyMarkdown: r.question.bodyMarkdown,
+                difficulty: r.question.difficulty,
+              }
             : {}),
           ...(reveal
             ? {

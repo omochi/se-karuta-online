@@ -15,6 +15,7 @@ import { validateQuestions } from "../src/shared/questions";
 import type { Game, Presence, Question } from "../src/shared/types";
 const question: Question = {
   id: "test",
+  difficulty: 2 as const,
   bodyMarkdown: "SECRET BODY",
   choices: { A: "a", B: "b", C: "c", D: "d" },
   correctChoice: "B",
@@ -199,6 +200,26 @@ describe("回答の確定と受付境界", () => {
   });
 });
 describe("権限と公開段階", () => {
+  it("難易度はDisplayの問題本文と同時に公開し、Controlでは事前確認できる", () => {
+    const g = fixture();
+    g.rounds[0].question.difficulty = 3;
+    command(g, "start");
+    const view = (role: "display" | "player" | "control", now: number) =>
+      viewFor(g, role, "p0", presence, "e", now, "http://test");
+    expect(view("control", 0).preview?.difficulty).toBe(3);
+    expect(view("display", 0).question?.difficulty).toBeUndefined();
+    beginCountdownIfReady(g, new Set(g.players.map((p) => p.id)), true, 0);
+    expect(view("display", 1).question?.difficulty).toBeUndefined();
+    advanceTimer(g, 5000);
+    expect(view("display", 5000).question?.difficulty).toBeUndefined();
+    advanceTimer(g, 20000);
+    expect(view("display", 20001).question?.difficulty).toBe(3);
+    expect(view("player", 20001).question?.difficulty).toBeUndefined();
+    command(g, "close", 21000);
+    expect(view("display", 21000).question?.difficulty).toBeUndefined();
+    command(g, "reveal", 22000);
+    expect(view("display", 22000).question?.difficulty).toBe(3);
+  });
   it("出題前に問題文・正解・解説・次問・セッションを公開しない", () => {
     const g = fixture();
     command(g, "start");

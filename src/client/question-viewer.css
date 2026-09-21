@@ -55,6 +55,11 @@
 }
 .viewer-display-toolbar .viewer-fit-report {
   color: #4d7b60;
+  min-height: 1.5em;
+  line-height: 1.5;
+}
+.viewer-display-toolbar .viewer-fit-pending {
+  color: var(--muted);
 }
 .viewer-display-toolbar .viewer-fit-small {
   color: var(--accent);

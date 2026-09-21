@@ -27,6 +27,7 @@ function draw(bodyMarkdown: string, elapsed = 0, id = "fixture") {
       phase: "acceptingAnswers",
       question: {
         id,
+        difficulty: 2 as const,
         bodyMarkdown,
         choices: {
           A: "Proposal A",

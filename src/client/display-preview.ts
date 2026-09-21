@@ -63,6 +63,7 @@ export function createDisplayPreviewView(
       choices: question.choices,
       ...(phase !== "choicesReading" && {
         bodyMarkdown: question.bodyMarkdown,
+        difficulty: question.difficulty,
       }),
       ...(phase === "answerRevealed" && {
         correctChoice: question.correctChoice,

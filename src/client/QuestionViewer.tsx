@@ -12,6 +12,7 @@ import { Link, useBlocker, useLoaderData, useRevalidator } from "react-router";
 import type { ViewerData } from "./route-loaders";
 import { api } from "./api";
 import { useDisplayPreview } from "./useDisplayPreview";
+import { QuestionBody } from "./QuestionBody";
 import type { DisplayPreviewPhase } from "./display-preview";
 import {
   readQuestionDocument,
@@ -415,22 +416,26 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
                       <p className="muted">
                         選択・編集を自動で反映。タブを別ウィンドウに移して、大きさを変えて確認できます。
                       </p>
-                      {displayPreview.fit && (
-                        <p
-                          className={`viewer-fit-report ${displayPreview.fit.readable ? "" : "viewer-fit-small"}`}
-                          role="status"
-                        >
-                          直近のプレビュー：{displayPreview.fit.viewportWidth} ×{" "}
-                          {displayPreview.fit.viewportHeight}
-                          {" · 本文 "}
-                          {displayPreview.fit.fontSize}px
-                          {displayPreview.fit.readable
-                            ? " · 全文が収まっています"
-                            : displayPreview.fit.fits
-                              ? " · 18px未満です。問題を短くするか、大きな表示領域で確認してください。"
-                              : " · 全文が収まりません。問題の分量・長い行を調整してください。"}
-                        </p>
-                      )}
+                      <p
+                        className={`viewer-fit-report ${!displayPreview.fit ? "viewer-fit-pending" : displayPreview.fit.readable ? "" : "viewer-fit-small"}`}
+                        role="status"
+                      >
+                        {displayPreview.fit ? (
+                          <>
+                            直近のプレビュー：{displayPreview.fit.viewportWidth}{" "}
+                            × {displayPreview.fit.viewportHeight}
+                            {" · 本文 "}
+                            {displayPreview.fit.fontSize}px
+                            {displayPreview.fit.readable
+                              ? " · 全文が収まっています"
+                              : displayPreview.fit.fits
+                                ? " · 18px未満です。問題を短くするか、大きな表示領域で確認してください。"
+                                : " · 全文が収まりません。問題の分量・長い行を調整してください。"}
+                          </>
+                        ) : (
+                          "プレビュー情報を待っています。"
+                        )}
+                      </p>
                     </div>
                     <div className="viewer-toolbar">
                       <div>
@@ -479,7 +484,10 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
                         QUESTION {String(selected + 1).padStart(2, "0")}{" "}
                         <span> / {q.id}</span>
                       </p>
-                      <MarkdownBody text={q.bodyMarkdown} />
+                      <QuestionBody
+                        text={q.bodyMarkdown}
+                        difficulty={q.difficulty}
+                      />
                       <Choices question={q} showCorrect={showAnswer} />
                       {showAnswer && (
                         <section className="explanation">
@@ -502,6 +510,23 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
                               patchQuestion({ id: e.target.value })
                             }
                           />
+                        </label>
+                        <label>
+                          難易度
+                          <select
+                            value={q.difficulty}
+                            onChange={(e) =>
+                              patchQuestion({
+                                difficulty: Number(
+                                  e.target.value,
+                                ) as Question["difficulty"],
+                              })
+                            }
+                          >
+                            <option value={1}>1 · 入門</option>
+                            <option value={2}>2 · 標準</option>
+                            <option value={3}>3 · 難問</option>
+                          </select>
                         </label>
                         <label>
                           問題文（Markdown）

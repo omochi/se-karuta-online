@@ -11,6 +11,7 @@ import {
 } from "./components";
 import { GameProgress } from "./GameProgress";
 import { FittedQuestion } from "./FittedQuestion";
+import { QuestionBody } from "./QuestionBody";
 import type { QuestionFit } from "./fit-question";
 import "./display-question.css";
 
@@ -65,12 +66,16 @@ export function DisplayScreen({
                 <FittedQuestion
                   key={q.id}
                   text={q.bodyMarkdown}
+                  difficulty={q.difficulty}
                   layoutKey={progress.phase}
                   onFit={onQuestionFit}
                 />
               ) : (
                 <section className="question-body" key={q.id}>
-                  <MarkdownBody text={q.bodyMarkdown} />
+                  <QuestionBody
+                    text={q.bodyMarkdown}
+                    difficulty={q.difficulty}
+                  />
                 </section>
               ))}
             {q && <Choices question={q} showCorrect={revealing} />}

@@ -5,6 +5,7 @@ import {
 } from "../src/client/question-document";
 const question = {
   id: "q1",
+  difficulty: 2 as const,
   bodyMarkdown: "問題\n```swift\nlet x = 1\n```",
   choices: { A: "a", B: "b", C: "c", D: "d" },
   correctChoice: "B",
@@ -44,3 +45,31 @@ it("不正な入力と、編集で生じたID重複・正解不正を拒否す�
   doc.questions[0].correctChoice = "X" as "A";
   expect(() => writeQuestionDocument(doc)).toThrow("正解");
 });
+
+it.each([1, 2, 3] as const)(
+  "難易度 %i を読み込み、変更して保存・再読み込みできる",
+  (difficulty) => {
+    const doc = readQuestionDocument(
+      JSON.stringify([{ ...question, difficulty }]),
+    );
+    expect(doc.questions[0].difficulty).toBe(difficulty);
+    doc.questions[0].difficulty = difficulty === 3 ? 1 : 3;
+    expect(readQuestionDocument(writeQuestionDocument(doc))).toEqual(doc);
+  },
+);
+
+it("難易度のない旧JSONは標準の2として読み込み、保存時に明記する", () => {
+  const { difficulty: _, ...legacy } = question;
+  const doc = readQuestionDocument(JSON.stringify([legacy]));
+  expect(doc.questions[0].difficulty).toBe(2);
+  expect(JSON.parse(writeQuestionDocument(doc))[0].difficulty).toBe(2);
+});
+
+it.each([0, 4, -1, 1.5, "2", null, true])(
+  "不正な難易度 %j を拒否する",
+  (difficulty) => {
+    expect(() =>
+      readQuestionDocument(JSON.stringify([{ ...question, difficulty }])),
+    ).toThrow("問題 1: 難易度");
+  },
+);

@@ -1,5 +1,6 @@
 import type { Game, Player, Round } from "../shared/types";
 import { DEFAULT_TIMING } from "../shared/timing";
+import { readDifficulty } from "../shared/questions";
 const head = ({ players: _p, rounds: _r, ...state }: Game) => state;
 const roundState = ({
   question: _q,
@@ -47,6 +48,8 @@ export async function loadGame(
     participants: {},
     answers: {},
   }));
+  for (const round of game.rounds)
+    round.question.difficulty = readDifficulty(round.question.difficulty);
   game.players = data[2].results.map(
     (row) =>
       ({

@@ -1,6 +1,7 @@
 import type { EventUrls } from "./urls";
 export const CHOICES = ["A", "B", "C", "D"] as const;
 export type Choice = (typeof CHOICES)[number];
+export type Difficulty = 1 | 2 | 3;
 export type Role = "control" | "display" | "player";
 export type Phase =
   | "waiting"
@@ -15,6 +16,7 @@ export type Phase =
   | "finished";
 export interface Question {
   id: string;
+  difficulty: Difficulty;
   bodyMarkdown: string;
   choices: Record<Choice, string>;
   correctChoice: Choice;
@@ -113,6 +115,7 @@ export interface RoomView {
   displayReady: boolean;
   question: null | {
     id: string;
+    difficulty?: Difficulty;
     choices?: Record<Choice, string>;
     bodyMarkdown?: string;
     correctChoice?: Choice;

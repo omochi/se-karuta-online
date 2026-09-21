@@ -19,6 +19,7 @@ import {
 } from "./components";
 import { GameProgress } from "./GameProgress";
 import { DisplayScreen } from "./DisplayScreen";
+import { QuestionBody } from "./QuestionBody";
 import { useGameProgress } from "./useGameProgress";
 import { PlayerAnswerStatus } from "./PlayerAnswerStatus";
 export function Home() {
@@ -500,7 +501,10 @@ export function Control({ room }: { room: RoomConnection }) {
                       {readyForNext ? "NEXT QUESTION" : "HOST PREVIEW"} ·
                       進行役だけに表示
                     </p>
-                    <MarkdownBody text={v.preview.bodyMarkdown} />
+                    <QuestionBody
+                      text={v.preview.bodyMarkdown}
+                      difficulty={v.preview.difficulty}
+                    />
                     <Choices
                       question={{
                         id: v.preview.id,

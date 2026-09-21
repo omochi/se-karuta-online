@@ -139,7 +139,9 @@ export default {
           .all<{ question_json: string }>();
         return json({
           name: tournament.name,
-          questions: results.map((row) => JSON.parse(row.question_json)),
+          questions: validateQuestions(
+            results.map((row) => JSON.parse(row.question_json)),
+          ),
         });
       }
       const stub = env.ROOMS.get(env.ROOMS.idFromName(id));

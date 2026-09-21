@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { build } from "esbuild";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import type {
+  Choice,
   ClientMessage,
   Command,
   RoomView,
@@ -160,8 +161,17 @@ test(
     const login = await request("/api/admin/login", { password: "test-admin" });
     assert.equal(login.status, 200);
     const adminCookie = cookieOf(login);
-    const demo = JSON.parse(await readFile("data/questions/demo.json", "utf8"));
-    const create = await request("/api/events", demo, adminCookie);
+    const questionSet = JSON.parse(
+      await readFile("data/questions/vol-01.json", "utf8"),
+    );
+    assert.equal(questionSet.questions.length, 12);
+    assert.deepEqual(
+      questionSet.questions.map((q: { difficulty: number }) => q.difficulty).sort(),
+      [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
+    );
+    const firstCorrectChoice = questionSet.questions[0].correctChoice as Choice;
+    const differentChoice: Choice = firstCorrectChoice === "A" ? "B" : "A";
+    const create = await request("/api/events", questionSet, adminCookie);
     assert.equal(create.status, 201);
     const { id } = (await create.json()) as { id: string };
     const displayLogin = await request(`/api/e/${id}/display/login`, {
@@ -200,6 +210,7 @@ test(
     );
     const roundId = control.state!.question!.id;
     assert.equal(display.state!.question!.bodyMarkdown, undefined);
+    assert.equal(display.state!.question!.difficulty, undefined);
     assert.equal(display.state!.question!.correctChoice, undefined);
     assert.equal(players[0].state!.preview, undefined);
     display.send({ type: "ready", roundId, epoch: display.state!.epoch });
@@ -255,7 +266,7 @@ test(
     await players[0].wait((v) => v.phase === "choicesReading");
     assert.deepEqual(
       players[0].state!.question!.choices,
-      demo.questions[0].choices,
+      questionSet.questions[0].choices,
     );
     await control.wait((v) => v.phase === "acceptingAnswers", 18000);
     assert.equal(control.state!.phaseDurationMs, 30000);
@@ -265,15 +276,17 @@ test(
     );
     assert.equal(
       display.state!.question!.bodyMarkdown,
-      demo.questions[0].bodyMarkdown,
+      questionSet.questions[0].bodyMarkdown,
     );
     assert.equal(players[0].state!.question!.bodyMarkdown, undefined);
+    assert.equal(display.state!.question!.difficulty, 1);
+    assert.equal(players[0].state!.question!.difficulty, undefined);
     const invalidId = crypto.randomUUID();
     players[39].send({
       type: "answer",
       requestId: invalidId,
       roundId,
-      choice: "B",
+      choice: firstCorrectChoice,
     });
     assert.equal((await players[39].reply(invalidId)).type, "error");
     const hostileId = crypto.randomUUID();
@@ -311,7 +324,12 @@ test(
     players
       .slice(0, 38)
       .forEach((p, i) =>
-        p.send({ type: "answer", requestId: ids[i], roundId, choice: "B" }),
+        p.send({
+          type: "answer",
+          requestId: ids[i],
+          roundId,
+          choice: firstCorrectChoice,
+        }),
       );
     const answers = await Promise.all(
       players.slice(0, 38).map((p, i) => p.reply(ids[i])),
@@ -334,7 +352,7 @@ test(
       type: "answer",
       requestId: tooLate,
       roundId,
-      choice: "B",
+      choice: firstCorrectChoice,
     });
     assert.equal((await players[38].reply(tooLate)).type, "error");
     const retryId = crypto.randomUUID();
@@ -342,7 +360,7 @@ test(
       type: "answer",
       requestId: retryId,
       roundId,
-      choice: "C",
+      choice: differentChoice,
     });
     const retry = await players[0].reply(retryId);
     assert.equal(retry.type, "ack");

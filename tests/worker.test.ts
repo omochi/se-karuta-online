@@ -14,7 +14,7 @@ import {
 import { loadGame, saveGame } from "../src/worker/repository";
 import { signSession } from "../src/worker/auth";
 import type { Env } from "../src/worker/env";
-import type { Game, RoomView } from "../src/shared/types";
+import type { Game, Question, RoomView } from "../src/shared/types";
 const bindings = env as unknown as Env;
 it("HostやForwardedヘッダーではなく公開URLを使用する", async () => {
   const config = await exports.default.fetch(
@@ -61,6 +61,7 @@ function fixture(): Game {
     [
       {
         id: crypto.randomUUID(),
+        difficulty: 2 as const,
         bodyMarkdown: "body",
         choices: { A: "a", B: "b", C: "c", D: "d" },
         correctChoice: "B",
@@ -178,6 +179,7 @@ it("問題ビューワは管理者だけが大会作成時の問題を出題順�
     [
       {
         id: crypto.randomUUID(),
+        difficulty: 2 as const,
         bodyMarkdown: "first secret",
         choices: { A: "a", B: "b", C: "c", D: "d" },
         correctChoice: "C",
@@ -185,6 +187,7 @@ it("問題ビューワは管理者だけが大会作成時の問題を出題順�
       },
       {
         id: crypto.randomUUID(),
+        difficulty: 2 as const,
         bodyMarkdown: "second secret",
         choices: { A: "a", B: "b", C: "c", D: "d" },
         correctChoice: "A",
@@ -250,4 +253,32 @@ it("時間設定のない既存大会をデフォルト値で復元する", asyn
     readingSeconds: 15,
     answeringSeconds: 30,
   });
+});
+
+it("難易度のない保存済み問題を標準の2として復元する", async () => {
+  const game = fixture();
+  game.rounds[0].question.difficulty = 3;
+  await saveGame(bindings.DB, null, game, "hash");
+  expect(
+    (await loadGame(bindings.DB, game.id))?.rounds[0].question.difficulty,
+  ).toBe(3);
+  await bindings.DB.prepare(
+    "UPDATE rounds SET question_json = json_remove(question_json, '$.difficulty') WHERE tournament_id = ?",
+  )
+    .bind(game.id)
+    .run();
+  expect(
+    (await loadGame(bindings.DB, game.id))?.rounds[0].question.difficulty,
+  ).toBe(2);
+  const { token } = await signSession(bindings.SESSION_SECRET, {
+    role: "admin",
+  });
+  const response = await exports.default.fetch(
+    new Request(`http://test/api/e/${game.id}/questions`, {
+      headers: { Cookie: `se_admin=${token}` },
+    }),
+  );
+  expect(response.status).toBe(200);
+  const document = (await response.json()) as { questions: Question[] };
+  expect(document.questions[0].difficulty).toBe(2);
 });

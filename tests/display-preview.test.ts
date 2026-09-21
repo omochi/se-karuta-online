@@ -14,6 +14,7 @@ import type { RoomConnection } from "../src/client/useRoom";
 
 const question = {
   id: "preview-question",
+  difficulty: 2 as const,
   bodyMarkdown: "QUESTION BODY\n\n```swift\nlet value = 42\n```",
   choices: { A: "Alpha", B: "Beta", C: "Gamma", D: "Delta" },
   correctChoice: "B" as const,
@@ -65,6 +66,7 @@ it("出題中は問題と全選択肢・固定タイマーを表示し、正解�
   for (const choice of Object.values(question.choices))
     expect(html).toContain(choice);
   expect(html).toContain("回答受付中");
+  expect(html).toContain('data-difficulty="2"');
   expect(html).toContain("残り 30 秒");
   expect(html).toContain("QUESTION 02 / 3");
   expect(html).not.toContain("ANSWER EXPLANATION");
@@ -76,9 +78,11 @@ it("選択肢公開では問題を隠し、正解発表では本文・正解の�
   expect(reading).toContain("Alpha");
   expect(reading).toContain("残り 15 秒");
   expect(reading).not.toContain("QUESTION BODY");
+  expect(reading).not.toContain('class="question-difficulty"');
   expect(reading).not.toContain("ANSWER EXPLANATION");
   const revealed = preview("answerRevealed");
   expect(revealed).toContain("QUESTION BODY");
+  expect(revealed).toContain('data-difficulty="2"');
   expect(revealed).toContain("ANSWER EXPLANATION");
   expect(revealed).toMatch(/class="choice choice-b [^"]*correct/);
   expect(revealed).not.toContain("残り 30 秒");
