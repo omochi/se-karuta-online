@@ -12,7 +12,7 @@
         "D": "SE-0380 · if and switch expressions"
       },
       "correctChoice": "B",
-      "explanationMarkdown": "SE-0218 は Dictionary の値を変換し、nil になった要素を取り除く compactMapValues を追加しました。Swift 5.0 で実装されています。\n\n[Proposal を読む](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0218-introduce-compact-map-values.md)"
+      "explanationMarkdown": "SE-0218 は Dictionary の値を変換し、nil になった要素を取り除く compactMapValues を追加しました。Swift 5.0 で実装されています。\n\n[Proposal を読む](https://swiftdigest.koherent.org/proposals/se-0218.html)"
     },
     {
       "id": "demo-if-let",
@@ -24,7 +24,7 @@
         "D": "SE-0218 · Introduce compactMapValues to Dictionary"
       },
       "correctChoice": "C",
-      "explanationMarkdown": "SE-0345 では、同名の Optional を取り出す if let nickname = nickname を if let nickname と省略できるようになりました。\n\n[Proposal を読む](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0345-if-let-shorthand.md)"
+      "explanationMarkdown": "SE-0345 では、同名の Optional を取り出す if let nickname = nickname を if let nickname と省略できるようになりました。\n\n[Proposal を読む](https://swiftdigest.koherent.org/proposals/se-0345.html)"
     },
     {
       "id": "demo-if-expression",
@@ -36,7 +36,7 @@
         "D": "SE-0296 · Async/await"
       },
       "correctChoice": "A",
-      "explanationMarkdown": "SE-0380 によって、if と switch を式として使い、変数の初期化などに利用できるようになりました。\n\n[Proposal を読む](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0380-if-switch-expressions.md)"
+      "explanationMarkdown": "SE-0380 によって、if と switch を式として使い、変数の初期化などに利用できるようになりました。\n\n[Proposal を読む](https://swiftdigest.koherent.org/proposals/se-0380.html)"
     }
   ]
 }

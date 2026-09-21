@@ -19,9 +19,9 @@ export const PHASE_MESSAGES: Record<Phase, PhaseMessage> = {
     timerLabel: "選択肢の公開まで",
   },
   choicesReading: {
-    title: "問題が表示されるまで・・・",
+    title: "まもなく出題されます",
     description: "今のうちに選択肢を読んでおこう",
-    timerLabel: "問題の表示まで",
+    timerLabel: "出題まで",
   },
   acceptingAnswers: {
     title: "回答受付中",

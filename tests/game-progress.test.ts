@@ -92,15 +92,23 @@ describe("3画面の進行案内", () => {
     expect(markup[0]).toBe(markup[1]);
     expect(markup[0]).toBe(markup[2]);
   });
-  it("読む時間の見出しと補足が全画面にある", () => {
-    vi.spyOn(performance, "now").mockReturnValue(1000);
-    for (const screen of screens) {
-      const html = render(screen, fixture("choicesReading"));
-      expect(html).toMatch(/<h[12]>問題が表示されるまで・・・<\/h[12]>/);
-      expect(html).toContain("今のうちに選択肢を読んでおこう");
-      expect(html).not.toContain("まずは、選択肢を読もう");
-    }
-  });
+  it.each([
+    [1000, 15],
+    [6100, 10],
+    [16000, 0],
+  ])(
+    "読む時間の見出しは全画面で固定し、秒数はタイマーに表示する（時刻%s、残り%s秒）",
+    (now, seconds) => {
+      vi.spyOn(performance, "now").mockReturnValue(now);
+      for (const screen of screens) {
+        const html = render(screen, fixture("choicesReading"));
+        expect(html).toMatch(/<h[12]>まもなく出題されます<\/h[12]>/);
+        expect(html).toContain(`残り ${seconds} 秒`);
+        expect(html).toContain("今のうちに選択肢を読んでおこう");
+        expect(html).not.toContain("まずは、選択肢を読もう");
+      }
+    },
+  );
   it("期限到達で全画面が締切表示になり、Controlの操作はサーバー確定を待つ", () => {
     vi.spyOn(performance, "now").mockReturnValue(16000);
     const room = fixture("acceptingAnswers");
