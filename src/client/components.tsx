@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router";
-import Markdown from "react-markdown";
+export { MarkdownBody } from "./MarkdownBody";
 import { QRCodeSVG } from "qrcode.react";
 import type { Choice, RankRow, Results, RoomView } from "../shared/types";
 import { CHOICES } from "../shared/types";
@@ -39,13 +39,6 @@ export function ErrorBox({ message }: { message: string }) {
       {message}
     </div>
   ) : null;
-}
-export function MarkdownBody({ text }: { text: string }) {
-  return (
-    <div className="markdown">
-      <Markdown skipHtml>{text}</Markdown>
-    </div>
-  );
 }
 export function PasswordForm({
   label,

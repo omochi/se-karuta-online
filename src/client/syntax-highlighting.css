@@ -1,0 +1,48 @@
+/* 全画面で配色を共有し、コード領域の背景の明暗に合わせて切り替える。 */
+.markdown {
+  --syntax-plain: #202b33;
+  --syntax-keyword: #9635a3;
+  --syntax-string: #226735;
+  --syntax-number: #925018;
+  --syntax-type: #005e83;
+  --syntax-function: #6145a4;
+  --syntax-comment: #5d685e;
+}
+:is(.display-content, .viewer-preview-dark) .markdown {
+  --syntax-plain: #f3d5c6;
+  --syntax-keyword: #f28cbb;
+  --syntax-string: #a8d98b;
+  --syntax-number: #ecc48d;
+  --syntax-type: #82d9d0;
+  --syntax-function: #a6bdff;
+  --syntax-comment: #a7b0a3;
+}
+.markdown pre > code.hljs,
+.markdown .hljs-subst {
+  color: var(--syntax-plain);
+}
+.markdown :is(.hljs-keyword, .hljs-literal, .hljs-meta, .hljs-selector-tag) {
+  color: var(--syntax-keyword);
+}
+.markdown :is(.hljs-string, .hljs-regexp, .hljs-doctag) {
+  color: var(--syntax-string);
+}
+.markdown :is(.hljs-number, .hljs-symbol, .hljs-bullet) {
+  color: var(--syntax-number);
+}
+.markdown
+  :is(
+    .hljs-type,
+    .hljs-built_in,
+    .hljs-attr,
+    .hljs-attribute,
+    .hljs-title.class_
+  ) {
+  color: var(--syntax-type);
+}
+.markdown .hljs-title {
+  color: var(--syntax-function);
+}
+.markdown :is(.hljs-comment, .hljs-quote) {
+  color: var(--syntax-comment);
+}

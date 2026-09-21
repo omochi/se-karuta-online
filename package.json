@@ -21,11 +21,13 @@
     "check": "npm run typecheck && npm run questions:check && npm test && npm run test:worker && npm run test:integration && npm run build"
   },
   "dependencies": {
+    "highlight.js": "^11.12.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-markdown": "^10.1.0",
-    "react-router": "^8.4.0"
+    "react-router": "^8.4.0",
+    "rehype-highlight": "^7.0.2"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.56.0",
