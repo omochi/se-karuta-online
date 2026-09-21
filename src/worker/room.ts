@@ -57,6 +57,11 @@ export class TournamentRoom extends DurableObject<Env> {
     const active = [...this.connections.values()].filter(
       (c) => Date.now() - c.lastSeen < 45000,
     );
+    const displays = active.filter((c) => c.role === "display");
+    // 再接続では接続IDが変わるため、切断済みのIDを会場用として保持しない。
+    // 1台なら自動復帰し、候補が複数ならControlでの選択を待つ。
+    if (!displays.some((c) => c.id === this.selectedDisplayId))
+      this.selectedDisplayId = displays.length === 1 ? displays[0].id : null;
     return {
       onlinePlayers: new Set(
         active.filter((c) => c.role === "player").map((c) => c.playerId!),
@@ -68,14 +73,12 @@ export class TournamentRoom extends DurableObject<Env> {
           )
           .map((c) => c.playerId!),
       ),
-      displays: active
-        .filter((c) => c.role === "display")
-        .map((c) => ({
-          id: c.id,
-          label: `Display ${c.id.slice(0, 4)}`,
-          ready: c.readyRound === roundId && !!roundId,
-          selected: c.id === this.selectedDisplayId,
-        })),
+      displays: displays.map((c) => ({
+        id: c.id,
+        label: `Display ${c.id.slice(0, 4)}`,
+        ready: c.readyRound === roundId && !!roundId,
+        selected: c.id === this.selectedDisplayId,
+      })),
     };
   }
   private send(c: Connection, message: ServerMessage) {
@@ -186,8 +189,6 @@ export class TournamentRoom extends DurableObject<Env> {
           lastSeen: Date.now(),
         };
         this.connections.set(c.id, c);
-        if (role === "display" && !this.selectedDisplayId)
-          this.selectedDisplayId = c.id;
         server.addEventListener("message", (event) => {
           const receivedAt = Date.now();
           c.lastSeen = receivedAt;
@@ -201,7 +202,7 @@ export class TournamentRoom extends DurableObject<Env> {
           this.ctx.waitUntil(
             this.enqueue(async () => {
               this.connections.delete(c.id);
-              await this.getGame();
+              await this.maybeBegin();
               this.broadcast();
               await this.schedule();
             }),
@@ -239,6 +240,10 @@ export class TournamentRoom extends DurableObject<Env> {
       if ("requestId" in m && typeof m.requestId === "string")
         requestId = m.requestId;
       if (m.type === "ping") {
+        // 接続の失効で会場用が復帰した場合も、全員の準備が揃えば再開する。
+        const phase = this.game!.phase;
+        await this.maybeBegin();
+        if (this.game!.phase !== phase) this.broadcast();
         this.sendState(c);
         await this.schedule();
         return;
@@ -327,6 +332,7 @@ export class TournamentRoom extends DurableObject<Env> {
         }
       const next = structuredClone(g);
       if (advanceTimer(next, Date.now())) await this.commit(next);
+      await this.maybeBegin();
       this.broadcast();
       await this.schedule();
     });

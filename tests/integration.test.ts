@@ -184,7 +184,7 @@ test(
       return peer;
     }
     const control = await connect("control", adminCookie);
-    const display = await connect("display", displayCookie);
+    let display = await connect("display", displayCookie);
     const joins = await Promise.all(
       Array.from({ length: 40 }, (_, i) =>
         request(`/api/e/${id}/join`, { name: `Player ${i}` }),
@@ -203,6 +203,29 @@ test(
     assert.equal(display.state!.question!.correctChoice, undefined);
     assert.equal(players[0].state!.preview, undefined);
     display.send({ type: "ready", roundId, epoch: display.state!.epoch });
+    await control.wait((v) => v.displayReady);
+    const selectedId = control.state!.displays!.find((d) => d.selected)!.id;
+    // 閲覧用の追加・切断では、接続中の会場用Displayを変更しない。
+    const viewer = await connect("display", displayCookie);
+    await control.wait((v) => v.displays?.length === 2);
+    assert.equal(
+      control.state!.displays!.find((d) => d.selected)!.id,
+      selectedId,
+    );
+    viewer.close();
+    await control.wait((v) => v.displays?.length === 1);
+    assert.equal(control.state!.displayReady, true);
+    // 会場用Displayを再読み込みするとWebSocketのIDが変わる。
+    // 古い接続の準備完了を引き継がず、新しい接続を会場用として待つ。
+    display.close();
+    await control.wait((v) => v.displays?.length === 0 && !v.displayReady);
+    display = await connect("display", displayCookie);
+    await control.wait((v) => v.displays?.length === 1);
+    assert.equal(control.state!.displays![0].selected, true);
+    assert.equal(control.state!.displayReady, false);
+    assert.equal(control.state!.phase, "choicesPreparing");
+    display.send({ type: "ready", roundId, epoch: display.state!.epoch });
+    await control.wait((v) => v.displayReady);
     // 古い世代の通知を送っても準備完了にしない。
     players[0].send({ type: "ready", roundId, epoch: "old-connection" });
     players[0].send({ type: "ping" });
