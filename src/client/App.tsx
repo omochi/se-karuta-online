@@ -197,7 +197,12 @@ export function Home() {
             </>
           )}
         </section>
-        <footer>SE Karuta · Made for people who love Swift.</footer>
+        <footer>
+          <a className="proposal-home-link" href="/proposal/">
+            このゲームの提案資料
+          </a>
+          <span>SE Karuta · Made for people who love Swift.</span>
+        </footer>
       </main>
     </>
   );

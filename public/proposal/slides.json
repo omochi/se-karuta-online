@@ -3,7 +3,7 @@
     "number": 1,
     "title": "Swift Evolution Karuta Online",
     "description": "会場のみんなで遊ぶ、Swiftの4択カルタ",
-    "explanation": "Swift Evolution Karuta Onlineは、Swiftのコードや機能から、その機能を導入したProposalを当てる4択カルタです。参加者は会場の大きな画面を見て、手元のスマートフォンで回答します。この資料は、運営が遊び方、進行方法、準備に必要なものを共有するためのものです。画面内の参加者・成績はすべてデモです。",
+    "explanation": "Swift Evolution Karuta Onlineは、Swiftのコードや機能から、その機能を導入したProposalを当てる4択カルタです。参加者は会場の大きな画面を見て、手元のスマートフォンで回答します。この資料は、イベントでこのゲームを楽しむ企画を運営に提案するためのものです。遊び方と実装済みの機能を紹介し、当日の進め方や準備について検討する材料をまとめています。画面内の参加者・成績はすべてデモです。",
     "source": "README.md / docs/spec.md",
     "background": "#292628",
     "elements": [
@@ -21,7 +21,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -81,7 +81,7 @@
       },
       {
         "type": "text",
-        "str": "遊び方と当日の運営",
+        "str": "遊び方とイベントでの活用案",
         "x": 64,
         "y": 452,
         "w": 1000,
@@ -93,7 +93,7 @@
       },
       {
         "type": "text",
-        "str": "運営共有用  /  2026年9月21日版",
+        "str": "運営への提案  /  2026年9月21日版",
         "x": 64,
         "y": 566,
         "w": 1050,
@@ -151,7 +151,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -277,7 +277,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -589,7 +589,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -699,7 +699,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -1061,7 +1061,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -1159,7 +1159,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -1305,7 +1305,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -1419,7 +1419,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -1533,7 +1533,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -1707,7 +1707,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -1821,7 +1821,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -1947,7 +1947,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -2061,7 +2061,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -2175,7 +2175,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,
@@ -2340,7 +2340,7 @@
       },
       {
         "type": "text",
-        "str": "SE Karuta  /  運営共有資料",
+        "str": "SE Karuta  /  提案資料",
         "x": 58,
         "y": 682,
         "w": 880,

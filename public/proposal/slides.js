@@ -67,8 +67,9 @@ function renderSlide(data) {
     else {el.textContent=e.str;el.style.fontSize=`${e.size}px`;el.style.color=e.color;el.style.fontWeight=e.bold||e.type==='node'?'700':'400';el.style.textAlign=e.align||'center';if(e.type==='node'){el.classList.add('node');el.style.background=e.fill;}}
     canvas.append(el);
   }
-  viewport.append(canvas);article.append(viewport);
-  const notes=document.createElement('section');notes.className='explanation';notes.tabIndex=-1;
+  const panel=document.createElement('div');panel.className='slide-panel';
+  viewport.append(canvas);panel.append(viewport);article.append(panel);
+  const notes=document.createElement('section');notes.className='explanation';notes.tabIndex=0;notes.setAttribute('aria-label','スライドの説明');
   const count=document.createElement('p');count.className='eyebrow';count.textContent=`${String(data.number).padStart(2,'0')} / ${slides.length}`;
   const heading=document.createElement('h2');heading.textContent=data.title;
   const copy=document.createElement('div');copy.className='copy';
@@ -81,17 +82,24 @@ function renderSlide(data) {
 }
 function fit(){
   document.documentElement.style.setProperty('--toolbar-height',`${document.querySelector('.toolbar').getBoundingClientRect().height}px`);
-  for(const page of pages){if(page.hidden)continue;const vp=page.querySelector('.slide-viewport');page.querySelector('.slide').style.transform=`scale(${vp.clientWidth/1280})`;}
+  for(const page of pages){
+    if(page.hidden)continue;
+    const panel=page.querySelector('.slide-panel'),vp=page.querySelector('.slide-viewport');
+    // 左ペインの幅と高さの両方に収め、スライド全体を常に表示する。
+    vp.style.width=`${Math.min(panel.clientWidth,panel.clientHeight*16/9)}px`;
+    page.querySelector('.slide').style.transform=`scale(${vp.clientWidth/1280})`;
+  }
 }
 function fromHash(){const n=Number(location.hash.slice(1));return Number.isInteger(n)&&n>0?Math.min(n-1,slides.length-1):0;}
 function show(index,{history=true,scroll=true}={}){
   current=Math.min(slides.length-1,Math.max(0,index));
   pages.forEach((page,i)=>{page.hidden=!all&&i!==current;const notes=page.querySelector('.explanation');if(i===current)notes.id='explanation';else notes.removeAttribute('id');});
   jump.value=String(current);previous.disabled=current===0;next.disabled=current===slides.length-1;
-  document.title=`${current+1}. ${slides[current].title} — SE Karuta`;
+  document.title=`${current+1}. ${slides[current].title} — SE Karuta 提案資料`;
   announcement.textContent=`${current+1} / ${slides.length}：${slides[current].title}`;
   if(history)window.history.replaceState(null,'',`#${current+1}`);
   fit();if(scroll){if(all)pages[current].scrollIntoView({block:'start'});else window.scrollTo({top:0});}
+  if(!all)pages[current].querySelector('.explanation').scrollTop=0;
 }
 function setMode({readAll=false,presentation=false}){
   all=readAll;presenting=presentation;document.body.classList.toggle('all',all);document.body.classList.toggle('presenting',presenting);
@@ -106,6 +114,8 @@ document.querySelector('#close-screenshot').addEventListener('click',()=>dialog.
 dialog.addEventListener('click',event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)dialog.close();}});
 document.addEventListener('keydown',event=>{
   if(dialog.open||['SELECT','INPUT','TEXTAREA'].includes(event.target.tagName))return;
+  // 説明ペインにフォーカスしている間は、上下移動キーを本文の閲覧に使う。
+  if(event.target.closest('.explanation')&&['PageDown','PageUp','Home','End'].includes(event.key))return;
   if(['ArrowRight','PageDown','ArrowLeft','PageUp','Home','End'].includes(event.key)){event.preventDefault();const n=event.key==='Home'?0:event.key==='End'?slides.length-1:current+(['ArrowRight','PageDown'].includes(event.key)?1:-1);show(n);}
   if(event.key==='Escape'&&presenting)setMode({});
 });
@@ -119,6 +129,7 @@ const resizeObserver=new ResizeObserver(()=>fit());resizeObserver.observe(deck);
 try{
   const response=await fetch('./slides.json');if(!response.ok)throw new Error(`HTTP ${response.status}`);slides=await response.json();
   pages=slides.map(renderSlide);deck.replaceChildren(...pages);deck.setAttribute('aria-busy','false');
+  for(const page of pages)resizeObserver.observe(page.querySelector('.slide-panel'));
   for(const s of slides){const option=document.createElement('option');option.value=String(s.number-1);option.textContent=`${String(s.number).padStart(2,'0')}  ${s.title}`;jump.append(option);}
   show(fromHash(),{history:false,scroll:false});
 }catch(error){deck.setAttribute('aria-busy','false');deck.replaceChildren();const p=document.createElement('p');p.className='loading';p.textContent='資料を読み込めませんでした。ネット接続を確認して再読み込みしてください。ローカルで見る場合はHTTPサーバー経由で開いてください。';deck.append(p);for(const button of [previous,next,present,overview])button.disabled=true;console.error(error);}

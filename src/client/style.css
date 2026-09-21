@@ -105,9 +105,10 @@ small {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  /* 通常ヘッダーの23pxを基準に全寸法を比例させ、小型表示でも形を保つ。 */
+  gap: calc(12em / 23);
   font-size: 26px;
-  letter-spacing: -1px;
+  letter-spacing: calc(-1em / 23);
   flex-shrink: 0;
 }
 .brand > span:last-child {
@@ -118,30 +119,26 @@ small {
 }
 .brand small {
   display: block;
-  font-size: 8px;
+  font-size: calc(8em / 23);
   font-weight: 600;
-  letter-spacing: 1.2px;
-  margin-top: 6px;
+  letter-spacing: 0.15em;
+  margin-top: 0.75em;
 }
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 43px;
-  height: 48px;
+  /* emはこの要素自身の文字サイズに基づくため、マーク内は36pxを基準にする。 */
+  width: calc(35em / 36);
+  height: calc(40em / 36);
   background: var(--orange);
   color: #fffefa;
-  border-radius: 8px 8px 18px 8px;
-  font-size: 43px;
+  border-radius: calc(8em / 36) calc(8em / 36) 0.5em calc(8em / 36);
+  font-size: calc(36em / 23);
   line-height: 1;
   transform: rotate(-7deg);
 }
 .brand.small {
   font-size: 23px;
-}
-.brand.small .brand-mark {
-  width: 35px;
-  height: 40px;
-  font-size: 36px;
 }
 .header-caption {
   font-size: 12px;
@@ -353,6 +350,15 @@ input::placeholder {
   font-size: 11px;
   letter-spacing: 0.04em;
   margin: 50px 0 12px;
+}
+.proposal-home-link {
+  display: block;
+  width: fit-content;
+  margin: 0 auto 12px;
+  padding: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  text-underline-offset: 3px;
 }
 .section-heading {
   display: flex;

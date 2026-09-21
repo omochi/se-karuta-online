@@ -11,12 +11,6 @@
 }
 .display-page-question .brand.small {
   font-size: 18px;
-  gap: 9px;
-}
-.display-page-question .brand.small .brand-mark {
-  width: 26px;
-  height: 30px;
-  font-size: 27px;
 }
 .display-page-question .brand small,
 .display-page-question .display-footer {
