@@ -13,9 +13,9 @@ import {
   type Role,
   type RoomView,
   type Round,
+  type TimingSettings,
 } from "../shared/types";
-export const READING_MS = 10000;
-export const COUNTDOWN_MS = 5000;
+import { DEFAULT_TIMING, validateTiming } from "../shared/timing";
 export function newGame(
   id: string,
   name: string,
@@ -31,6 +31,7 @@ export function newGame(
     currentIndex: -1,
     phaseEndsAt: null,
     difficultyThreshold: 0.3,
+    timing: { ...DEFAULT_TIMING },
     players: [],
     rounds: questions.map((question) => ({
       id: crypto.randomUUID(),
@@ -66,6 +67,7 @@ export function applyCommand(
     revision: number;
     playerId?: string;
     reason?: string;
+    timing?: TimingSettings;
   },
   now: number,
 ) {
@@ -73,6 +75,16 @@ export function applyCommand(
     input.revision === g.revision,
     "進行状態が更新されました。画面を確認してもう一度操作してください。",
   );
+  if (input.command === "updateTiming") {
+    requireCondition(
+      g.phase !== "finished",
+      "終了した大会の設定は変更できません。",
+    );
+    // 進行中の期限は維持し、各段階を開始するときに最新の設定を使う。
+    g.timing = validateTiming(input.timing);
+    g.revision += 1;
+    return;
+  }
   const r = currentRound(g);
   switch (input.command) {
     case "start": {
@@ -165,7 +177,7 @@ export function applyCommand(
   if (!["choicesReading", "countdown"].includes(g.phase)) g.phaseEndsAt = null;
   g.revision += 1;
 }
-export function beginReadingIfReady(
+export function beginCountdownIfReady(
   g: Game,
   ready: Set<string>,
   displayReady: boolean,
@@ -178,23 +190,28 @@ export function beginReadingIfReady(
   );
   if (eligible.length === 0 || !eligible.every((id) => ready.has(id)))
     return false;
-  r.readingStartedAt = now;
-  g.phase = "choicesReading";
-  g.phaseEndsAt = now + READING_MS;
+  r.countdownStartedAt = now;
+  g.phase = "countdown";
+  g.phaseEndsAt = now + g.timing.countdownSeconds * 1000;
   g.revision += 1;
   return true;
 }
 export function advanceTimer(g: Game, now: number): boolean {
   if (g.phaseEndsAt === null || now < g.phaseEndsAt) return false;
   const r = currentRound(g)!;
-  if (g.phase === "choicesReading") {
-    r.countdownStartedAt = now;
-    g.phase = "countdown";
-    g.phaseEndsAt = now + COUNTDOWN_MS;
-  } else if (g.phase === "countdown") {
+  if (g.phase === "countdown") {
+    r.readingStartedAt = now;
+    g.phase = "choicesReading";
+    g.phaseEndsAt = now + g.timing.readingSeconds * 1000;
+  } else if (g.phase === "choicesReading") {
     // 遅延・復旧後も実際の出題時刻を起点にし、過去の予定時刻から計測しない。
     r.openedAt = now;
     g.phase = "acceptingAnswers";
+    g.phaseEndsAt = now + g.timing.answeringSeconds * 1000;
+  } else if (g.phase === "acceptingAnswers") {
+    // アラームが遅れても受付期限を延長せず、未回答は回答なしのまま残す。
+    r.closedAt = g.phaseEndsAt;
+    g.phase = "answersClosed";
     g.phaseEndsAt = null;
   } else return false;
   g.revision += 1;
@@ -219,7 +236,9 @@ export function receiveAnswer(
     round === currentRound(g) &&
       g.phase === "acceptingAnswers" &&
       round.openedAt !== null &&
-      receivedAt >= round.openedAt,
+      receivedAt >= round.openedAt &&
+      g.phaseEndsAt !== null &&
+      receivedAt < g.phaseEndsAt,
     "この問題は回答受付中ではありません。",
   );
   requireCondition(
@@ -326,13 +345,12 @@ export function viewFor(
     ["answerRevealed", "rankingShown", "finished"].includes(g.phase) &&
     !r?.isVoided;
   const showBody =
-    [
-      "acceptingAnswers",
-      "answersClosed",
-      "answerRevealed",
-      "rankingShown",
-      "finished",
-    ].includes(g.phase) && !r?.isVoided;
+    ["acceptingAnswers", "answerRevealed", "rankingShown", "finished"].includes(
+      g.phase,
+    ) &&
+    !r?.isVoided &&
+    (g.phase !== "acceptingAnswers" ||
+      (g.phaseEndsAt !== null && now < g.phaseEndsAt));
   const rankings = r ? roundRanking(g, r) : [];
   const eligible = r
     ? Object.keys(r.participants).filter(
@@ -349,6 +367,16 @@ export function viewFor(
     epoch,
     serverNow: now,
     phaseEndsAt: g.phaseEndsAt,
+    phaseDurationMs:
+      g.phaseEndsAt === null
+        ? 0
+        : g.phaseEndsAt -
+          ((g.phase === "countdown"
+            ? r?.countdownStartedAt
+            : g.phase === "choicesReading"
+              ? r?.readingStartedAt
+              : r?.openedAt) ?? now),
+    timing: g.timing,
     questionNumber: g.currentIndex + 1,
     totalQuestions: g.rounds.length,
     playerCount: g.players.length,
@@ -359,7 +387,9 @@ export function viewFor(
     question: r
       ? {
           id: r.id,
-          choices: r.question.choices,
+          ...(!["choicesPreparing", "countdown"].includes(g.phase)
+            ? { choices: r.question.choices }
+            : {}),
           ...(showBody && role !== "player"
             ? { bodyMarkdown: r.question.bodyMarkdown }
             : {}),

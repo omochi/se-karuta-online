@@ -7,6 +7,7 @@ import type {
   Role,
   RoomView,
   ServerMessage,
+  TimingSettings,
 } from "../shared/types";
 // LAN の HTTP 接続でも動くよう、Secure Context 限定の randomUUID に依存しない。
 function clientRequestId() {
@@ -113,8 +114,9 @@ export function useRoom(
           receivedAt.current = performance.now();
           setView(message);
           if (
-            pendingRef.current?.roundId === message.question?.id &&
-            message.me?.answer
+            pendingRef.current &&
+            (pendingRef.current.roundId !== message.question?.id ||
+              message.me?.answer)
           )
             remember(null);
         } else if (message.type === "ack") {
@@ -179,6 +181,7 @@ export function useRoom(
     if (
       !connected ||
       !view?.question ||
+      view.phase !== "choicesPreparing" ||
       role === "control" ||
       document.visibilityState !== "visible"
     )
@@ -186,7 +189,7 @@ export function useRoom(
     const key = `${view.epoch}:${view.question.id}`;
     if (lastReady.current === key) return;
     let second = 0;
-    // React が選択肢を反映し、ブラウザーに描画機会を渡してから表示完了を通知する。
+    // 選択肢はまだ配信せず、待機画面の描画機会を経て準備完了を通知する。
     const first = requestAnimationFrame(() => {
       second = requestAnimationFrame(() => {
         if (
@@ -202,7 +205,17 @@ export function useRoom(
     };
   }, [connected, view, role, send]);
   function answer(choice: Choice) {
-    if (!view?.question || view.me?.answer || pendingRef.current || !connected)
+    if (
+      !view?.question ||
+      view.me?.answer ||
+      pendingRef.current ||
+      !connected ||
+      view.phase !== "acceptingAnswers" ||
+      view.me?.participation !== "eligible" ||
+      view.phaseEndsAt === null ||
+      view.serverNow + performance.now() - receivedAt.current >=
+        view.phaseEndsAt
+    )
       return;
     const message: Pending = {
       type: "answer",
@@ -216,7 +229,12 @@ export function useRoom(
   }
   function command(
     command: Command,
-    extra: { playerId?: string; displayId?: string; reason?: string } = {},
+    extra: {
+      playerId?: string;
+      displayId?: string;
+      reason?: string;
+      timing?: TimingSettings;
+    } = {},
   ) {
     if (!view || busyRef.current || !connected) return;
     const requestId = clientRequestId();
@@ -236,6 +254,18 @@ export function useRoom(
       setBusy(false);
     }
   }
-  return { view, connected, error, busy, pending, answer, command, receivedAt };
+  // 前問の未確認送信を、次問の選択状態や回答可否へ持ち越さない。
+  const currentPending =
+    pending?.roundId === view?.question?.id ? pending : null;
+  return {
+    view,
+    connected,
+    error,
+    busy,
+    pending: currentPending,
+    answer,
+    command,
+    receivedAt,
+  };
 }
 export type RoomConnection = ReturnType<typeof useRoom>;

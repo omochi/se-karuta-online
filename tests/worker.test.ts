@@ -7,7 +7,7 @@ import {
   newGame,
   addPlayer,
   applyCommand,
-  beginReadingIfReady,
+  beginCountdownIfReady,
   advanceTimer,
   receiveAnswer,
 } from "../src/worker/game";
@@ -82,10 +82,25 @@ it("D1に問題のスナップショット・参加資格・回答を保存し�
   await saveGame(bindings.DB, null, g, "display-hash");
   const next = structuredClone(g);
   applyCommand(next, { command: "start", revision: 0 }, 100);
-  beginReadingIfReady(next, new Set(next.players.map((p) => p.id)), true, 100);
-  advanceTimer(next, 10100);
-  advanceTimer(next, 15100);
-  receiveAnswer(next, next.players[0].id, next.rounds[0].id, "B", 15382);
+  beginCountdownIfReady(
+    next,
+    new Set(next.players.map((p) => p.id)),
+    true,
+    100,
+  );
+  advanceTimer(next, 5100);
+  advanceTimer(next, 20100);
+  receiveAnswer(next, next.players[0].id, next.rounds[0].id, "B", 20382);
+  applyCommand(
+    next,
+    {
+      command: "updateTiming",
+      revision: next.revision,
+      timing: { countdownSeconds: 3, readingSeconds: 15, answeringSeconds: 45 },
+    },
+    20400,
+  );
+  expect(next.phaseEndsAt).toBe(35100);
   await saveGame(bindings.DB, g, next);
   expect(await loadGame(bindings.DB, g.id)).toEqual(next);
   await bindings.DB.prepare(
@@ -219,5 +234,20 @@ it("問題ビューワは管理者だけが大会作成時の問題を出題順�
   expect(await response.json()).toEqual({
     name: game.name,
     questions: game.rounds.map((r) => r.question),
+  });
+});
+
+it("時間設定のない既存大会をデフォルト値で復元する", async () => {
+  const game = fixture();
+  await saveGame(bindings.DB, null, game, "hash");
+  await bindings.DB.prepare(
+    "UPDATE tournaments SET state_json = json_remove(state_json, '$.timing') WHERE id = ?",
+  )
+    .bind(game.id)
+    .run();
+  expect((await loadGame(bindings.DB, game.id))?.timing).toEqual({
+    countdownSeconds: 5,
+    readingSeconds: 15,
+    answeringSeconds: 15,
   });
 });

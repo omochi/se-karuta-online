@@ -90,7 +90,7 @@ class Peer {
 }
 test(
   "40人のWebSocket・D1・Durable Objectsで準備確認から表彰まで遊べる",
-  { timeout: 65000 },
+  { timeout: 100000 },
   async (t) => {
     const folder = await mkdtemp(join(tmpdir(), "se-karuta-integration-"));
     const bundle = await build({
@@ -216,13 +216,26 @@ test(
     const late = await connect("player", cookieOf(lateJoin));
     assert.equal(late.state!.me!.participation, "waiting");
     const restedId = players[39].state!.me!.id;
-    const reading = await control.command("rest", { playerId: restedId });
-    assert.equal(reading.phase, "choicesReading");
-    assert.equal(reading.eligibleCount, 39);
-    assert.equal(reading.phaseEndsAt! - reading.serverNow <= 10000, true);
-    const countdown = await control.wait((v) => v.phase === "countdown", 13000);
+    assert.equal(players[0].state!.question!.choices, undefined);
+    assert.equal(display.state!.question!.choices, undefined);
+    const countdown = await control.command("rest", { playerId: restedId });
+    assert.equal(countdown.phase, "countdown");
+    assert.equal(countdown.eligibleCount, 39);
     assert.equal(countdown.phaseEndsAt! - countdown.serverNow <= 5000, true);
-    await control.wait((v) => v.phase === "acceptingAnswers", 8000);
+    await display.wait((v) => v.phase === "countdown");
+    assert.equal(display.state!.question!.choices, undefined);
+    const reading = await control.wait(
+      (v) => v.phase === "choicesReading",
+      8000,
+    );
+    assert.equal(reading.phaseDurationMs, 15000);
+    await players[0].wait((v) => v.phase === "choicesReading");
+    assert.deepEqual(
+      players[0].state!.question!.choices,
+      demo.questions[0].choices,
+    );
+    await control.wait((v) => v.phase === "acceptingAnswers", 18000);
+    assert.equal(control.state!.phaseDurationMs, 15000);
     await display.wait((v) => v.phase === "acceptingAnswers");
     await Promise.all(
       players.map((p) => p.wait((v) => v.phase === "acceptingAnswers")),
@@ -271,24 +284,36 @@ test(
     );
     await db.exec("DROP TRIGGER fail_test_answer;");
     const started = performance.now();
-    const ids = players.slice(0, 39).map(() => crypto.randomUUID());
+    const ids = players.slice(0, 38).map(() => crypto.randomUUID());
     players
-      .slice(0, 39)
+      .slice(0, 38)
       .forEach((p, i) =>
         p.send({ type: "answer", requestId: ids[i], roundId, choice: "B" }),
       );
     const answers = await Promise.all(
-      players.slice(0, 39).map((p, i) => p.reply(ids[i])),
+      players.slice(0, 38).map((p, i) => p.reply(ids[i])),
     );
     assert(answers.every((a) => a.type === "ack"));
-    await control.wait((v) => v.answerCount === 39);
+    await control.wait((v) => v.answerCount === 38);
     t.diagnostic(
-      `39 simultaneous answers persisted and acknowledged in ${Math.round(performance.now() - started)} ms (local)`,
+      `38 simultaneous answers persisted and acknowledged in ${Math.round(performance.now() - started)} ms (local)`,
     );
     const first = answers[0];
     assert.equal(first.type, "ack");
     if (first.type !== "ack") throw new Error("missing ack");
-    await control.command("close");
+    await control.wait((v) => v.phase === "answersClosed", 18000);
+    await display.wait((v) => v.phase === "answersClosed");
+    assert.equal(display.state!.question!.bodyMarkdown, undefined);
+    await players[38].wait((v) => v.phase === "answersClosed");
+    assert.equal(players[38].state!.me!.answer, null);
+    const tooLate = crypto.randomUUID();
+    players[38].send({
+      type: "answer",
+      requestId: tooLate,
+      roundId,
+      choice: "B",
+    });
+    assert.equal((await players[38].reply(tooLate)).type, "error");
     const retryId = crypto.randomUUID();
     players[0].send({
       type: "answer",
@@ -309,7 +334,7 @@ test(
     assert.equal(reconnected.state!.rankings, undefined);
     await control.command("ranking");
     await display.wait((v) => v.phase === "rankingShown");
-    assert.equal(display.state!.rankings!.length, 39);
+    assert.equal(display.state!.rankings!.length, 38);
     assert.equal(
       (
         await db
@@ -317,7 +342,7 @@ test(
           .bind(roundId)
           .first<{ n: number }>()
       )?.n,
-      39,
+      38,
     );
     await control.command("start");
     await players[39].wait((v) => v.questionNumber === 2);
@@ -328,7 +353,7 @@ test(
     await control.command("finish");
     await reconnected.wait((v) => v.phase === "finished");
     assert.equal(reconnected.state!.results!.validQuestions, 1);
-    assert.equal(reconnected.state!.results!.correct.length, 39);
+    assert.equal(reconnected.state!.results!.correct.length, 38);
     assert(reconnected.state!.results!.record.length > 0);
   },
 );

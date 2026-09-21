@@ -1,4 +1,5 @@
 import type { Game, Player, Round } from "../shared/types";
+import { DEFAULT_TIMING } from "../shared/timing";
 const head = ({ players: _p, rounds: _r, ...state }: Game) => state;
 const roundState = ({
   question: _q,
@@ -39,6 +40,7 @@ export async function loadGame(
     players: [],
     rounds: [],
   };
+  game.timing ??= { ...DEFAULT_TIMING };
   game.rounds = data[1].results.map((row) => ({
     ...JSON.parse(row.state_json as string),
     question: JSON.parse(row.question_json as string),
@@ -63,6 +65,14 @@ export async function loadGame(
       choice: row.choice as "A" | "B" | "C" | "D",
       receivedAt: row.received_at as number,
     };
+  // 時間制限がなかった既存大会も、復元時に現在の問題へ期限を補う。
+  const current = game.rounds[game.currentIndex];
+  if (
+    game.phase === "acceptingAnswers" &&
+    game.phaseEndsAt === null &&
+    current?.openedAt != null
+  )
+    game.phaseEndsAt = current.openedAt + game.timing.answeringSeconds * 1000;
   return game;
 }
 export async function saveGame(

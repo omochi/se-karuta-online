@@ -18,9 +18,9 @@ import type {
 import { CHOICES } from "../shared/types";
 export const PHASE_LABELS: Record<Phase, string> = {
   waiting: "開場中",
-  choicesPreparing: "みんなの準備待ち",
-  choicesReading: "選択肢を読む時間",
-  countdown: "まもなく出題",
+  choicesPreparing: "全員の接続を待っています",
+  choicesReading: "出題まで",
+  countdown: "選択肢の公開まで",
   acceptingAnswers: "回答受付中",
   answersClosed: "回答を締め切りました",
   answerRevealed: "正解発表",
@@ -112,6 +112,25 @@ export function PasswordForm({
     </form>
   );
 }
+export function useRemainingTime(
+  view: RoomView,
+  receivedAt: RefObject<number>,
+) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (view.phaseEndsAt === null) return;
+    const timer = setInterval(() => tick((n) => n + 1), 100);
+    return () => clearInterval(timer);
+  }, [view.phaseEndsAt]);
+  return view.phaseEndsAt === null
+    ? null
+    : Math.max(
+        0,
+        view.phaseEndsAt -
+          view.serverNow -
+          (performance.now() - receivedAt.current),
+      );
+}
 export function Countdown({
   view,
   receivedAt,
@@ -119,31 +138,60 @@ export function Countdown({
   view: RoomView;
   receivedAt: RefObject<number>;
 }) {
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => tick((n) => n + 1), 100);
-    return () => clearInterval(timer);
-  }, []);
-  if (view.phaseEndsAt === null) return null;
-  const remaining = Math.max(
-    0,
-    Math.ceil(
-      (view.phaseEndsAt -
-        view.serverNow -
-        (performance.now() - receivedAt.current)) /
-        1000,
-    ),
-  );
+  const remainingMs = useRemainingTime(view, receivedAt);
+  if (remainingMs === null) return null;
+  const seconds = Math.ceil(remainingMs / 1000);
+  // 数字とバーは同じ期限・同じ残り時間から計算する。設定変更でも進行中の長さは変えない。
+  const fraction =
+    view.phaseDurationMs > 0
+      ? Math.min(1, remainingMs / view.phaseDurationMs)
+      : 0;
+  const label =
+    view.phase === "countdown"
+      ? "選択肢の公開まで"
+      : view.phase === "choicesReading"
+        ? "問題の表示まで"
+        : "回答締切まで";
   return (
-    <div
-      className={`countdown ${view.phase === "countdown" ? "final-countdown" : ""}`}
-    >
-      <span className="countdown-value">{remaining || "…"}</span>
-      <span>
-        {view.phase === "choicesReading"
-          ? "選択肢を読んでおこう"
-          : "問題が出たら、回答しよう"}
-      </span>
+    <div className={`countdown ${seconds <= 5 ? "final-countdown" : ""}`}>
+      <div className="countdown-heading">
+        <span className="countdown-value">{seconds}</span>
+        <span className="countdown-label">
+          {label}
+          <small>残り {seconds} 秒</small>
+        </span>
+      </div>
+      <div
+        className="countdown-bar"
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={view.phaseDurationMs / 1000}
+        aria-valuenow={Math.min(seconds, view.phaseDurationMs / 1000)}
+        aria-valuetext={`残り ${seconds} 秒`}
+      >
+        <div
+          className="countdown-bar-fill"
+          style={{ transform: `scaleX(${fraction})` }}
+        />
+      </div>
+    </div>
+  );
+}
+export function PreparationStatus({ view }: { view: RoomView }) {
+  return (
+    <div className="preparation-status" role="status">
+      <p className="preparation-count">
+        <strong>
+          {view.readyCount} / {view.eligibleCount}
+        </strong>{" "}
+        人が準備完了
+      </p>
+      <p className="muted">
+        {view.displayReady
+          ? "共有画面も準備できています"
+          : "共有画面の準備を待っています"}
+      </p>
     </div>
   );
 }
@@ -160,6 +208,8 @@ export function Choices({
   onChoose?: (c: Choice) => void;
   showCorrect?: boolean;
 }) {
+  const choices = question.choices;
+  if (!choices) return null;
   return (
     <div className="choices">
       {CHOICES.map((c) => (
@@ -167,11 +217,12 @@ export function Choices({
           key={c}
           className={`choice choice-${c.toLowerCase()} ${selected === c ? "selected" : ""} ${showCorrect && question.correctChoice === c ? "correct" : ""}`}
           disabled={disabled}
+          aria-pressed={selected === c}
           onClick={() => onChoose?.(c)}
-          aria-label={`${c}. ${question.choices[c]}`}
+          aria-label={`${c}. ${choices[c]}`}
         >
           <span className="choice-letter">{c}</span>
-          <span className="choice-text">{question.choices[c]}</span>
+          <span className="choice-text">{choices[c]}</span>
           {selected === c && <span className="choice-check">✓</span>}
         </button>
       ))}

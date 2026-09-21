@@ -12,7 +12,7 @@ import {
   addPlayer,
   advanceTimer,
   applyCommand,
-  beginReadingIfReady,
+  beginCountdownIfReady,
   currentRound,
   receiveAnswer,
   viewFor,
@@ -131,7 +131,7 @@ export class TournamentRoom extends DurableObject<Env> {
     const next = structuredClone(g);
     const presence = this.presence();
     if (
-      beginReadingIfReady(
+      beginCountdownIfReady(
         next,
         presence.readyPlayers,
         presence.displays.some((d) => d.selected && d.ready),

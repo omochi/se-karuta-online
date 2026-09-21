@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import QuestionViewer from "./QuestionViewer";
 import { usePublicOrigin } from "./config";
 import type { EventUrls } from "../shared/urls";
-import type { Role } from "../shared/types";
+import type { Role, TimingSettings } from "../shared/types";
 import { api, useRoom, type RoomConnection } from "./useRoom";
 import {
   Brand,
@@ -17,6 +17,8 @@ import {
   PasswordForm,
   PHASE_LABELS,
   Ranking,
+  PreparationStatus,
+  useRemainingTime,
 } from "./components";
 function Home() {
   const origin = usePublicOrigin();
@@ -339,6 +341,62 @@ function GamePage({ id, role }: { id: string; role: Role }) {
     <Player room={room} />
   );
 }
+function TimingSettingsForm({ room }: { room: RoomConnection }) {
+  const v = room.view!;
+  const [draft, setDraft] = useState<TimingSettings | null>(null);
+  const values = draft ?? v.timing;
+  const fields = [
+    ["countdownSeconds", "選択肢公開前のカウントダウン"],
+    ["readingSeconds", "選択肢を読んで出題を待つ時間"],
+    ["answeringSeconds", "問題の表示・回答時間"],
+  ] as const;
+  // サーバーが保存した値を受信して初めて編集状態を解除する。
+  useEffect(() => {
+    if (draft && fields.every(([key]) => draft[key] === v.timing[key]))
+      setDraft(null);
+  }, [draft, v.timing]);
+  return (
+    <section className="panel">
+      <h2>時間の設定</h2>
+      <form
+        className="stack timing-settings"
+        onSubmit={(e) => {
+          e.preventDefault();
+          room.command("updateTiming", { timing: values });
+        }}
+      >
+        {fields.map(([key, label]) => (
+          <label key={key}>
+            {label}（秒）
+            <input
+              type="number"
+              min={1}
+              max={600}
+              step={1}
+              required
+              value={Number.isNaN(values[key]) ? "" : values[key]}
+              disabled={v.phase === "finished"}
+              onChange={(e) =>
+                setDraft({ ...values, [key]: e.target.valueAsNumber })
+              }
+            />
+          </label>
+        ))}
+        <p className="muted">
+          進行中の時間は変わりません。次に始まる段階から反映します。
+        </p>
+        <button
+          className="secondary"
+          disabled={
+            !draft || room.busy || !room.connected || v.phase === "finished"
+          }
+        >
+          {room.busy ? "保存中…" : "時間設定を保存"}
+        </button>
+      </form>
+    </section>
+  );
+}
 function Control({ room }: { room: RoomConnection }) {
   const v = room.view!;
   const [reason, setReason] = useState("");
@@ -412,7 +470,7 @@ function Control({ room }: { room: RoomConnection }) {
                     {v.readyCount}
                     <small> / {v.eligibleCount}</small>
                   </strong>
-                  <span>表示完了</span>
+                  <span>準備完了</span>
                 </div>
                 <div>
                   <strong>
@@ -435,7 +493,7 @@ function Control({ room }: { room: RoomConnection }) {
                   >
                     {v.questionNumber
                       ? "次の問題を開始"
-                      : "選択肢を公開して開始"}{" "}
+                      : "全員の準備確認を開始"}{" "}
                     →
                   </button>
                 )}
@@ -478,8 +536,10 @@ function Control({ room }: { room: RoomConnection }) {
               </div>
               {v.phase === "choicesPreparing" && (
                 <p className="muted">
-                  全員と Display の準備が整うと、読む時間10秒 →
-                  出題まで5秒へ自動で進みます。
+                  全員と Display の準備が整うと、{v.timing.countdownSeconds}
+                  秒の予告後に選択肢を公開し、
+                  {v.timing.readingSeconds}秒後に出題します。回答時間は
+                  {v.timing.answeringSeconds}秒です。
                 </p>
               )}
             </div>
@@ -593,6 +653,7 @@ function Control({ room }: { room: RoomConnection }) {
             )}
           </section>
           <aside className="control-sidebar">
+            <TimingSettingsForm room={room} />
             <section className="panel">
               <div className="section-heading">
                 <h2>参加者</h2>
@@ -611,7 +672,7 @@ function Control({ room }: { room: RoomConnection }) {
                           : p.answered
                             ? "回答済み"
                             : p.ready
-                              ? "表示完了"
+                              ? "準備完了"
                               : p.online
                                 ? "接続中"
                                 : "未接続"}
@@ -644,7 +705,7 @@ function Control({ room }: { room: RoomConnection }) {
                       <strong>{d.label}</strong>
                       <small>
                         {d.selected ? "会場用" : "閲覧のみ"} ·{" "}
-                        {d.ready ? "表示完了" : "準備待ち"}
+                        {d.ready ? "準備完了" : "準備待ち"}
                       </small>
                     </div>
                     {!d.selected && (
@@ -682,6 +743,10 @@ function Display({ room }: { room: RoomConnection }) {
   const v = room.view!;
   const q = v.question;
   const revealing = ["answerRevealed", "rankingShown"].includes(v.phase);
+  const remaining = useRemainingTime(v, room.receivedAt);
+  const closed =
+    v.phase === "answersClosed" ||
+    (v.phase === "acceptingAnswers" && remaining === 0);
   return (
     <div className="display-page">
       <header className="display-header">
@@ -696,7 +761,9 @@ function Display({ room }: { room: RoomConnection }) {
               ? `QUESTION ${String(v.questionNumber).padStart(2, "0")} / ${v.totalQuestions}`
               : "WELCOME TO SE KARUTA"}
           </span>
-          <span className="phase-pill">{PHASE_LABELS[v.phase]}</span>
+          <span className="phase-pill">
+            {closed ? PHASE_LABELS.answersClosed : PHASE_LABELS[v.phase]}
+          </span>
         </div>
         {v.phase === "waiting" ? (
           <div className="display-welcome">
@@ -738,32 +805,42 @@ function Display({ room }: { room: RoomConnection }) {
               </h1>
               <p>
                 正解 {q?.correctChoice} ·{" "}
-                {q?.correctChoice && q.choices[q.correctChoice]}
+                {q?.correctChoice && q.choices?.[q.correctChoice]}
               </p>
             </div>
             <Ranking rows={v.rankings ?? []} limit={8} />
           </div>
         ) : (
           <>
-            {q?.bodyMarkdown ? (
-              <section className="question-body">
-                <MarkdownBody text={q.bodyMarkdown} />
-              </section>
+            {closed ? (
+              <div className="pre-question">
+                <div>
+                  <h1>回答を締め切りました</h1>
+                  <p>正解発表を待とう。</p>
+                </div>
+              </div>
+            ) : q?.bodyMarkdown ? (
+              <>
+                <Countdown view={v} receivedAt={room.receivedAt} />
+                <section className="question-body">
+                  <MarkdownBody text={q.bodyMarkdown} />
+                </section>
+              </>
             ) : (
               <div className="pre-question">
                 <div>
                   <h1>
                     {v.phase === "choicesPreparing"
-                      ? "みんなの準備を待っています"
+                      ? "全員の接続を待っています"
                       : v.phase === "choicesReading"
                         ? "まずは、選択肢を読もう。"
-                        : "まもなく、問題です。"}
+                        : "まもなく、選択肢を公開します。"}
                   </h1>
-                  <p>
-                    {v.phase === "choicesPreparing"
-                      ? `${v.readyCount} / ${v.eligibleCount} 人の表示が完了`
-                      : "問題が出るまで、回答ボタンは押せません。"}
-                  </p>
+                  {v.phase === "choicesPreparing" ? (
+                    <PreparationStatus view={v} />
+                  ) : (
+                    <p>問題が出るまで、回答ボタンは押せません。</p>
+                  )}
                 </div>
                 <Countdown view={v} receivedAt={room.receivedAt} />
               </div>
@@ -797,9 +874,15 @@ function Player({ room }: { room: RoomConnection }) {
   const waiting = me?.participation === "waiting";
   const answered = !!me?.answer;
   const revealed = ["answerRevealed", "rankingShown"].includes(v.phase);
+  const remaining = useRemainingTime(v, room.receivedAt);
+  const closed =
+    v.phase === "answersClosed" ||
+    (v.phase === "acceptingAnswers" && remaining === 0);
   const active =
     room.connected &&
     v.phase === "acceptingAnswers" &&
+    remaining !== null &&
+    remaining > 0 &&
     !answered &&
     !room.pending &&
     !resting &&
@@ -880,17 +963,24 @@ function Player({ room }: { room: RoomConnection }) {
                     ? "回答を送信中…"
                     : answered
                       ? "回答しました！"
-                      : v.phase === "acceptingAnswers"
-                        ? "答えを選ぼう。"
-                        : v.phase === "answersClosed"
-                          ? "回答を締め切りました"
+                      : closed
+                        ? "回答なし"
+                        : v.phase === "acceptingAnswers"
+                          ? "答えを選ぼう。"
                           : v.phase === "choicesReading"
-                            ? "選択肢を読んでおこう"
+                            ? "問題が表示されるまで・・・"
                             : v.phase === "countdown"
-                              ? "前のモニターに注目！"
-                              : "みんなの準備待ち"}
+                              ? "まもなく選択肢を公開します"
+                              : "全員の接続を待っています"}
               </h1>
-              {v.phaseEndsAt !== null && !answered && (
+              {v.phase === "choicesReading" && (
+                <p>今のうちに選択肢を読んでおこう</p>
+              )}
+              {v.phase === "choicesPreparing" && <PreparationStatus view={v} />}
+              {closed && !answered && !room.pending && (
+                <p>時間内に回答がありませんでした。</p>
+              )}
+              {v.phaseEndsAt !== null && !closed && (
                 <Countdown view={v} receivedAt={room.receivedAt} />
               )}{" "}
               {revealed && me?.correct && (
@@ -916,12 +1006,13 @@ function Player({ room }: { room: RoomConnection }) {
               {revealed && q?.correctChoice && (
                 <p>
                   正解は <strong>{q.correctChoice}</strong> ·{" "}
-                  {q.choices[q.correctChoice]}
+                  {q.choices?.[q.correctChoice]}
                 </p>
               )}
             </section>
             {q && (
               <Choices
+                key={q.id}
                 question={q}
                 selected={me?.answer?.choice ?? room.pending?.choice}
                 disabled={!active}

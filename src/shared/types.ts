@@ -5,8 +5,8 @@ export type Role = "control" | "display" | "player";
 export type Phase =
   | "waiting"
   | "choicesPreparing"
-  | "choicesReading"
   | "countdown"
+  | "choicesReading"
   | "acceptingAnswers"
   | "answersClosed"
   | "answerRevealed"
@@ -51,8 +51,14 @@ export interface Game {
   currentIndex: number;
   phaseEndsAt: number | null;
   difficultyThreshold: number;
+  timing: TimingSettings;
   players: Player[];
   rounds: Round[];
+}
+export interface TimingSettings {
+  countdownSeconds: number;
+  readingSeconds: number;
+  answeringSeconds: number;
 }
 export interface RankRow {
   playerId: string;
@@ -96,6 +102,8 @@ export interface RoomView {
   epoch: string;
   serverNow: number;
   phaseEndsAt: number | null;
+  phaseDurationMs: number;
+  timing: TimingSettings;
   questionNumber: number;
   totalQuestions: number;
   playerCount: number;
@@ -105,7 +113,7 @@ export interface RoomView {
   displayReady: boolean;
   question: null | {
     id: string;
-    choices: Record<Choice, string>;
+    choices?: Record<Choice, string>;
     bodyMarkdown?: string;
     correctChoice?: Choice;
     explanationMarkdown?: string;
@@ -143,7 +151,8 @@ export type Command =
   | "finish"
   | "rest"
   | "void"
-  | "selectDisplay";
+  | "selectDisplay"
+  | "updateTiming";
 export type ClientMessage =
   | { type: "ping" }
   | { type: "ready"; roundId: string; epoch: string }
@@ -156,6 +165,7 @@ export type ClientMessage =
       playerId?: string;
       displayId?: string;
       reason?: string;
+      timing?: TimingSettings;
     };
 export type ServerMessage =
   | RoomView
