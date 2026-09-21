@@ -37,19 +37,35 @@ npx wrangler login
 npx wrangler whoami
 ```
 
-複数アカウントがある場合は、`whoami` に表示されるデプロイ先の Account ID を、プロジェクトルートの `.env` に設定します。初回はテンプレートをコピーしてください。既存の `.env` がある場合はコピーせず、そのファイルに設定を追加します。
+本番用の設定は、初回にローカル用の設定をコピーして用意します。既存の `wrangler.production.jsonc` がある場合は上書きせず、そのファイルを編集してください。
 
 ```sh
-cp .env.example .env
+cp wrangler.jsonc wrangler.production.jsonc
 ```
 
-```dotenv
-CLOUDFLARE_ACCOUNT_ID=デプロイ先のAccount ID
+コピー先で、次の項目を本番用に設定します。
+
+- トップレベルに `account_id` を追加し、`whoami` に表示されるデプロイ先の Account ID を指定します。
+- `name` を本番 Worker 名（例：`se-karuta-online`）に変更し、`workers_dev` を `true` にします。
+- `vars.PUBLIC_ORIGIN` を追加し、`https://<Worker名>.<アカウントのサブドメイン>.workers.dev` を指定します。
+- `d1_databases` の `database_name` と `database_id` を、作成した本番 D1 の名前と ID に変更します。`binding` は `DB` のままにします。
+
+`wrangler.production.jsonc` は Git 管理外です。Account ID・DB ID・公開URLを本番設定にまとめ、ローカル開発用の `wrangler.jsonc` には個人の Account ID を書きません。以前 `.env` に設定した `CLOUDFLARE_ACCOUNT_ID` は削除できます。ログイントークンは Wrangler が管理します。アプリのローカル設定（`PUBLIC_ORIGIN` など）は、引き続き `.dev.vars` に設定します。
+
+本番の D1 操作やシークレット登録では、`--config wrangler.production.jsonc` を指定します。初回デプロイには本番 D1 の作成・マイグレーション適用と、`ADMIN_PASSWORD`・`SESSION_SECRET` の本番シークレット登録が必要です。
+
+本番設定を指定してビルドし、Vite が生成した設定でデプロイします。
+
+```sh
+CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH=wrangler.production.jsonc npm run build
+npx wrangler deploy --config dist/se_karuta_online/wrangler.json
 ```
 
-Wrangler は `.env` を読み込んで操作先アカウントを選びます。`.env` は Git 管理外、`.env.example` は共有用です。フォークした人が自分のアカウントを指定できるよう、`wrangler.jsonc` には `account_id` を書きません。ログイントークンは Wrangler が管理するため、`.env` への記入は不要です。アプリのローカル設定（`PUBLIC_ORIGIN` など）は、引き続き `.dev.vars` に設定します。
+出力先の `se_karuta_online` は Worker 名のハイフンをアンダースコアに置き換えた名前です。`name` を変更した場合は、デプロイ時のパスも合わせてください。本番設定を変更したときは、デプロイ前に再ビルドします。
 
-これは認証と操作先の設定です。現在の `wrangler.jsonc` はローカル用なので、初回デプロイには本番 D1 の作成・DB ID の設定・マイグレーション適用、公開URLの設定、`ADMIN_PASSWORD` と `SESSION_SECRET` の本番シークレット登録も必要です。
+## 大会一覧
+
+管理者ログイン後のトップページには、作成日時が新しい大会を最大5件表示します。「すべての大会を見る」から `/events` を開くと、20件ずつ前後のページへ移動できます。各大会には「準備中・進行中・終了」を表示し、過去の大会と成績も引き続き確認できます。大会一覧は管理者専用です。
 
 ## このゲームの提案資料
 

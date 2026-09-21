@@ -1,0 +1,19 @@
+{
+  "name": "Swift Evolution Karuta チュートリアル",
+  "displayPassword": "display-karuta",
+  "questions": [
+    {
+      "id": "async-await",
+      "difficulty": 1,
+      "bodyMarkdown": "【練習問題】`async` と `await` を導入した Proposal はどれ？\n\n```swift\nfunc hello() async -> String {\n    return \"Hello!\"\n}\n\nfunc example() async {\n    let message = await hello()\n    print(message)\n}\n```",
+      "choices": {
+        "A": "SE-0296 · Async/await",
+        "B": "SE-0235 · Add Result to the Standard Library",
+        "C": "SE-0258 · Property Wrappers",
+        "D": "SE-0195 · Introduce User-defined \"Dynamic Member Lookup\" Types"
+      },
+      "correctChoice": "A",
+      "explanationMarkdown": "正解は **A：SE-0296 · Async/await**。`async` で非同期関数を宣言し、`await` を付けて非同期関数を呼び出せるようになりました。問題文・コードと同じ「Async/await」が選択肢のタイトルにあります。\n\nB は成功・失敗を表す `Result` 型の標準ライブラリへの追加、C はプロパティの処理を共通化する Property Wrappers、D は `@dynamicMemberLookup` によるメンバーアクセスの仕組みです。\n\nこの1問は、選択肢を読む・回答する・正解と解説を見る操作を試すための公開チュートリアルです。\n\n[Swift Digest：SE-0296の日本語要約](https://swiftdigest.koherent.org/proposals/se-0296.html)"
+    }
+  ]
+}

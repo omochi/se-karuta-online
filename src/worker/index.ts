@@ -12,6 +12,7 @@ import {
 import { newGame } from "./game";
 import { ensureJoinCode, loadGame, saveGame } from "./repository";
 import { tournamentReport } from "./report";
+import { listEvents } from "./event-list";
 import { validateQuestions } from "../shared/questions";
 export { TournamentRoom } from "./room";
 export const json = (
@@ -92,15 +93,20 @@ export default {
         if (!isAdmin)
           return json({ error: "管理用パスワードを入力してください。" }, 401);
         if (request.method === "GET") {
-          const { results } = await env.DB.prepare(
-            "SELECT id,name,created_at FROM tournaments ORDER BY created_at DESC",
-          ).all();
-          return json({
-            events: results.map((row) => ({
-              ...row,
-              urls: eventUrls(publicOrigin, row.id as string),
-            })),
-          });
+          const result = await listEvents(
+            env.DB,
+            url.searchParams,
+            publicOrigin,
+          );
+          return result
+            ? json(result)
+            : json(
+                {
+                  error:
+                    "ページ番号は1以上、表示件数は1〜20の整数で指定してください。",
+                },
+                400,
+              );
         }
         if (request.method === "POST") {
           const b = await body(request);

@@ -3,19 +3,20 @@ import {
   type LoaderFunctionArgs,
   type DataRouter,
 } from "react-router";
-import type { EventUrls } from "../shared/urls";
+import {
+  RECENT_EVENTS_LIMIT,
+  type EventPage,
+  type EventSummary,
+} from "../shared/events";
 import type { Role, Question } from "../shared/types";
 import type { TournamentReport } from "../shared/report";
 import { api } from "./api";
 import { RoomSession } from "./RoomSession";
-export interface EventSummary {
-  id: string;
-  name: string;
-  created_at: number;
-  urls: EventUrls;
-}
 export interface HomeData {
   events: EventSummary[] | null;
+}
+export interface EventsData {
+  listing: EventPage | null;
 }
 export interface ViewerData extends HomeData {
   eventId: string;
@@ -56,21 +57,46 @@ export function createRouteLoaders() {
     }
     return loaded;
   }
-  async function home(args: LoaderFunctionArgs): Promise<HomeData> {
+  async function eventPage(
+    args: LoaderFunctionArgs,
+    query: string,
+  ): Promise<EventPage | null> {
     await configuration(args);
     try {
-      return await api<HomeData>("/api/events", undefined, args.request.signal);
+      return await api<EventPage>(
+        `/api/events?${query}`,
+        undefined,
+        args.request.signal,
+      );
     } catch (error) {
-      if ((error as { status?: number }).status === 401)
-        return { events: null };
+      if ((error as { status?: number }).status === 401) return null;
       throw error;
     }
   }
+  async function home(args: LoaderFunctionArgs): Promise<HomeData> {
+    const data = await eventPage(args, `pageSize=${RECENT_EVENTS_LIMIT}`);
+    return { events: data?.events ?? null };
+  }
+  async function events(args: LoaderFunctionArgs): Promise<EventsData> {
+    const page = new URL(args.request.url).searchParams.get("page") ?? "1";
+    return {
+      listing: await eventPage(args, new URLSearchParams({ page }).toString()),
+    };
+  }
   async function viewer(args: LoaderFunctionArgs): Promise<ViewerData> {
-    const data = await home(args);
+    let data = await eventPage(args, "page=1");
+    const events = data ? [...data.events] : null;
+    // ビューワの大会選択では古い大会も引き続き選べるよう、全ページを取得する。
+    while (data && data.page < data.pageCount) {
+      const next = await eventPage(args, `page=${data.page + 1}`);
+      if (!next) return { events: null, eventId: "", document: null };
+      if (next.page <= data.page) break;
+      events!.push(...next.events);
+      data = next;
+    }
     const requested = new URL(args.request.url).searchParams.get("event") ?? "";
     const document =
-      data.events && requested
+      events && requested
         ? await api<{ name: string; questions: Question[] }>(
             `/api/e/${encodeURIComponent(requested)}/questions`,
             undefined,
@@ -78,8 +104,8 @@ export function createRouteLoaders() {
           )
         : null;
     return {
-      ...data,
-      eventId: requested || data.events?.[0]?.id || "",
+      events,
+      eventId: requested || events?.[0]?.id || "",
       document,
     };
   }
@@ -152,7 +178,7 @@ export function createRouteLoaders() {
         sessions.delete(session);
       }
   }
-  return { configuration, home, viewer, game, report, retain };
+  return { configuration, home, events, viewer, game, report, retain };
 }
 
 export function bindRoomSessions(

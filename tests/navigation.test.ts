@@ -13,6 +13,7 @@ import type { RoomView, ClientMessage } from "../src/shared/types";
 import { eventUrls } from "../src/shared/urls";
 import { newGame } from "../src/worker/game";
 import { tournamentReport } from "../src/worker/report";
+import type { EventPage } from "../src/shared/events";
 
 class Socket {
   static OPEN = 1;
@@ -83,16 +84,21 @@ beforeEach(() => {
     vi.fn(async (path: string) => {
       if (path === "/api/config")
         return json({ publicOrigin: "http://localhost" });
-      if (path === "/api/events")
+      if (path.startsWith("/api/events?"))
         return eventResponse
           ? eventResponse()
           : authorized
             ? json({
+                page: 1,
+                pageSize: 20,
+                pageCount: 1,
+                total: 1,
                 events: [
                   {
                     id: "game",
                     name: "Test game",
                     created_at: 0,
+                    status: "waiting",
                     urls: eventUrls("http://localhost", "game"),
                   },
                 ],
@@ -141,6 +147,82 @@ async function start(path = "/") {
 function html() {
   return renderToStaticMarkup(createElement(RouterProvider, { router }));
 }
+function mockEventPages(count: number) {
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (path, init) => {
+    if (typeof path !== "string" || !path.startsWith("/api/events?"))
+      return original(path, init);
+    const query = new URL(path, "http://localhost").searchParams;
+    const pageSize = Number(query.get("pageSize") ?? 20);
+    const page = Number(query.get("page") ?? 1);
+    const all = Array.from({ length: count }, (_, index) => ({
+      id: `event-${index + 1}`,
+      name: `大会その${index + 1}`,
+      created_at: count - index,
+      status: (["waiting", "active", "finished"] as const)[index % 3],
+      urls: eventUrls("http://localhost", `event-${index + 1}`),
+    }));
+    return json({
+      events: all.slice((page - 1) * pageSize, page * pageSize),
+      page,
+      pageSize,
+      total: count,
+      pageCount: Math.max(1, Math.ceil(count / pageSize)),
+    } satisfies EventPage);
+  });
+}
+it("トップは5件だけ取得し、状態と全大会へのリンクを表示する", async () => {
+  mockEventPages(21);
+  await start();
+  expect(html().match(/class="event-card"/g)).toHaveLength(5);
+  expect(html()).toContain("準備中");
+  expect(html()).toContain("進行中");
+  expect(html()).toContain("終了");
+  expect(html()).toContain('href="/events"');
+  expect(vi.mocked(fetch).mock.calls.map(([path]) => path)).toContain(
+    "/api/events?pageSize=5",
+  );
+});
+it("大会一覧を20件ずつ移動し、戻る操作でもページ位置を保つ", async () => {
+  mockEventPages(21);
+  await start("/events");
+  expect(html().match(/class="event-card"/g)).toHaveLength(20);
+  expect(html()).toContain("1〜20件");
+  expect(html()).toContain("次のページ");
+  expect(html()).not.toContain("前のページ");
+  await router.navigate("/events?page=2");
+  expect(html().match(/class="event-card"/g)).toHaveLength(1);
+  expect(html()).toContain("大会その21");
+  expect(html()).toContain("21〜21件");
+  expect(html()).toContain("前のページ");
+  expect(html()).not.toContain("次のページ");
+  await router.navigate(-1);
+  expect(html().match(/class="event-card"/g)).toHaveLength(20);
+});
+it("大会一覧の直リンクでも認証を要求し、ログイン後は元のページを表示する", async () => {
+  authorized = false;
+  await start("/events?page=2");
+  expect(html()).toContain("管理用パスワード");
+  expect(html()).not.toContain("Test game");
+  authorized = true;
+  mockEventPages(21);
+  await router.revalidate();
+  expect(html()).toContain("大会その21");
+});
+it("大会0件では空表示にし、ページ送りを表示しない", async () => {
+  mockEventPages(0);
+  await start("/events");
+  expect(html()).toContain("まだ大会はありません");
+  expect(html()).not.toContain("ページ切り替え");
+});
+it("問題ビューワでは2ページ目以降の古い大会も選べる", async () => {
+  mockEventPages(21);
+  await start("/questions");
+  expect(html()).toContain("大会その21");
+  expect(vi.mocked(fetch).mock.calls.map(([path]) => path)).toContain(
+    "/api/events?page=2",
+  );
+});
 it("遅いloaderを待つ間は現在の画面を維持し、準備できてから遷移する", async () => {
   await start();
   let resolve!: (response: Response) => void;
@@ -151,7 +233,7 @@ it("遅いloaderを待つ間は現在の画面を維持し、準備できてか�
   const navigation = router.navigate("/questions");
   await vi.waitFor(() => expect(router.state.navigation.state).toBe("loading"));
   expect(router.state.location.pathname).toBe("/");
-  expect(html()).toContain("大会一覧");
+  expect(html()).toContain("最近の大会");
   expect(html()).not.toContain("読み込み中");
   await vi.waitFor(() => expect(resolve).toBeTypeOf("function"));
   resolve(json({ events: [] }));
@@ -277,7 +359,7 @@ it("戻る・進むでも各画面のloaderを通して表示を切り替える"
   await router.navigate("/questions");
   await router.navigate(-1);
   expect(router.state.location.pathname).toBe("/");
-  expect(html()).toContain("大会一覧");
+  expect(html()).toContain("最近の大会");
   await router.navigate(1);
   expect(router.state.location.pathname).toBe("/questions");
   expect(html()).toContain("問題ビューワ");

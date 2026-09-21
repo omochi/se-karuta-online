@@ -16,7 +16,114 @@ import { loadGame, saveGame } from "../src/worker/repository";
 import { signSession } from "../src/worker/auth";
 import type { Env } from "../src/worker/env";
 import type { Game, Question, RoomView } from "../src/shared/types";
+import type { EventPage } from "../src/shared/events";
 const bindings = env as unknown as Env;
+it("大会一覧は管理者だけが取得でき、件数制限・安定した並び順・状態を返す", async () => {
+  const { token } = await signSession(bindings.SESSION_SECRET, {
+    role: "admin",
+  });
+  const request = (query = "", cookie = `se_admin=${token}`) =>
+    exports.default.fetch(
+      new Request(`http://test/api/events${query}`, {
+        headers: { Cookie: cookie },
+      }),
+    );
+  expect((await request("?page=1", "")).status).toBe(401);
+  const { token: playerToken } = await signSession(bindings.SESSION_SECRET, {
+    role: "player",
+    eventId: "test",
+    playerId: "player",
+  });
+  expect((await request("?page=1", `se_admin=${playerToken}`)).status).toBe(
+    401,
+  );
+  const before = (await (await request()).json()) as EventPage;
+  const phases = [
+    "waiting",
+    "choicesPreparing",
+    "countdown",
+    "choicesReading",
+    "acceptingAnswers",
+    "answersClosed",
+    "answerRevealed",
+    "rankingShown",
+    "questionVoided",
+    "finished",
+  ];
+  const prefix = crypto.randomUUID();
+  const ids = Array.from(
+    { length: 41 },
+    (_, i) => `${prefix}-${String(i).padStart(2, "0")}`,
+  );
+  await bindings.DB.batch(
+    ids.map((id, i) =>
+      bindings.DB.prepare(
+        "INSERT INTO tournaments (id,name,created_at,display_password_hash,state_json) VALUES (?,?,?,?,?)",
+      ).bind(
+        id,
+        `一覧テスト${i}`,
+        4102444800000,
+        "hidden-password",
+        JSON.stringify({
+          phase: phases[i % phases.length],
+          privateData: "hidden-state",
+        }),
+      ),
+    ),
+  );
+  try {
+    const recent = (await (await request("?pageSize=5")).json()) as EventPage;
+    expect(recent.events.map((e) => e.id)).toEqual(ids.slice(-5).reverse());
+    expect(recent.total).toBe(before.total + 41);
+    const first = (await (await request("?page=1")).json()) as EventPage;
+    const second = (await (await request("?page=2")).json()) as EventPage;
+    const third = (await (await request("?page=3")).json()) as EventPage;
+    expect(first.events.map((e) => e.id)).toEqual(ids.slice(21).reverse());
+    expect(second.events.map((e) => e.id)).toEqual(ids.slice(1, 21).reverse());
+    expect(third.events[0].id).toBe(ids[0]);
+    for (const e of first.events) {
+      const phase = phases[ids.indexOf(e.id) % phases.length];
+      expect(e.status).toBe(
+        phase === "waiting" || phase === "finished" ? phase : "active",
+      );
+      expect(Object.keys(e).sort()).toEqual([
+        "created_at",
+        "id",
+        "name",
+        "status",
+        "urls",
+      ]);
+    }
+    const last = (await (await request("?page=999999")).json()) as EventPage;
+    expect(last.page).toBe(last.pageCount);
+    expect(last.events.length).toBeGreaterThan(0);
+    for (const query of [
+      "?page=0",
+      "?page=-1",
+      "?page=1.5",
+      "?page=abc",
+      "?page=9007199254740992",
+      "?pageSize=0",
+      "?pageSize=21",
+      "?pageSize=abc",
+    ]) {
+      expect((await request(query)).status, query).toBe(400);
+    }
+    await bindings.DB.prepare(
+      "UPDATE tournaments SET state_json = ? WHERE id = ?",
+    )
+      .bind(JSON.stringify({ phase: "finished" }), ids[40])
+      .run();
+    const updated = (await (await request("?pageSize=5")).json()) as EventPage;
+    expect(updated.events[0].status).toBe("finished");
+  } finally {
+    await bindings.DB.batch(
+      ids.map((id) =>
+        bindings.DB.prepare("DELETE FROM tournaments WHERE id = ?").bind(id),
+      ),
+    );
+  }
+});
 it("HostやForwardedヘッダーではなく公開URLを使用する", async () => {
   const config = await exports.default.fetch(
     new Request("http://untrusted.example/api/config", {

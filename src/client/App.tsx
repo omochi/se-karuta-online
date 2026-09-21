@@ -23,6 +23,7 @@ import { QuestionBody } from "./QuestionBody";
 import { useGameProgress } from "./useGameProgress";
 import { PlayerAnswerStatus } from "./PlayerAnswerStatus";
 import { JoinTournamentForm } from "./JoinTournamentForm";
+import { EventList } from "./EventList";
 export function Home() {
   const { events } = useLoaderData<HomeData>();
   const navigate = useNavigate();
@@ -110,7 +111,7 @@ export function Home() {
               <div className="section-heading">
                 <div>
                   <p className="eyebrow">YOUR TOURNAMENTS</p>
-                  <h2>大会一覧</h2>
+                  <h2>最近の大会</h2>
                 </div>
                 <button
                   className="primary"
@@ -174,25 +175,12 @@ export function Home() {
                   まだ大会はありません。最初の大会をつくろう。
                 </p>
               ) : (
-                <div className="event-list">
-                  {events.map((event) => (
-                    <Link
-                      className="event-card"
-                      key={event.id}
-                      to={new URL(event.urls.control).pathname}
-                    >
-                      <div>
-                        <small>
-                          {new Date(event.created_at).toLocaleDateString(
-                            "ja-JP",
-                          )}
-                        </small>
-                        <h3>{event.name}</h3>
-                      </div>
-                      <span>進行画面へ →</span>
-                    </Link>
-                  ))}
-                </div>
+                <>
+                  <EventList events={events} />
+                  <Link className="all-events-link" to="/events">
+                    すべての大会を見る →
+                  </Link>
+                </>
               )}
             </>
           )}
