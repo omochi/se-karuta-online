@@ -18,13 +18,18 @@ const frame = () =>
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message);
 }
-function draw(bodyMarkdown: string, elapsed = 0, id = "fixture") {
+function draw(
+  bodyMarkdown: string,
+  elapsed = 0,
+  id = "fixture",
+  phase: "acceptingAnswers" | "answerRevealed" = "acceptingAnswers",
+) {
   const view = createDisplayPreviewView(
     {
       name: "表示テスト",
       questionNumber: 1,
       totalQuestions: 1,
-      phase: "acceptingAnswers",
+      phase,
       question: {
         id,
         difficulty: 2 as const,
@@ -131,6 +136,26 @@ button.onclick = async () => {
     readFrame();
     sampledFrames++;
     results.push("PASS 問題切替の最初のフレームで収まる");
+    draw(
+      "どの Proposal がこの機能を導入したでしょう？\n\n```swift\nlet value = 42\n```",
+      0,
+      "distribution",
+      "answerRevealed",
+    );
+    await frame();
+    readFrame();
+    const chart = document.querySelector<HTMLElement>(".answer-distribution")!;
+    assert(
+      chart.scrollHeight <= chart.clientHeight,
+      "回答分布が縦にはみ出した",
+    );
+    assert(chart.scrollWidth <= chart.clientWidth, "回答分布が横にはみ出した");
+    assert(
+      chart.textContent!.includes("未回答 2人"),
+      "未回答人数が表示されない",
+    );
+    results.push("PASS 正解発表の本文・回答分布・選択肢・解説が収まる");
+    sampledFrames++;
     output.dataset.status = "passed";
     results.push(`${innerWidth} × ${innerHeight}, ${sampledFrames} frames`);
   } catch (error) {

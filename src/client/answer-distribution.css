@@ -1,0 +1,125 @@
+.answer-distribution {
+  min-width: 0;
+  border: 1px solid #605048;
+  border-radius: 12px;
+  background: #342d2d;
+  padding: 18px;
+  color: #f3f1e4;
+}
+.distribution-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.distribution-heading h2 {
+  margin: 0;
+  font-size: clamp(17px, 1.6vw, 24px);
+}
+.distribution-heading > span {
+  font-size: 11px;
+  color: #d3b49d;
+}
+.distribution-bars {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.distribution-bars li {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 10px;
+}
+.distribution-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.distribution-label strong {
+  font-size: 24px;
+}
+.distribution-label span {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.distribution-track {
+  height: 20px;
+  background: #4b4343;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.distribution-fill {
+  height: 100%;
+  background: #ac9a91;
+  border-radius: inherit;
+}
+.distribution-correct {
+  color: #ffb49c;
+}
+.distribution-correct .distribution-fill {
+  background: #ffb49c;
+}
+.distribution-count {
+  text-align: right;
+  white-space: nowrap;
+}
+.distribution-count strong {
+  font-size: 25px;
+  font-variant-numeric: tabular-nums;
+}
+.distribution-count span {
+  font-size: 12px;
+  margin-left: 4px;
+}
+.answer-distribution .distribution-summary,
+.answer-distribution .distribution-empty {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: #d3bfb3;
+}
+/* 本文の自動計測と同じgridで幅・高さを確定させ、正解発表にだけ横枠を用意する。 */
+.display-page.display-page-question .display-content.has-distribution {
+  grid-template-columns: minmax(0, 1fr) minmax(290px, 32%);
+}
+.has-distribution > .game-progress,
+.has-distribution > .choices,
+.has-distribution > .display-explanation {
+  grid-column: 1 / -1;
+}
+.has-distribution > .answer-distribution {
+  align-self: center;
+  max-height: 100%;
+  overflow: auto;
+}
+.display-ranking-summary {
+  min-width: 0;
+}
+@media (max-width: 760px) {
+  .display-page.display-page-question .display-content.has-distribution {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  }
+  .has-distribution > .answer-distribution {
+    padding: 10px 14px;
+  }
+  .has-distribution .distribution-heading {
+    margin-bottom: 8px;
+  }
+  .has-distribution .distribution-bars {
+    gap: 4px;
+  }
+  .has-distribution .distribution-label strong,
+  .has-distribution .distribution-count strong {
+    font-size: 18px;
+  }
+  .has-distribution .distribution-track {
+    height: 12px;
+  }
+  .has-distribution .distribution-summary {
+    margin-top: 8px;
+  }
+}

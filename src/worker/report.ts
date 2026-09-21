@@ -1,4 +1,5 @@
-import { CHOICES, type Game } from "../shared/types";
+import { roundAnswerDistribution } from "./answer-distribution";
+import { type Game } from "../shared/types";
 import type {
   ReportAnswer,
   ReportRound,
@@ -80,9 +81,7 @@ export function tournamentReport(g: Game): TournamentReport {
       ineligible: answers.filter((a) => a.status === "ineligible").length,
       correctRate: scored ? ratio(correct, eligible) : null,
       difficult: scored && isDifficultRound(g, r, rankings),
-      distribution: Object.fromEntries(
-        CHOICES.map((c) => [c, answers.filter((a) => a.choice === c).length]),
-      ) as Record<(typeof CHOICES)[number], number>,
+      distribution: roundAnswerDistribution(r).counts,
       averageElapsed: average(elapsed),
       medianElapsed: median(elapsed),
       fastestCorrect: minimum(

@@ -469,3 +469,60 @@ describe("問題JSONの検証", () => {
     expect(() => validateQuestions(input)).toThrow(),
   );
 });
+
+describe("会場の回答分布", () => {
+  it("正解発表前は送らず、発表・順位公開時だけDisplayに対象者の人数を送る", () => {
+    const g = fixture(6);
+    const view = (role: "display" | "player" | "control" = "display") =>
+      viewFor(g, role, "p0", presence, "e", 22000, "http://test");
+    expect(view().answerDistribution).toBeUndefined();
+    command(g, "start");
+    command(g, "rest", 0, { playerId: "p5" });
+    beginCountdownIfReady(g, new Set(["p0", "p1", "p2", "p3", "p4"]), true, 0);
+    expect(view().answerDistribution).toBeUndefined();
+    advanceTimer(g, 5000);
+    expect(view().answerDistribution).toBeUndefined();
+    advanceTimer(g, 20000);
+    const r = currentRound(g)!;
+    receiveAnswer(g, "p0", r.id, "B", 20100);
+    receiveAnswer(g, "p1", r.id, "B", 20200);
+    receiveAnswer(g, "p2", r.id, "A", 20300);
+    receiveAnswer(g, "p3", r.id, "D", 20400);
+    addPlayer(g, {
+      id: "late",
+      name: "途中参加",
+      joinedAt: 20500,
+      sessionHash: "hash",
+    });
+    expect(view().answerDistribution).toBeUndefined();
+    command(g, "close", 21000);
+    expect(view().answerDistribution).toBeUndefined();
+    command(g, "reveal", 22000);
+    const expected = { counts: { A: 1, B: 2, C: 0, D: 1 }, unanswered: 1 };
+    expect(view().answerDistribution).toEqual(expected);
+    expect(view("player").answerDistribution).toBeUndefined();
+    expect(view("control").answerDistribution).toBeUndefined();
+    command(g, "ranking");
+    expect(view().answerDistribution).toEqual(expected);
+    command(g, "start");
+    expect(view().answerDistribution).toBeUndefined();
+    command(g, "void", 23000, { reason: "無効" });
+    expect(view().answerDistribution).toBeUndefined();
+    command(g, "finish");
+    expect(view().answerDistribution).toBeUndefined();
+  });
+  it("全員未回答でも0人の選択肢を残し、無効にした問題の分布は消す", () => {
+    const g = fixture(3);
+    open(g);
+    command(g, "close", 21000);
+    command(g, "reveal", 22000);
+    const view = () =>
+      viewFor(g, "display", undefined, presence, "e", 22000, "http://test");
+    expect(view().answerDistribution).toEqual({
+      counts: { A: 0, B: 0, C: 0, D: 0 },
+      unanswered: 3,
+    });
+    command(g, "void", 23000, { reason: "出題ミス" });
+    expect(view().answerDistribution).toBeUndefined();
+  });
+});

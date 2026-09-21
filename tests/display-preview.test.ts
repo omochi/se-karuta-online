@@ -87,3 +87,13 @@ it("選択肢公開では問題を隠し、正解発表では本文・正解の�
   expect(revealed).toMatch(/class="choice choice-b [^"]*correct/);
   expect(revealed).not.toContain("残り 30 秒");
 });
+
+it("正解発表のプレビューにはサンプルの回答分布があり、公開前にはない", () => {
+  expect(preview("choicesReading")).not.toContain("みんなの回答");
+  expect(preview("acceptingAnswers")).not.toContain("みんなの回答");
+  const revealed = preview("answerRevealed");
+  expect(revealed).toContain("みんなの回答");
+  expect(revealed).toContain("サンプル");
+  expect(revealed).toContain('aria-label="B：9人、正解"');
+  expect(revealed).toContain("回答 18人 · 未回答 2人");
+});

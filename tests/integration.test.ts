@@ -376,13 +376,20 @@ test(
     players[0].close();
     const reconnected = await connect("player", cookies[0]);
     assert.deepEqual(reconnected.state!.me!.answer, first.answer);
+    assert.equal(display.state!.answerDistribution, undefined);
     await control.command("reveal");
+    await display.wait((v) => v.phase === "answerRevealed");
+    const counts = { A: 0, B: 0, C: 0, D: 0 };
+    counts[firstCorrectChoice] = 38;
+    assert.deepEqual(display.state!.answerDistribution, { counts, unanswered: 1 });
     await reconnected.wait((v) => v.phase === "answerRevealed");
     assert.equal(reconnected.state!.me!.correct, true);
     assert.equal(reconnected.state!.rankings, undefined);
+    assert.equal(reconnected.state!.answerDistribution, undefined);
     await control.command("ranking");
     await display.wait((v) => v.phase === "rankingShown");
     assert.equal(display.state!.rankings!.length, 38);
+    assert.deepEqual(display.state!.answerDistribution, { counts, unanswered: 1 });
     assert.equal(
       (
         await db

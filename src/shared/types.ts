@@ -95,7 +95,14 @@ export interface Presence {
     selected: boolean;
   }>;
 }
+export interface AnswerDistribution {
+  counts: Record<Choice, number>;
+  unanswered: number;
+  // 問題ビューワの描画用データだけに付ける。
+  sample?: boolean;
+}
 export interface RoomView {
+  answerDistribution?: AnswerDistribution;
   joinCode: string | null;
   urls: EventUrls;
   type: "state";

@@ -14,6 +14,7 @@ import { FittedQuestion } from "./FittedQuestion";
 import { QuestionBody } from "./QuestionBody";
 import type { QuestionFit } from "./fit-question";
 import "./display-question.css";
+import { AnswerDistribution } from "./AnswerDistribution";
 
 // 本番と問題ビューワの別窓で、DOM構造・CSS・進行表示を一致させる。
 // 通信と時計の更新は呼び出し元が担当する。
@@ -30,6 +31,13 @@ export function DisplayScreen({
 }) {
   const q = v.question;
   const revealing = ["answerRevealed", "rankingShown"].includes(v.phase);
+  const distribution =
+    revealing && q?.correctChoice && v.answerDistribution ? (
+      <AnswerDistribution
+        distribution={v.answerDistribution}
+        correctChoice={q.correctChoice}
+      />
+    ) : null;
   const fitQuestion = ["acceptingAnswers", "answerRevealed"].includes(
     progress.phase,
   );
@@ -42,7 +50,9 @@ export function DisplayScreen({
         <span className="display-event">{v.name}</span>
         {status}
       </header>
-      <main className={`display-content phase-${progress.phase}`}>
+      <main
+        className={`display-content phase-${progress.phase}${distribution && v.phase === "answerRevealed" ? " has-distribution" : ""}`}
+      >
         <GameProgress progress={progress} layout="display" />
         {v.phase === "waiting" ? (
           <div className="display-welcome">
@@ -56,10 +66,13 @@ export function DisplayScreen({
           <FinalResults results={v.results} compact />
         ) : v.phase === "rankingShown" ? (
           <div className="display-ranking">
-            <p>
-              正解 {q?.correctChoice} ·{" "}
-              {q?.correctChoice && q.choices?.[q.correctChoice]}
-            </p>
+            <div className="display-ranking-summary">
+              <p>
+                正解 {q?.correctChoice} ·{" "}
+                {q?.correctChoice && q.choices?.[q.correctChoice]}
+              </p>
+              {distribution}
+            </div>
             <Ranking rows={v.rankings ?? []} limit={8} />
           </div>
         ) : v.phase !== "questionVoided" && v.phase !== "finished" ? (
@@ -82,6 +95,7 @@ export function DisplayScreen({
                   />
                 </section>
               ))}
+            {distribution}
             {q && <Choices question={q} showCorrect={revealing} />}
             {revealing && q?.explanationMarkdown && (
               <div className="display-explanation">

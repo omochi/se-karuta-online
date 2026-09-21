@@ -16,6 +16,7 @@ import {
   type TimingSettings,
 } from "../shared/types";
 import { DEFAULT_TIMING, validateTiming } from "../shared/timing";
+import { roundAnswerDistribution } from "./answer-distribution";
 import { generateJoinCode } from "../shared/join-code";
 export function newGame(
   id: string,
@@ -419,6 +420,14 @@ export function viewFor(
         }
       : null,
   };
+  // 締切だけでは公開しない。正解発表以降の会場Displayに人数だけ送る。
+  if (
+    role === "display" &&
+    r &&
+    !r.isVoided &&
+    ["answerRevealed", "rankingShown"].includes(g.phase)
+  )
+    view.answerDistribution = roundAnswerDistribution(r);
   if (g.phase === "rankingShown") view.rankings = rankings;
   if (g.phase === "finished") view.results = finalResults(g);
   if (role === "player") {

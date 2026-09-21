@@ -54,10 +54,17 @@ export function createDisplayPreviewView(
     timing: { ...DEFAULT_TIMING },
     questionNumber: snapshot.questionNumber,
     totalQuestions: snapshot.totalQuestions,
-    playerCount: 0,
-    eligibleCount: 0,
+    playerCount: phase === "answerRevealed" ? 20 : 0,
+    eligibleCount: phase === "answerRevealed" ? 20 : 0,
     readyCount: 0,
-    answerCount: 0,
+    answerCount: phase === "answerRevealed" ? 18 : 0,
+    ...(phase === "answerRevealed" && {
+      answerDistribution: {
+        counts: { A: 3, B: 9, C: 4, D: 2 },
+        unanswered: 2,
+        sample: true,
+      },
+    }),
     displayReady: false,
     question: {
       id: question.id,
