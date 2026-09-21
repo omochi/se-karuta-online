@@ -40,6 +40,7 @@ export function createDisplayPreviewView(
           : DEFAULT_TIMING.answeringSeconds) * 1000;
   return {
     type: "state",
+    joinCode: null,
     id: "preview",
     name: snapshot.name,
     // この状態は描画専用。大会への接続・登録には使用しない。

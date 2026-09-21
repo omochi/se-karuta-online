@@ -3,6 +3,7 @@ import { Link } from "react-router";
 export { MarkdownBody } from "./MarkdownBody";
 import { QRCodeSVG } from "qrcode.react";
 import type { Choice, RankRow, Results, RoomView } from "../shared/types";
+import { formatJoinCode } from "../shared/join-code";
 import { CHOICES } from "../shared/types";
 export function Brand({ small = false }: { small?: boolean }) {
   return (
@@ -44,10 +45,12 @@ export function PasswordForm({
   label,
   onSubmit,
   error,
+  autoFocus = true,
 }: {
   label: string;
   onSubmit: (password: string) => Promise<void>;
   error: string;
+  autoFocus?: boolean;
 }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,7 +73,7 @@ export function PasswordForm({
           onChange={(e) => setValue(e.target.value)}
           required
           autoComplete="current-password"
-          autoFocus
+          autoFocus={autoFocus}
         />
       </label>
       <ErrorBox message={error} />
@@ -208,7 +211,15 @@ export function FinalResults({
     </div>
   );
 }
-export function JoinCode({ url }: { url: string }) {
+export function JoinCode({
+  url,
+  homeUrl,
+  code,
+}: {
+  url: string;
+  homeUrl: string;
+  code: string | null;
+}) {
   return (
     <div className="join-code">
       <div className="qr">
@@ -217,10 +228,21 @@ export function JoinCode({ url }: { url: string }) {
       <div>
         <p className="eyebrow">JOIN THE GAME</p>
         <h2>スマホで参加しよう</h2>
-        <p>QRコードを読み取って、名前を入れるだけ。</p>
-        <a href={url} target="_blank" rel="noreferrer">
-          {url.replace(/^https?:\/\//, "")}
+        <p>QRコード、または参加コードで。</p>
+        {code && (
+          <div
+            className="participation-code"
+            aria-label={`参加コード ${formatJoinCode(code)}`}
+          >
+            {formatJoinCode(code)}
+          </div>
+        )}
+        <a href={homeUrl} target="_blank" rel="noreferrer">
+          {homeUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
         </a>
+        <p className="join-instruction">
+          上のURLを開き、参加コードと名前を入力。
+        </p>
       </div>
     </div>
   );

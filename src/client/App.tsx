@@ -22,6 +22,7 @@ import { DisplayScreen } from "./DisplayScreen";
 import { QuestionBody } from "./QuestionBody";
 import { useGameProgress } from "./useGameProgress";
 import { PlayerAnswerStatus } from "./PlayerAnswerStatus";
+import { JoinTournamentForm } from "./JoinTournamentForm";
 export function Home() {
   const { events } = useLoaderData<HomeData>();
   const navigate = useNavigate();
@@ -81,12 +82,16 @@ export function Home() {
           </div>
         </section>
         <section className="home-panel">
+          <JoinTournamentForm />
           {events === null ? (
             <>
               <p className="eyebrow">FOR THE HOST</p>
               <h2>大会の準備をはじめる</h2>
-              <p className="muted">参加する人は、会場のQRコードからどうぞ。</p>
+              <p className="muted">
+                主催する人は、管理用パスワードでログイン。
+              </p>
               <PasswordForm
+                autoFocus={false}
                 label="管理用パスワード"
                 error={error}
                 onSubmit={async (password) => {
@@ -251,7 +256,9 @@ function GameGate({ data }: { data: GameData }) {
               : "HOST CONTROL"}
         </p>
         <h1>{eventName || "SE Karuta"}</h1>
-        {role === "player" ? (
+        {role === "player" && data.finished ? (
+          <p role="status">この大会は終了しました。</p>
+        ) : role === "player" ? (
           <>
             <p className="muted">名前を入れたら、前のモニターを見て待とう。</p>
             <form onSubmit={join} className="stack">
@@ -524,11 +531,13 @@ export function Control({ room }: { room: RoomConnection }) {
                     </div>
                   </section>
                 )}
-                {v.phase === "waiting" && (
-                  <section className="panel">
-                    <JoinCode url={v.urls.play} />
-                  </section>
-                )}
+                <section className="panel">
+                  <JoinCode
+                    url={v.urls.play}
+                    homeUrl={v.urls.home}
+                    code={v.joinCode}
+                  />
+                </section>
               </>
             )}
             {canVoid && (

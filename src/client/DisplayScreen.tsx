@@ -46,7 +46,11 @@ export function DisplayScreen({
         <GameProgress progress={progress} layout="display" />
         {v.phase === "waiting" ? (
           <div className="display-welcome">
-            <JoinCode url={v.urls.play} />
+            <JoinCode
+              url={v.urls.play}
+              homeUrl={v.urls.home}
+              code={v.joinCode}
+            />
           </div>
         ) : v.phase === "finished" && v.results ? (
           <FinalResults results={v.results} compact />

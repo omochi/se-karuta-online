@@ -2,6 +2,7 @@
 import { beforeAll, expect, it } from "vitest";
 import { env, exports } from "cloudflare:workers";
 import { evictDurableObject } from "cloudflare:test";
+import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
 import migration from "../migrations/0001_initial.sql?raw";
 import {
   newGame,
@@ -47,7 +48,7 @@ it("HostやForwardedヘッダーではなく公開URLを使用する", async () 
 });
 beforeAll(async () => {
   await bindings.DB.batch(
-    migration
+    (migration + joinCodeMigration)
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -347,4 +348,86 @@ it("詳細結果は終了後に管理者だけが取得でき、認証情報を�
     ],
   });
   expect((await loadGame(bindings.DB, game.id))?.phase).toBe("finished");
+});
+
+it("参加コードの衝突を再発行し、保存・再起動後も同じコードを保持する", async () => {
+  const first = fixture();
+  await saveGame(bindings.DB, null, first, "hash");
+  const second = fixture();
+  second.joinCode = first.joinCode;
+  await saveGame(bindings.DB, null, second, "hash");
+  expect(second.joinCode).not.toBe(first.joinCode);
+  expect(await loadGame(bindings.DB, first.id)).toEqual(first);
+  expect(await loadGame(bindings.DB, second.id)).toEqual(second);
+  const head = await bindings.DB.prepare(
+    "SELECT state_json FROM tournaments WHERE id = ?",
+  )
+    .bind(second.id)
+    .first<{ state_json: string }>();
+  expect(JSON.parse(head!.state_json)).not.toHaveProperty("joinCode");
+});
+
+it("コードのない既存大会を同時に開いても一つの固定コードを発行する", async () => {
+  const game = fixture();
+  await saveGame(bindings.DB, null, game, "hash");
+  await bindings.DB.prepare(
+    "UPDATE tournaments SET join_code = NULL WHERE id = ?",
+  )
+    .bind(game.id)
+    .run();
+  const games = await Promise.all([
+    loadGame(bindings.DB, game.id),
+    loadGame(bindings.DB, game.id),
+  ]);
+  expect(games[0]!.joinCode).toMatch(/^[A-HJKMNP-Z]{6}$/);
+  expect(games[1]).toEqual(games[0]);
+  expect(await loadGame(bindings.DB, game.id)).toEqual(games[0]);
+  expect(games[0]).toEqual({ ...game, joinCode: games[0]!.joinCode });
+});
+
+it("参加コードから認証なしで参加URLだけを取得でき、終了・不明・不正コードを区別する", async () => {
+  const game = fixture();
+  await saveGame(bindings.DB, null, game, "secret");
+  const lookup = (code: string) =>
+    exports.default.fetch(
+      new Request(`http://test/api/join-code?code=${encodeURIComponent(code)}`),
+    );
+  const response = await lookup(
+    `${game.joinCode.slice(0, 3)} ${game.joinCode.slice(3)}`.toLowerCase(),
+  );
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  expect(await response.json()).toEqual({
+    id: game.id,
+    name: game.name,
+    playUrl: `http://test/e/${game.id}/play`,
+  });
+  expect((await lookup("123456")).status).toBe(400);
+  // 有効な形式だが存在しないコードを確実に使う。
+  let unknown = "AAAAAA";
+  while (
+    await bindings.DB.prepare("SELECT id FROM tournaments WHERE join_code = ?")
+      .bind(unknown)
+      .first()
+  )
+    unknown = fixture().joinCode;
+  expect((await lookup(unknown)).status).toBe(404);
+  const finished = structuredClone(game);
+  finished.phase = "finished";
+  await saveGame(bindings.DB, game, finished);
+  expect((await lookup(game.joinCode)).status).toBe(410);
+  const metadata = await exports.default.fetch(
+    new Request(`http://test/api/e/${game.id}`),
+  );
+  expect(await metadata.json()).toMatchObject({
+    finished: true,
+    joinCode: game.joinCode,
+  });
+  expect(
+    (
+      await exports.default.fetch(
+        new Request(`http://test/api/e/${game.id}/session?role=control`),
+      )
+    ).status,
+  ).toBe(401);
 });

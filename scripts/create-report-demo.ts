@@ -114,16 +114,24 @@ function insert(
     `INSERT INTO ${table} (${columns.join(",")}) VALUES (${values.map(literal).join(",")});`,
   );
 }
-const { players, rounds, ...state } = game;
+const { players, rounds, joinCode, ...state } = game;
 insert(
   "tournaments",
-  ["id", "name", "created_at", "display_password_hash", "state_json"],
+  [
+    "id",
+    "name",
+    "created_at",
+    "display_password_hash",
+    "state_json",
+    "join_code",
+  ],
   [
     id,
     game.name,
     game.createdAt,
     await hashPassword("display-karuta"),
     JSON.stringify(state),
+    joinCode,
   ],
 );
 for (const p of players)

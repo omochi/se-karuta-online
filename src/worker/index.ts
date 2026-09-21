@@ -1,4 +1,5 @@
 import { eventUrls, normalizePublicOrigin } from "../shared/urls";
+import { normalizeJoinCode } from "../shared/join-code";
 import type { Env } from "./env";
 import {
   cookie,
@@ -9,7 +10,7 @@ import {
   verifyPassword,
 } from "./auth";
 import { newGame } from "./game";
-import { loadGame, saveGame } from "./repository";
+import { ensureJoinCode, loadGame, saveGame } from "./repository";
 import { tournamentReport } from "./report";
 import { validateQuestions } from "../shared/questions";
 export { TournamentRoom } from "./room";
@@ -44,6 +45,31 @@ export default {
       ) {
         if (request.headers.get("Origin") !== publicOrigin)
           return json({ error: "同じサイトから操作してください。" }, 403);
+      }
+      if (url.pathname === "/api/join-code" && request.method === "GET") {
+        const code = normalizeJoinCode(url.searchParams.get("code") ?? "");
+        if (!code)
+          return json(
+            { error: "参加コードを英字6文字で入力してください。" },
+            400,
+          );
+        const tournament = await env.DB.prepare(
+          "SELECT id, name, json_extract(state_json, '$.phase') AS phase FROM tournaments WHERE join_code = ?",
+        )
+          .bind(code)
+          .first<{ id: string; name: string; phase: string }>();
+        if (!tournament)
+          return json(
+            { error: "大会が見つかりません。参加コードを確認してください。" },
+            404,
+          );
+        if (tournament.phase === "finished")
+          return json({ error: "この大会は終了しました。" }, 410);
+        return json({
+          id: tournament.id,
+          name: tournament.name,
+          playUrl: eventUrls(publicOrigin, tournament.id).play,
+        });
       }
       const admin = await readSession(request, "se_admin", env.SESSION_SECRET);
       const isAdmin = admin?.role === "admin";
@@ -113,6 +139,7 @@ export default {
             {
               id: game.id,
               name: game.name,
+              joinCode: game.joinCode,
               urls: eventUrls(publicOrigin, game.id),
             },
             201,
@@ -125,10 +152,15 @@ export default {
       if (!match) return json({ error: "見つかりません。" }, 404);
       const [, id, action = ""] = match;
       const tournament = await env.DB.prepare(
-        "SELECT id,name,display_password_hash FROM tournaments WHERE id = ?",
+        "SELECT id,name,display_password_hash, json_extract(state_json, '$.phase') AS phase FROM tournaments WHERE id = ?",
       )
         .bind(id)
-        .first<{ id: string; name: string; display_password_hash: string }>();
+        .first<{
+          id: string;
+          name: string;
+          display_password_hash: string;
+          phase: string;
+        }>();
       if (!tournament) return json({ error: "大会が見つかりません。" }, 404);
       if (action === "report" && request.method === "GET") {
         if (!isAdmin)
@@ -171,6 +203,8 @@ export default {
         return json({
           id,
           name: tournament.name,
+          joinCode: await ensureJoinCode(env.DB, id),
+          finished: tournament.phase === "finished",
           urls: eventUrls(publicOrigin, id),
         });
       if (action === "display/login" && request.method === "POST") {

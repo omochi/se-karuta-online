@@ -43,6 +43,7 @@ class Socket {
 function roomView(): RoomView {
   return {
     type: "state",
+    joinCode: null,
     id: "game",
     name: "Test game",
     urls: eventUrls("http://localhost", "game"),
@@ -65,12 +66,14 @@ function roomView(): RoomView {
 }
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 let authorized = true;
+let finished = false;
 let eventResponse: (() => Promise<Response>) | undefined;
 let socketResponse: (() => Promise<Response>) | undefined;
 let loaders: ReturnType<typeof createRouteLoaders>;
 let router: ReturnType<typeof createMemoryRouter>;
 beforeEach(() => {
   authorized = true;
+  finished = false;
   eventResponse = undefined;
   socketResponse = undefined;
   Socket.all = [];
@@ -117,7 +120,7 @@ beforeEach(() => {
         return socketResponse
           ? socketResponse()
           : json({}, authorized ? 200 : 401);
-      return json({ name: "Test game" });
+      return json({ name: "Test game", finished });
     }),
   );
   loaders = createRouteLoaders();
@@ -192,6 +195,7 @@ it("ログイン前は認証画面、ログイン後の再検証は初回state�
   expect(html()).toContain("管理用パスワード");
   expect(Socket.all).toHaveLength(0);
   authorized = true;
+  finished = false;
   const revalidation = router.revalidate();
   await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
   expect(html()).toContain("管理用パスワード");
@@ -377,6 +381,7 @@ it("詳細結果の直リンクは管理者認証を要求し、ログイン後�
   expect(html()).toContain("管理用パスワード");
   expect(html()).not.toContain("全体の集計");
   authorized = true;
+  finished = false;
   await router.revalidate();
   expect(html()).toContain("詳細結果テスト");
   expect(html()).toContain("集計対象の問題はありません");
@@ -392,4 +397,28 @@ it("終了前の詳細結果は終了後の案内を表示する", async () => {
   await start("/e/game/control/report");
   expect(html()).toContain("大会終了後に確認できます");
   expect(Socket.all).toHaveLength(0);
+});
+
+it("終了済み大会のQRで新規登録を案内せず、既存セッションの接続は維持する", async () => {
+  finished = true;
+  authorized = false;
+  await start("/e/game/play");
+  expect(html()).toContain("この大会は終了しました。");
+  expect(html()).not.toContain("みんなに表示する名前");
+  authorized = true;
+  const navigation = router.revalidate();
+  await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
+  Socket.all[0].open();
+  Socket.all[0].state({ ...roomView(), phase: "finished" });
+  await navigation;
+  expect(
+    (router.state.loaderData["game-play"] as GameData).session,
+  ).not.toBeNull();
+});
+it("未ログインでもトップページにコード入力があり、管理用パスワードに自動フォーカスしない", async () => {
+  authorized = false;
+  await start();
+  expect(html()).toContain("参加コードで大会に入る");
+  expect(html()).toContain("管理用パスワード");
+  expect(html()).not.toContain("autofocus");
 });

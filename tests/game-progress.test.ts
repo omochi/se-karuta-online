@@ -26,6 +26,7 @@ function fixture(phase: Phase): RoomConnection {
   );
   const view: RoomView = {
     type: "state",
+    joinCode: null,
     urls: eventUrls("http://test", "game"),
     id: "game",
     name: "Test",

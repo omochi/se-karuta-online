@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile, mkdtemp, rm } from "node:fs/promises";
+import { readFile, readdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { build } from "esbuild";
@@ -129,7 +129,14 @@ test(
       await rm(folder, { recursive: true, force: true });
     });
     const db = await mf.getD1Database("DB");
-    const schema = await readFile("migrations/0001_initial.sql", "utf8");
+    const schema = (
+      await Promise.all(
+        (await readdir("migrations"))
+          .filter((f) => f.endsWith(".sql"))
+          .sort()
+          .map((f) => readFile(`migrations/${f}`, "utf8")),
+      )
+    ).join("\n");
     await db.batch(
       schema
         .split(";")

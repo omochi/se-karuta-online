@@ -321,6 +321,28 @@ input::placeholder {
   border-radius: 14px;
   padding: 32px 36px;
 }
+.home-join {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 32px;
+  margin-bottom: 32px;
+}
+.home-join .stack {
+  max-width: 400px;
+}
+.join-code-input {
+  font-family: ui-monospace, monospace;
+  font-size: 26px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.participation-code {
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  margin: 10px 0;
+}
 .home-panel > .stack {
   max-width: 400px;
   margin-top: 24px;
@@ -777,7 +799,7 @@ input::placeholder {
   margin-bottom: 8px;
 }
 .join-code a {
-  font-size: 11px;
+  font-size: 16px;
   color: var(--accent);
   overflow-wrap: anywhere;
   display: block;
@@ -1114,7 +1136,7 @@ input::placeholder {
 }
 .display-welcome .join-code a {
   color: #e8b9a3;
-  font-size: 11px;
+  font-size: 20px;
 }
 .display-footer {
   padding: 15px 4.5%;
@@ -1632,5 +1654,17 @@ input::placeholder {
   * {
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .home .hero-cards {
+    display: none;
+  }
+  .home .hero {
+    min-height: 0;
+  }
+  .display-welcome .join-code {
+    flex-direction: column;
   }
 }

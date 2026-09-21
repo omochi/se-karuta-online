@@ -45,6 +45,7 @@ export interface Round {
   voidReason: string | null;
 }
 export interface Game {
+  joinCode: string;
   id: string;
   name: string;
   createdAt: number;
@@ -95,6 +96,7 @@ export interface Presence {
   }>;
 }
 export interface RoomView {
+  joinCode: string | null;
   urls: EventUrls;
   type: "state";
   id: string;

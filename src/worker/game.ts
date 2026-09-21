@@ -16,6 +16,7 @@ import {
   type TimingSettings,
 } from "../shared/types";
 import { DEFAULT_TIMING, validateTiming } from "../shared/timing";
+import { generateJoinCode } from "../shared/join-code";
 export function newGame(
   id: string,
   name: string,
@@ -25,6 +26,7 @@ export function newGame(
   return {
     id,
     name,
+    joinCode: generateJoinCode(),
     createdAt: now,
     revision: 0,
     phase: "waiting",
@@ -370,6 +372,7 @@ export function viewFor(
   const view: RoomView = {
     urls: eventUrls(publicOrigin, g.id),
     type: "state",
+    joinCode: g.joinCode,
     id: g.id,
     name: g.name,
     phase: g.phase,

@@ -40,5 +40,5 @@ const response = await fetch(`${base}/api/events`, {
 const result = await response.json();
 if (!response.ok) throw new Error(result.error);
 console.log(
-  `大会を作成しました: ${result.name}\nControl: ${result.urls.control}\nDisplay: ${result.urls.display}\nPlayer: ${result.urls.play}\n表示用パスワード: ${input.displayPassword ?? "display-karuta"}`,
+  `大会を作成しました: ${result.name}\n参加コード: ${result.joinCode}\nControl: ${result.urls.control}\nDisplay: ${result.urls.display}\nPlayer: ${result.urls.play}\n表示用パスワード: ${input.displayPassword ?? "display-karuta"}`,
 );

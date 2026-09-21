@@ -26,6 +26,7 @@ export interface GameData {
   role: Role;
   name: string;
   session: RoomSession | null;
+  finished: boolean;
 }
 export interface ReportData {
   id: string;
@@ -87,7 +88,7 @@ export function createRouteLoaders() {
     async (args: LoaderFunctionArgs): Promise<GameData> => {
       const { publicOrigin } = await configuration(args);
       const id = args.params.id!;
-      const { name } = await api<{ name: string }>(
+      const { name, finished } = await api<{ name: string; finished: boolean }>(
         `/api/e/${id}`,
         undefined,
         args.request.signal,
@@ -100,7 +101,7 @@ export function createRouteLoaders() {
         );
       } catch (error) {
         if ((error as { status?: number }).status === 401)
-          return { id, role, name, session: null };
+          return { id, role, name, finished, session: null };
         throw error;
       }
       args.request.signal.throwIfAborted();
@@ -111,12 +112,12 @@ export function createRouteLoaders() {
       try {
         await session.ready;
         args.request.signal.throwIfAborted();
-        return { id, role, name, session };
+        return { id, role, name, finished, session };
       } catch (error) {
         session.dispose();
         sessions.delete(session);
         if ((error as { status?: number }).status === 401)
-          return { id, role, name, session: null };
+          return { id, role, name, finished, session: null };
         throw error;
       } finally {
         args.request.signal.removeEventListener("abort", abort);

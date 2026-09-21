@@ -1,7 +1,30 @@
 import type { Game, Player, Round } from "../shared/types";
 import { DEFAULT_TIMING } from "../shared/timing";
 import { readDifficulty } from "../shared/questions";
-const head = ({ players: _p, rounds: _r, ...state }: Game) => state;
+import { generateJoinCode } from "../shared/join-code";
+const head = ({ players: _p, rounds: _r, joinCode: _c, ...state }: Game) =>
+  state;
+// 既存大会にも初回参照時に発行する。同時に開かれてもDBに保存された値を採用する。
+export async function ensureJoinCode(
+  db: D1Database,
+  id: string,
+): Promise<string> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const row = await db
+      .prepare("SELECT join_code FROM tournaments WHERE id = ?")
+      .bind(id)
+      .first<{ join_code: string | null }>();
+    if (!row) throw new Error("大会が見つかりません。");
+    if (row.join_code) return row.join_code;
+    await db
+      .prepare(
+        "UPDATE OR IGNORE tournaments SET join_code = ? WHERE id = ? AND join_code IS NULL",
+      )
+      .bind(generateJoinCode(), id)
+      .run();
+  }
+  throw new Error("参加コードの発行に失敗しました。再度お試しください。");
+}
 const roundState = ({
   question: _q,
   participants: _p,
@@ -13,7 +36,9 @@ export async function loadGame(
   id: string,
 ): Promise<Game | null> {
   const data = await db.batch<Record<string, unknown>>([
-    db.prepare("SELECT state_json FROM tournaments WHERE id = ?").bind(id),
+    db
+      .prepare("SELECT state_json, join_code FROM tournaments WHERE id = ?")
+      .bind(id),
     db
       .prepare(
         "SELECT question_json, state_json FROM rounds WHERE tournament_id = ? ORDER BY position",
@@ -38,6 +63,9 @@ export async function loadGame(
   if (!data[0].results.length) return null;
   const game: Game = {
     ...JSON.parse(data[0].results[0].state_json as string),
+    joinCode:
+      (data[0].results[0].join_code as string | null) ??
+      (await ensureJoinCode(db, id)),
     players: [],
     rounds: [],
   };
@@ -78,7 +106,7 @@ export async function loadGame(
     game.phaseEndsAt = current.openedAt + game.timing.answeringSeconds * 1000;
   return game;
 }
-export async function saveGame(
+async function persistGame(
   db: D1Database,
   before: Game | null,
   after: Game,
@@ -89,7 +117,7 @@ export async function saveGame(
     statements.push(
       db
         .prepare(
-          "INSERT INTO tournaments (id,name,created_at,display_password_hash,state_json) VALUES (?,?,?,?,?)",
+          "INSERT INTO tournaments (id,name,created_at,display_password_hash,state_json,join_code) VALUES (?,?,?,?,?,?)",
         )
         .bind(
           after.id,
@@ -97,6 +125,7 @@ export async function saveGame(
           after.createdAt,
           displayPasswordHash!,
           JSON.stringify(head(after)),
+          after.joinCode,
         ),
     );
   } else if (JSON.stringify(head(before)) !== JSON.stringify(head(after))) {
@@ -178,4 +207,30 @@ export async function saveGame(
   }
   // 保存成功後だけメモリ状態と画面を進める。回答は更新せず、一意制約でも最初の回答を守る。
   if (statements.length) await db.batch(statements);
+}
+
+export async function saveGame(
+  db: D1Database,
+  before: Game | null,
+  after: Game,
+  displayPasswordHash?: string,
+) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await persistGame(db, before, after, displayPasswordHash);
+      return;
+    } catch (error) {
+      // 作成batchは衝突時に全体がロールバックされる。コードの衝突だけを再試行する。
+      if (
+        before ||
+        attempt >= 9 ||
+        !(error instanceof Error) ||
+        !error.message.includes(
+          "UNIQUE constraint failed: tournaments.join_code",
+        )
+      )
+        throw error;
+      after.joinCode = generateJoinCode();
+    }
+  }
 }
