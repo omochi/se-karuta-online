@@ -6,37 +6,37 @@
       "id": "demo-compact-map-values",
       "bodyMarkdown": "この Dictionary の変換を、一度の呼び出しで書けるようにした Proposal は？\n\n```swift\nlet scores = [\"Swift\": \"100\", \"Mystery\": \"?\"]\nlet numbers = scores.compactMapValues(Int.init)\n// [\"Swift\": 100]\n```",
       "choices": {
-        "A": "SE-0345 · if let shorthand for shadowing an existing optional variable",
+        "A": "SE-0187 · Introduce Sequence.compactMap(_:)",
         "B": "SE-0218 · Introduce compactMapValues to Dictionary",
-        "C": "SE-0296 · Async/await",
-        "D": "SE-0380 · if and switch expressions"
+        "C": "SE-0165 · Dictionary & Set Enhancements",
+        "D": "SE-0174 · Change RangeReplaceableCollection.filter to return Self"
       },
       "correctChoice": "B",
-      "explanationMarkdown": "SE-0218 は Dictionary の値を変換し、nil になった要素を取り除く compactMapValues を追加しました。Swift 5.0 で実装されています。\n\n[Proposal を読む](https://swiftdigest.koherent.org/proposals/se-0218.html)"
+      "explanationMarkdown": "SE-0218 は Dictionary の値を変換し、nil になった要素を取り除く compactMapValues を追加しました。Swift 5.0 で実装されています。\n\nSE-0187 は Sequence の compactMap、SE-0165 は Dictionary の mapValues や filter などの拡張、SE-0174 は RangeReplaceableCollection の filter が元と同じ型を返す変更です。ここでは「キーを保ち、値を変換し、nil を除く」を一度に行う点が決め手です。\n\n[Swift Digest：SE-0218の日本語要約](https://swiftdigest.koherent.org/proposals/se-0218.html)"
     },
     {
       "id": "demo-if-let",
       "bodyMarkdown": "右辺の変数名を省いて、こう書けるようにした Proposal は？\n\n```swift\nlet nickname: String? = \"Swifty\"\nif let nickname {\n    print(\"Hello, \\(nickname)!\")\n}\n```",
       "choices": {
-        "A": "SE-0296 · Async/await",
-        "B": "SE-0380 · if and switch expressions",
+        "A": "SE-0099 · Restructuring Condition Clauses",
+        "B": "SE-0230 · Flatten nested optionals resulting from 'try?'",
         "C": "SE-0345 · if let shorthand for shadowing an existing optional variable",
-        "D": "SE-0218 · Introduce compactMapValues to Dictionary"
+        "D": "SE-0054 · Abolish ImplicitlyUnwrappedOptional type"
       },
       "correctChoice": "C",
-      "explanationMarkdown": "SE-0345 では、同名の Optional を取り出す if let nickname = nickname を if let nickname と省略できるようになりました。\n\n[Proposal を読む](https://swiftdigest.koherent.org/proposals/se-0345.html)"
+      "explanationMarkdown": "SE-0345 では、同名の Optional を取り出す if let nickname = nickname を if let nickname と省略できるようになりました。\n\nSE-0099 は if・guard・while の条件節の構文整理、SE-0230 は try? による Optional の入れ子の解消、SE-0054 は暗黙的にアンラップされる Optional の型の扱いを見直す提案です。この問題は「同名の変数を取り出すときの右辺の省略」を尋ねています。\n\n[Swift Digest：SE-0345の日本語要約](https://swiftdigest.koherent.org/proposals/se-0345.html)"
     },
     {
       "id": "demo-if-expression",
       "bodyMarkdown": "if の分岐から直接値を作る。この書き方を導入した Proposal は？\n\n```swift\nlet score = 100\nlet message = if score == 100 {\n    \"Perfect!\"\n} else {\n    \"Try again\"\n}\n```",
       "choices": {
         "A": "SE-0380 · if and switch expressions",
-        "B": "SE-0345 · if let shorthand for shadowing an existing optional variable",
-        "C": "SE-0218 · Introduce compactMapValues to Dictionary",
-        "D": "SE-0296 · Async/await"
+        "B": "SE-0255 · Implicit returns from single-expression functions",
+        "C": "SE-0289 · Result builders",
+        "D": "SE-0326 · Enable multi-statement closure parameter/result type inference"
       },
       "correctChoice": "A",
-      "explanationMarkdown": "SE-0380 によって、if と switch を式として使い、変数の初期化などに利用できるようになりました。\n\n[Proposal を読む](https://swiftdigest.koherent.org/proposals/se-0380.html)"
+      "explanationMarkdown": "SE-0380 によって、if と switch を式として使い、変数の初期化などに利用できるようになりました。\n\nSE-0255 は単一式の関数で return を省略する機能、SE-0289 は result builder による文からの値の組み立て、SE-0326 は複数文のクロージャーの型推論です。ここでは関数やビルダーの中ではなく、通常の変数の初期化に if を直接使っています。\n\n[Swift Digest：SE-0380の日本語要約](https://swiftdigest.koherent.org/proposals/se-0380.html)"
     }
   ]
 }
