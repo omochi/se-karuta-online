@@ -490,16 +490,6 @@ input::placeholder {
   color: #fffefa;
   padding: 28px;
 }
-.question-index {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #ffb49c;
-}
-.question-index small {
-  color: #aaa09b;
-  font-weight: 400;
-}
 .progress-panel h2 {
   font-size: 27px;
   margin-top: 12px;
@@ -812,17 +802,12 @@ input::placeholder {
   margin-top: 14px;
   overflow: hidden;
   border-radius: 999px;
-  background: #8ca39a33;
 }
 .countdown-bar-fill {
   height: 100%;
   width: 100%;
-  background: var(--accent);
   transform-origin: left;
   transition: transform 100ms linear;
-}
-.final-countdown .countdown-bar-fill {
-  background: var(--orange);
 }
 .preparation-count strong {
   font-size: 28px;
@@ -840,10 +825,6 @@ input::placeholder {
 }
 .countdown-label {
   font-size: 12px;
-  color: #8ca39a;
-}
-.final-countdown .countdown-value {
-  color: #e8af75;
 }
 .ranking {
   padding: 0;
@@ -963,59 +944,36 @@ input::placeholder {
   max-width: 45%;
   overflow-wrap: anywhere;
 }
-.player-waiting {
-  text-align: center;
-  padding: 80px 0 30px;
-}
-.waiting-symbol {
-  display: block;
-  font-size: 65px;
-  color: var(--orange);
-  margin-bottom: 28px;
-}
-.player-waiting h1 {
-  font-size: 26px;
-}
-.player-waiting p {
-  font-size: 14px;
-  color: var(--muted);
-  margin-bottom: 25px;
-}
-.player-message {
+.game-progress-player {
   margin: 35px 0 20px;
   text-align: center;
   padding: 20px 4px;
 }
-.player-message h1 {
+.game-progress-player h1 {
   font-size: 30px;
   margin-bottom: 15px;
 }
-.player-message p {
+.game-progress-player p {
   font-size: 14px;
   color: #708077;
 }
-.player-message .eyebrow {
+.game-progress-player .eyebrow {
   font-size: 11px;
   color: var(--accent);
   letter-spacing: 0.15em;
 }
-.player-message .countdown {
+.game-progress-player .countdown {
   margin-top: 28px;
 }
-.player-message .countdown-heading {
+.game-progress-player .countdown-heading {
   justify-content: center;
 }
-.player-message .countdown-value {
+.game-progress-player .countdown-value {
   font-size: 60px;
-  color: var(--accent);
 }
-.player-message .final-countdown .countdown-value {
-  color: var(--orange);
-}
-.player-message .countdown-label {
+.game-progress-player .countdown-label {
   max-width: 160px;
   text-align: left;
-  color: var(--muted);
 }
 .player-page .choices {
   gap: 12px;
@@ -1075,7 +1033,7 @@ input::placeholder {
   text-align: left;
   color: #6d8174;
 }
-.success h1 {
+.player-answer-status.success h2 {
   color: var(--accent);
 }
 .player-page .awards-grid {
@@ -1122,37 +1080,13 @@ input::placeholder {
   flex-direction: column;
   gap: 18px;
 }
-.display-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 15px;
-}
-.display-meta .eyebrow {
-  margin: 0;
-  color: #d1b09d;
-  font-size: 12px;
-}
-.phase-pill {
-  border: 1px solid #75584b;
-  background: #392e2c;
-  border-radius: 30px;
-  padding: 8px 16px;
-  font-size: 12px;
-  color: #edc4b2;
-}
 .display-welcome {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 60px;
+  grid-template-columns: 1fr;
+  gap: 24px;
   align-items: center;
   flex: 1;
   padding: 25px 0;
-}
-.display-welcome h1 {
-  font-size: clamp(40px, 5vw, 80px);
-  line-height: 1.25;
-  margin: 20px 0;
 }
 .display-welcome > div > p:not(.eyebrow) {
   color: #c5b3a8;
@@ -1161,7 +1095,8 @@ input::placeholder {
 .display-welcome .join-code {
   flex-direction: column;
   align-items: flex-start;
-  max-width: 360px;
+  width: 100%;
+  max-width: 600px;
   padding: 30px;
   border: 1px solid #605048;
   border-radius: 14px;
@@ -1180,15 +1115,6 @@ input::placeholder {
 .display-welcome .join-code a {
   color: #e8b9a3;
   font-size: 11px;
-}
-.player-total {
-  font-size: 40px;
-  font-weight: 500;
-  color: #ffd1b7;
-}
-.player-total small {
-  font-size: 13px;
-  color: #bcaa9d;
 }
 .display-footer {
   padding: 15px 4.5%;
@@ -1224,42 +1150,129 @@ input::placeholder {
   color: #40261f;
   border-color: #ffb49c;
 }
-.pre-question {
+.game-progress-display {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 45px;
+  gap: 32px;
+  padding: 12px 0;
+}
+.game-progress-display:is(
+  [data-phase="choicesPreparing"],
+  [data-phase="countdown"],
+  [data-phase="choicesReading"]
+) {
   flex: 1;
   min-height: 190px;
-  padding: 25px 0;
 }
-.pre-question h1 {
+.game-progress-display .game-progress-message {
+  min-width: 0;
+}
+.game-progress-display .eyebrow {
+  color: #d1b09d;
+  font-size: 12px;
+}
+.game-progress-display[data-phase="acceptingAnswers"] .countdown-value {
+  font-size: 48px;
+}
+/* 出題中は共通案内を詰めて、会場の問題文・コードに表示領域を確保する。 */
+.display-content.phase-acceptingAnswers {
+  padding-top: 18px;
+  padding-bottom: 18px;
+  gap: 12px;
+}
+.game-progress-display[data-phase="acceptingAnswers"] .countdown {
+  margin: 0;
+}
+.game-progress-display:is(
+  [data-phase="acceptingAnswers"],
+  [data-phase="answerRevealed"]
+) {
+  padding: 0;
+}
+.game-progress-display:is(
+    [data-phase="acceptingAnswers"],
+    [data-phase="answerRevealed"]
+  )
+  .game-progress-message {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 20px;
+}
+.game-progress-display:is(
+    [data-phase="acceptingAnswers"],
+    [data-phase="answerRevealed"]
+  )
+  h1 {
+  font-size: 28px;
+  margin: 0;
+}
+.game-progress-display:is(
+    [data-phase="acceptingAnswers"],
+    [data-phase="answerRevealed"]
+  )
+  p {
+  font-size: 13px;
+  margin: 0;
+}
+.game-progress-display:is(
+    [data-phase="acceptingAnswers"],
+    [data-phase="answerRevealed"]
+  )
+  .eyebrow,
+.game-progress-display:is(
+    [data-phase="acceptingAnswers"],
+    [data-phase="answerRevealed"]
+  )
+  .game-progress-description {
+  grid-column: 1 / -1;
+}
+.game-progress-display:is(
+    [data-phase="acceptingAnswers"],
+    [data-phase="answerRevealed"]
+  )
+  .progress-answer-count {
+  grid-column: 2;
+  grid-row: 2;
+}
+.game-progress-control .eyebrow {
+  color: #ffb49c;
+}
+.game-progress-control .game-progress-description,
+.game-progress-control .progress-answer-count {
+  color: #c3b4ac;
+  font-size: 14px;
+}
+.player-answer-status {
+  text-align: center;
+  margin: 0 0 24px;
+}
+.player-answer-status h2 {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+.player-answer-status p {
+  color: var(--muted);
+  font-size: 14px;
+}
+.game-progress-display h1 {
   font-size: clamp(25px, 3.6vw, 50px);
   margin: 0 0 20px;
 }
-.pre-question p {
+.game-progress-display p {
   color: #c5b3a8;
   font-size: 16px;
 }
-.pre-question .countdown {
+.game-progress-display .countdown {
   width: min(100%, 360px);
   flex-shrink: 0;
 }
-.pre-question .countdown-heading {
+.game-progress-display .countdown-heading {
   justify-content: center;
 }
-.display-content .countdown-bar-fill {
-  background: #ffcfb6;
-}
-.display-content .final-countdown .countdown-bar-fill {
-  background: #ebae76;
-}
-.pre-question .countdown-value {
+.game-progress-display .countdown-value {
   font-size: clamp(70px, 12vw, 165px);
-  color: #ffcfb6;
-}
-.pre-question .final-countdown .countdown-value {
-  color: #ebae76;
 }
 .question-body {
   flex: 1;
@@ -1308,9 +1321,6 @@ input::placeholder {
   flex: 1;
   padding: 15px 0;
 }
-.display-ranking h1 {
-  font-size: clamp(35px, 4.5vw, 60px);
-}
 .display-ranking p:not(.eyebrow) {
   font-size: 15px;
   color: #c7ac9b;
@@ -1335,17 +1345,6 @@ input::placeholder {
 }
 .display-ranking .rank-value small {
   font-size: 12px;
-}
-.center-stage {
-  margin: auto;
-  text-align: center;
-}
-.center-stage h1 {
-  font-size: 52px;
-}
-.results-heading {
-  font-size: 30px;
-  margin: 4px 0 0;
 }
 .display-content .awards-grid {
   grid-template-columns: repeat(4, 1fr);
@@ -1540,11 +1539,11 @@ input::placeholder {
   .player-page .choices {
     margin-top: 10px;
   }
-  .player-message {
+  .game-progress-player {
     margin-top: 25px;
     padding-top: 18px;
   }
-  .player-message h1 {
+  .game-progress-player h1 {
     font-size: 27px;
   }
   .display-header {
@@ -1579,22 +1578,19 @@ input::placeholder {
   .display-welcome .join-code p {
     font-size: 11px;
   }
-  .display-welcome h1 {
-    font-size: 43px;
-  }
-  .pre-question {
+  .game-progress-display {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
     padding: 10px 0;
   }
-  .pre-question .countdown-value {
+  .game-progress-display .countdown-value {
     font-size: 65px;
   }
-  .pre-question h1 {
+  .game-progress-display h1 {
     font-size: 28px;
   }
-  .pre-question p {
+  .game-progress-display p {
     font-size: 13px;
   }
   .display-content .choice {
@@ -1617,9 +1613,6 @@ input::placeholder {
     grid-template-columns: 1fr;
     gap: 10px;
   }
-  .display-ranking h1 {
-    font-size: 33px;
-  }
   .display-ranking .ranking strong {
     font-size: 18px;
   }
@@ -1629,9 +1622,6 @@ input::placeholder {
   .display-footer {
     font-size: 8px;
     gap: 10px;
-  }
-  .center-stage h1 {
-    font-size: 34px;
   }
   .display-explanation {
     flex-direction: column;

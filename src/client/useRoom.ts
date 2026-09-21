@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePublicOrigin } from "./config";
+import { getGameProgress } from "./phase-presentation";
 import type {
   Choice,
   ClientMessage,
@@ -210,11 +211,8 @@ export function useRoom(
       view.me?.answer ||
       pendingRef.current ||
       !connected ||
-      view.phase !== "acceptingAnswers" ||
       view.me?.participation !== "eligible" ||
-      view.phaseEndsAt === null ||
-      view.serverNow + performance.now() - receivedAt.current >=
-        view.phaseEndsAt
+      !getGameProgress(view, performance.now() - receivedAt.current).answering
     )
       return;
     const message: Pending = {

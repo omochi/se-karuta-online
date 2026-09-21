@@ -8,18 +8,17 @@ import {
   Brand,
   Choices,
   ConnectionBadge,
-  Countdown,
   ErrorBox,
   FinalResults,
   Header,
   JoinCode,
   MarkdownBody,
   PasswordForm,
-  PHASE_LABELS,
   Ranking,
-  PreparationStatus,
-  useRemainingTime,
 } from "./components";
+import { GameProgress } from "./GameProgress";
+import { useGameProgress } from "./useGameProgress";
+import { PlayerAnswerStatus } from "./PlayerAnswerStatus";
 function Home() {
   const origin = usePublicOrigin();
   const [events, setEvents] = useState<Array<{
@@ -397,8 +396,9 @@ function TimingSettingsForm({ room }: { room: RoomConnection }) {
     </section>
   );
 }
-function Control({ room }: { room: RoomConnection }) {
+export function Control({ room }: { room: RoomConnection }) {
   const v = room.view!;
+  const progress = useGameProgress(room);
   const [reason, setReason] = useState("");
   const [voidOpen, setVoidOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
@@ -454,36 +454,7 @@ function Control({ room }: { room: RoomConnection }) {
         <div className="control-layout">
           <section className="control-main">
             <div className="progress-panel">
-              <div>
-                <span className="question-index">
-                  QUESTION {String(v.questionNumber).padStart(2, "0")}{" "}
-                  <small>/ {v.totalQuestions}</small>
-                </span>
-                <h2>{PHASE_LABELS[v.phase]}</h2>
-              </div>
-              {v.phaseEndsAt !== null && (
-                <Countdown view={v} receivedAt={room.receivedAt} />
-              )}
-              <div className="stats">
-                <div>
-                  <strong>
-                    {v.readyCount}
-                    <small> / {v.eligibleCount}</small>
-                  </strong>
-                  <span>準備完了</span>
-                </div>
-                <div>
-                  <strong>
-                    {v.answerCount}
-                    <small> / {v.eligibleCount}</small>
-                  </strong>
-                  <span>回答済み</span>
-                </div>
-                <div>
-                  <strong>{v.displayReady ? "✓" : "—"}</strong>
-                  <span>Display の準備</span>
-                </div>
-              </div>
+              <GameProgress progress={progress} layout="control" />
               <div className="host-actions">
                 {readyForNext && v.hasNext && (
                   <button
@@ -497,7 +468,7 @@ function Control({ room }: { room: RoomConnection }) {
                     →
                   </button>
                 )}
-                {v.phase === "acceptingAnswers" && (
+                {progress.answering && (
                   <button
                     className="primary"
                     disabled={disabled}
@@ -534,14 +505,6 @@ function Control({ room }: { room: RoomConnection }) {
                   </button>
                 )}
               </div>
-              {v.phase === "choicesPreparing" && (
-                <p className="muted">
-                  全員と Display の準備が整うと、{v.timing.countdownSeconds}
-                  秒の予告後に選択肢を公開し、
-                  {v.timing.readingSeconds}秒後に出題します。回答時間は
-                  {v.timing.answeringSeconds}秒です。
-                </p>
-              )}
             </div>
             {finishOpen && (
               <div className="confirmation">
@@ -573,7 +536,6 @@ function Control({ room }: { room: RoomConnection }) {
               <>
                 {v.phase === "rankingShown" && (
                   <section className="panel">
-                    <h2>この問題の結果</h2>
                     <Ranking rows={v.rankings ?? []} />
                   </section>
                 )}
@@ -697,7 +659,7 @@ function Control({ room }: { room: RoomConnection }) {
               )}
             </section>
             <section className="panel">
-              <h2>共有 Display</h2>
+              <h2>共有画面</h2>
               {v.displays?.length ? (
                 v.displays.map((d) => (
                   <div className="display-device" key={d.id}>
@@ -730,7 +692,7 @@ function Control({ room }: { room: RoomConnection }) {
                   </div>
                 ))
               ) : (
-                <p className="muted">Display を開いて接続してください。</p>
+                <p className="muted">共有画面を開いて接続してください。</p>
               )}
             </section>
           </aside>
@@ -739,14 +701,11 @@ function Control({ room }: { room: RoomConnection }) {
     </>
   );
 }
-function Display({ room }: { room: RoomConnection }) {
+export function Display({ room }: { room: RoomConnection }) {
   const v = room.view!;
   const q = v.question;
+  const progress = useGameProgress(room);
   const revealing = ["answerRevealed", "rankingShown"].includes(v.phase);
-  const remaining = useRemainingTime(v, room.receivedAt);
-  const closed =
-    v.phase === "answersClosed" ||
-    (v.phase === "acceptingAnswers" && remaining === 0);
   return (
     <div className="display-page">
       <header className="display-header">
@@ -754,98 +713,30 @@ function Display({ room }: { room: RoomConnection }) {
         <span className="display-event">{v.name}</span>
         <ConnectionBadge connected={room.connected} />
       </header>
-      <main className={`display-content phase-${v.phase}`}>
-        <div className="display-meta">
-          <span className="eyebrow">
-            {v.questionNumber
-              ? `QUESTION ${String(v.questionNumber).padStart(2, "0")} / ${v.totalQuestions}`
-              : "WELCOME TO SE KARUTA"}
-          </span>
-          <span className="phase-pill">
-            {closed ? PHASE_LABELS.answersClosed : PHASE_LABELS[v.phase]}
-          </span>
-        </div>
+      <main className={`display-content phase-${progress.phase}`}>
+        <GameProgress progress={progress} layout="display" />
         {v.phase === "waiting" ? (
           <div className="display-welcome">
-            <div>
-              <p className="eyebrow">KNOW IT. FIND IT. TAP IT.</p>
-              <h1>
-                そのコード、
-                <br />
-                どの Proposal？
-              </h1>
-              <p>選択肢を読んで、問題が出たらスマホで回答。</p>
-              <strong className="player-total">
-                {v.playerCount}
-                <small> 人が参加中</small>
-              </strong>
-            </div>
             <JoinCode url={v.urls.play} />
           </div>
         ) : v.phase === "finished" && v.results ? (
-          <>
-            <h1 className="results-heading">知識とひらめきに、拍手を。</h1>
-            <FinalResults results={v.results} compact />
-          </>
-        ) : v.phase === "questionVoided" ? (
-          <div className="center-stage">
-            <p className="eyebrow">NEXT CHANCE</p>
-            <h1>この問題はお休み。</h1>
-            <p>{q?.voidReason}</p>
-            <p className="muted">この問題の回答は成績に含めません。</p>
-          </div>
+          <FinalResults results={v.results} compact />
         ) : v.phase === "rankingShown" ? (
           <div className="display-ranking">
-            <div>
-              <p className="eyebrow">QUICK & CORRECT</p>
-              <h1>
-                この一問の、
-                <br />
-                先着たち。
-              </h1>
-              <p>
-                正解 {q?.correctChoice} ·{" "}
-                {q?.correctChoice && q.choices?.[q.correctChoice]}
-              </p>
-            </div>
+            <p>
+              正解 {q?.correctChoice} ·{" "}
+              {q?.correctChoice && q.choices?.[q.correctChoice]}
+            </p>
             <Ranking rows={v.rankings ?? []} limit={8} />
           </div>
-        ) : (
+        ) : v.phase !== "questionVoided" && v.phase !== "finished" ? (
           <>
-            {closed ? (
-              <div className="pre-question">
-                <div>
-                  <h1>回答を締め切りました</h1>
-                  <p>正解発表を待とう。</p>
-                </div>
-              </div>
-            ) : q?.bodyMarkdown ? (
-              <>
-                <Countdown view={v} receivedAt={room.receivedAt} />
-                <section className="question-body">
-                  <MarkdownBody text={q.bodyMarkdown} />
-                </section>
-              </>
-            ) : (
-              <div className="pre-question">
-                <div>
-                  <h1>
-                    {v.phase === "choicesPreparing"
-                      ? "全員の接続を待っています"
-                      : v.phase === "choicesReading"
-                        ? "まずは、選択肢を読もう。"
-                        : "まもなく、選択肢を公開します。"}
-                  </h1>
-                  {v.phase === "choicesPreparing" ? (
-                    <PreparationStatus view={v} />
-                  ) : (
-                    <p>問題が出るまで、回答ボタンは押せません。</p>
-                  )}
-                </div>
-                <Countdown view={v} receivedAt={room.receivedAt} />
-              </div>
+            {!progress.closed && q?.bodyMarkdown && (
+              <section className="question-body">
+                <MarkdownBody text={q.bodyMarkdown} />
+              </section>
             )}
-            {q && <Choices question={q} showCorrect={revealing} />}{" "}
+            {q && <Choices question={q} showCorrect={revealing} />}
             {revealing && q?.explanationMarkdown && (
               <div className="display-explanation">
                 <strong>正解 {q.correctChoice}</strong>
@@ -853,40 +744,29 @@ function Display({ room }: { room: RoomConnection }) {
               </div>
             )}
           </>
-        )}
+        ) : null}
       </main>
       <footer className="display-footer">
         <span>Swift Evolution Karuta Online</span>
-        <span>
-          {v.phase === "acceptingAnswers"
-            ? `${v.answerCount} / ${v.eligibleCount} ANSWERED`
-            : "知識と、ひらめきと、少しの速さ。"}
-        </span>
       </footer>
     </div>
   );
 }
-function Player({ room }: { room: RoomConnection }) {
+export function Player({ room }: { room: RoomConnection }) {
   const v = room.view!;
   const me = v.me;
   const q = v.question;
-  const resting = me?.participation === "resting";
-  const waiting = me?.participation === "waiting";
-  const answered = !!me?.answer;
+  const progress = useGameProgress(room);
+  const eligible = me?.participation === "eligible";
   const revealed = ["answerRevealed", "rankingShown"].includes(v.phase);
-  const remaining = useRemainingTime(v, room.receivedAt);
-  const closed =
-    v.phase === "answersClosed" ||
-    (v.phase === "acceptingAnswers" && remaining === 0);
   const active =
     room.connected &&
-    v.phase === "acceptingAnswers" &&
-    remaining !== null &&
-    remaining > 0 &&
-    !answered &&
-    !room.pending &&
-    !resting &&
-    !waiting;
+    progress.answering &&
+    eligible &&
+    !me?.answer &&
+    !room.pending;
+  const showChoices =
+    eligible && !["waiting", "questionVoided", "finished"].includes(v.phase);
   return (
     <>
       <Header>
@@ -903,129 +783,25 @@ function Player({ room }: { room: RoomConnection }) {
             接続を取り戻しています。画面を開いたままお待ちください。
           </p>
         )}
-        {v.phase === "finished" && v.results ? (
-          <>
-            <div className="player-message">
-              <p className="eyebrow">THANK YOU FOR PLAYING</p>
-              <h1>おつかれさまでした！</h1>
-            </div>
-            <FinalResults results={v.results} />
-          </>
-        ) : v.phase === "waiting" || waiting ? (
-          <div className="player-waiting">
-            <span className="waiting-symbol">✦</span>
-            <h1>
-              {v.phase === "waiting"
-                ? "参加できました！"
-                : "次の問題から参加します"}
-            </h1>
-            <p>
-              前のモニターを見て待とう。
-              <br />
-              画面は自動で切り替わります。
-            </p>
-            <span className="pill">{v.playerCount} 人が参加中</span>
-          </div>
-        ) : v.phase === "questionVoided" ? (
-          <div className="player-message">
-            <p className="eyebrow">QUESTION {v.questionNumber}</p>
-            <h1>この問題は無効です</h1>
-            <p>{q?.voidReason}</p>
-            <p className="muted">次の問題を待とう。</p>
-          </div>
-        ) : resting ? (
-          <div className="player-message">
-            <p className="eyebrow">QUESTION {v.questionNumber}</p>
-            <h1>
-              この問題は
-              <br />
-              お休みです。
-            </h1>
-            <p>次の問題から、また参加できます。</p>
-          </div>
-        ) : (
-          <>
-            <section
-              className={`player-message ${revealed && me?.correct ? "success" : ""}`}
-            >
-              <p className="eyebrow">
-                QUESTION {String(v.questionNumber).padStart(2, "0")} /{" "}
-                {v.totalQuestions}
-              </p>
-              <h1>
-                {revealed
-                  ? answered
-                    ? me?.correct
-                      ? "正解！"
-                      : "おしい、不正解。"
-                    : "今回は未回答でした"
-                  : room.pending
-                    ? "回答を送信中…"
-                    : answered
-                      ? "回答しました！"
-                      : closed
-                        ? "回答なし"
-                        : v.phase === "acceptingAnswers"
-                          ? "答えを選ぼう。"
-                          : v.phase === "choicesReading"
-                            ? "問題が表示されるまで・・・"
-                            : v.phase === "countdown"
-                              ? "まもなく選択肢を公開します"
-                              : "全員の接続を待っています"}
-              </h1>
-              {v.phase === "choicesReading" && (
-                <p>今のうちに選択肢を読んでおこう</p>
-              )}
-              {v.phase === "choicesPreparing" && <PreparationStatus view={v} />}
-              {closed && !answered && !room.pending && (
-                <p>時間内に回答がありませんでした。</p>
-              )}
-              {v.phaseEndsAt !== null && !closed && (
-                <Countdown view={v} receivedAt={room.receivedAt} />
-              )}{" "}
-              {revealed && me?.correct && (
-                <div className="personal-result">
-                  <strong>
-                    {me.rank}
-                    <small> 位</small>
-                  </strong>
-                  <span>
-                    正解者 {me.correctCount} 人中
-                    <br />
-                    {((me.elapsed ?? 0) / 1000).toFixed(3)} sec
-                  </span>
-                </div>
-              )}
-              {answered && !revealed && (
-                <p>
-                  回答 <strong>{me?.answer?.choice}</strong> を受け付けました。
-                  <br />
-                  前のモニターで正解発表を待とう。
-                </p>
-              )}
-              {revealed && q?.correctChoice && (
-                <p>
-                  正解は <strong>{q.correctChoice}</strong> ·{" "}
-                  {q.choices?.[q.correctChoice]}
-                </p>
-              )}
-            </section>
-            {q && (
-              <Choices
-                key={q.id}
-                question={q}
-                selected={me?.answer?.choice ?? room.pending?.choice}
-                disabled={!active}
-                onChoose={room.answer}
-                showCorrect={revealed}
-              />
-            )}{" "}
-            {active && (
-              <p className="answer-hint">
-                回答は一度だけ。押したら変更できません。
-              </p>
-            )}
-          </>
+        <GameProgress progress={progress} layout="player" />
+        <PlayerAnswerStatus room={room} progress={progress} />
+        {v.phase === "finished" && v.results && (
+          <FinalResults results={v.results} />
+        )}
+        {showChoices && q && (
+          <Choices
+            key={q.id}
+            question={q}
+            selected={me?.answer?.choice ?? room.pending?.choice}
+            disabled={!active}
+            onChoose={room.answer}
+            showCorrect={revealed}
+          />
+        )}
+        {active && (
+          <p className="answer-hint">
+            回答は一度だけ。押したら変更できません。
+          </p>
         )}
       </main>
     </>

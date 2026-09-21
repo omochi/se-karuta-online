@@ -1,33 +1,9 @@
-import {
-  useEffect,
-  useState,
-  type FormEvent,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { usePublicOrigin } from "./config";
 import Markdown from "react-markdown";
 import { QRCodeSVG } from "qrcode.react";
-import type {
-  Choice,
-  Phase,
-  RankRow,
-  Results,
-  RoomView,
-} from "../shared/types";
+import type { Choice, RankRow, Results, RoomView } from "../shared/types";
 import { CHOICES } from "../shared/types";
-export const PHASE_LABELS: Record<Phase, string> = {
-  waiting: "開場中",
-  choicesPreparing: "全員の接続を待っています",
-  choicesReading: "出題まで",
-  countdown: "選択肢の公開まで",
-  acceptingAnswers: "回答受付中",
-  answersClosed: "回答を締め切りました",
-  answerRevealed: "正解発表",
-  rankingShown: "この問題の結果",
-  questionVoided: "この問題は無効です",
-  finished: "大会終了",
-};
 export function Brand({ small = false }: { small?: boolean }) {
   const origin = usePublicOrigin();
   return (
@@ -110,89 +86,6 @@ export function PasswordForm({
         {busy ? "確認中…" : "入る"} <span>→</span>
       </button>
     </form>
-  );
-}
-export function useRemainingTime(
-  view: RoomView,
-  receivedAt: RefObject<number>,
-) {
-  const [, tick] = useState(0);
-  useEffect(() => {
-    if (view.phaseEndsAt === null) return;
-    const timer = setInterval(() => tick((n) => n + 1), 100);
-    return () => clearInterval(timer);
-  }, [view.phaseEndsAt]);
-  return view.phaseEndsAt === null
-    ? null
-    : Math.max(
-        0,
-        view.phaseEndsAt -
-          view.serverNow -
-          (performance.now() - receivedAt.current),
-      );
-}
-export function Countdown({
-  view,
-  receivedAt,
-}: {
-  view: RoomView;
-  receivedAt: RefObject<number>;
-}) {
-  const remainingMs = useRemainingTime(view, receivedAt);
-  if (remainingMs === null) return null;
-  const seconds = Math.ceil(remainingMs / 1000);
-  // 数字とバーは同じ期限・同じ残り時間から計算する。設定変更でも進行中の長さは変えない。
-  const fraction =
-    view.phaseDurationMs > 0
-      ? Math.min(1, remainingMs / view.phaseDurationMs)
-      : 0;
-  const label =
-    view.phase === "countdown"
-      ? "選択肢の公開まで"
-      : view.phase === "choicesReading"
-        ? "問題の表示まで"
-        : "回答締切まで";
-  return (
-    <div className={`countdown ${seconds <= 5 ? "final-countdown" : ""}`}>
-      <div className="countdown-heading">
-        <span className="countdown-value">{seconds}</span>
-        <span className="countdown-label">
-          {label}
-          <small>残り {seconds} 秒</small>
-        </span>
-      </div>
-      <div
-        className="countdown-bar"
-        role="progressbar"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={view.phaseDurationMs / 1000}
-        aria-valuenow={Math.min(seconds, view.phaseDurationMs / 1000)}
-        aria-valuetext={`残り ${seconds} 秒`}
-      >
-        <div
-          className="countdown-bar-fill"
-          style={{ transform: `scaleX(${fraction})` }}
-        />
-      </div>
-    </div>
-  );
-}
-export function PreparationStatus({ view }: { view: RoomView }) {
-  return (
-    <div className="preparation-status" role="status">
-      <p className="preparation-count">
-        <strong>
-          {view.readyCount} / {view.eligibleCount}
-        </strong>{" "}
-        人が準備完了
-      </p>
-      <p className="muted">
-        {view.displayReady
-          ? "共有画面も準備できています"
-          : "共有画面の準備を待っています"}
-      </p>
-    </div>
   );
 }
 export function Choices({

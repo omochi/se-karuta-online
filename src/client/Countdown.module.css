@@ -1,0 +1,28 @@
+/* 配色は背景の明暗だけで決める。画面別CSSや --accent には依存させない。 */
+.timer {
+  --timer-normal: #b83a27;
+  --timer-urgent: #f05138;
+  --timer-label: #747e80;
+  --timer-track: #8ca39a33;
+  --timer-current: var(--timer-normal);
+}
+.timer[data-color-scheme="dark"] {
+  --timer-normal: #ffcfb6;
+  --timer-urgent: #ebae76;
+  --timer-label: #c5b3a8;
+}
+.timer[data-urgent="true"] {
+  --timer-current: var(--timer-urgent);
+}
+.value {
+  color: var(--timer-current);
+}
+.label {
+  color: var(--timer-label);
+}
+.track {
+  background: var(--timer-track);
+}
+.fill {
+  background: var(--timer-current);
+}
