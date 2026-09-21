@@ -62,10 +62,10 @@
         "A": "SE-0249 · Key Path Expressions as Functions",
         "B": "SE-0252 · Key Path Member Lookup",
         "C": "SE-0161 · Smart KeyPaths: Better Key-Value Coding for Swift",
-        "D": "SE-0253 · Callable values of user-defined nominal types"
+        "D": "SE-0218 · Introduce compactMapValues to Dictionary"
       },
       "correctChoice": "A",
-      "explanationMarkdown": "正解は **SE-0249 · Key Path Expressions as Functions**。関数が求められる場所でキーパスのリテラル式を使うと、そのプロパティを取り出す関数として扱えるようになりました。ここでは `\\.name` が `(User) -> String` として使われ、`users.map { $0.name }` と同じ結果になります。\n\nSE-0161 はキーパス自体の導入です。プロパティへの参照を表せることと、map の関数引数として直接使えることは別です。SE-0252 はキーパスを使った dynamic member lookup、SE-0253 は callAsFunction により自作の値を関数のように呼び出す仕組みです。このコードでは User のインスタンスを呼び出しているのではなく、キーパスの式を変換用の関数として渡しています。\n\n[Swift Digest：SE-0249の日本語要約](https://swiftdigest.koherent.org/proposals/se-0249.html)"
+      "explanationMarkdown": "正解は **SE-0249 · Key Path Expressions as Functions**。関数が求められる場所でキーパスのリテラル式を使うと、そのプロパティを取り出す関数として扱えるようになりました。ここでは `\\.name` が `(User) -> String` として使われ、`users.map { $0.name }` と同じ結果になります。\n\nSE-0161 はキーパス自体の導入です。プロパティへの参照を表せることと、map の関数引数として直接使えることは別です。SE-0252 はキーパスを使った dynamic member lookup、SE-0218 は Dictionary の compactMapValues の追加です。このコードで問うのは変換用 API の追加ではなく、キーパスの式を map の関数引数として直接渡せる仕組みです。\n\n[Swift Digest：SE-0249の日本語要約](https://swiftdigest.koherent.org/proposals/se-0249.html)"
     },
     {
       "id": "open-existential",
