@@ -75,6 +75,7 @@ npx wrangler deploy --config dist/se_karuta_online/wrangler.json
 - 通常表示は左にスライド、右に説明文を配置し、長い説明文だけペイン内でスクロールできます。スマートフォンの縦画面では上下に配置します。
 - 左右キー、Page Up / Page Down、画面上のボタンで移動できます。`/proposal/#3` のように各スライドへ直接リンクできます。
 - スクリーンショットを押すと拡大します。画面と成績はローカルのデモデータです。
+- 問題が写る画面は、公開用の [`data/questions/tutorial.json`](data/questions/tutorial.json) の1問だけで撮影しています。画像を更新するときもこの問題を使い、本番用の問題・選択肢・正解が資料に出ないようにします。
 
 実体は [`public/proposal/`](public/proposal/) の静的なHTML / CSS / JavaScriptです。Viteがそのままビルド出力へコピーし、本体と同じWorkersのStatic Assetsで配信します。Reactのルートには組み込まず、通常のリンクで移動します。GitHub Pages用の公開ワークフローはありません。
 
