@@ -1,0 +1,174 @@
+/* 出題・正解発表では縦横比にかかわらず、表示領域内で各段の高さを割り当てる。 */
+.display-page.display-page-question {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.display-page.display-page-question .display-header {
+  flex-shrink: 0;
+  padding: 10px 3%;
+  gap: 20px;
+}
+.display-page-question .brand.small {
+  font-size: 18px;
+  gap: 9px;
+}
+.display-page-question .brand.small .brand-mark {
+  width: 26px;
+  height: 30px;
+  font-size: 27px;
+}
+.display-page-question .brand small,
+.display-page-question .display-footer {
+  display: none;
+}
+.display-page-question .display-event {
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.display-page.display-page-question .display-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+  padding: 12px 3% 18px;
+  gap: 12px;
+}
+.display-page.display-page-question .display-content.phase-answerRevealed {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+.display-page.display-page-question .game-progress-display {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 0;
+}
+.display-page.display-page-question
+  .game-progress-display
+  .game-progress-message {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.display-page.display-page-question .game-progress-description {
+  display: none;
+}
+.display-page.display-page-question .game-progress-display h1 {
+  font-size: 22px;
+  margin: 0;
+}
+.display-page.display-page-question .game-progress-display p {
+  font-size: 12px;
+  margin: 0;
+}
+.display-page.display-page-question .game-progress-display .eyebrow {
+  font-size: 11px;
+}
+.display-page.display-page-question .countdown {
+  width: 220px;
+  max-width: 40%;
+  margin: 0;
+}
+.display-page.display-page-question .countdown-heading {
+  justify-content: flex-end;
+  gap: 10px;
+}
+.display-page.display-page-question .game-progress-display .countdown-value {
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 3ch;
+  text-align: right;
+}
+.display-page.display-page-question .countdown-label {
+  font-size: 11px;
+}
+.display-page-question .countdown-label small {
+  display: none;
+}
+.display-page.display-page-question .countdown-bar {
+  height: 5px;
+  margin-top: 6px;
+}
+.display-page.display-page-question .choices {
+  margin: 0;
+  gap: 8px;
+}
+.display-page.display-page-question .choice {
+  min-height: 52px;
+  padding: 9px 14px;
+  gap: 10px;
+}
+.display-page.display-page-question .choice-letter {
+  width: 24px;
+  height: 28px;
+  font-size: 19px;
+}
+.display-page.display-page-question .choice-text {
+  font-size: clamp(14px, 1.2vw, 18px);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.display-page.display-page-question .display-explanation {
+  min-height: 0;
+  max-height: 20dvh;
+  overflow: auto;
+  padding-top: 10px;
+}
+.display-page.display-page-question .fitted-question {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.fitted-question:not([data-fit-ready="true"]) .question-fit-content {
+  visibility: hidden;
+}
+/* 極端に大きな入力でも黙って切り捨てない。ビューワには収まらないことを返す。 */
+.display-page.display-page-question .fitted-question[data-fit-overflow="true"] {
+  overflow: auto;
+}
+.question-fit-content {
+  display: flow-root;
+  width: 100%;
+  /* font-sizeは同じ要素を計測しながら設定する。transformによる見かけだけの縮小はしない。 */
+}
+.display-page-question .fitted-question .markdown {
+  font-size: inherit;
+  line-height: 1.45;
+}
+.display-page-question .fitted-question .markdown p {
+  line-height: 1.45;
+  margin: 0 0 0.5em;
+}
+.display-page-question .fitted-question .markdown pre {
+  font-size: inherit;
+  line-height: 1.35;
+  padding: 0.6em 0.8em;
+  margin: 0.55em 0;
+  white-space: pre;
+  overflow: visible;
+}
+.display-page-question .fitted-question .markdown :is(h1, h2, h3) {
+  font-size: 1.1em;
+  margin: 0 0 0.5em;
+}
+.display-page-question .fitted-question .markdown :is(ul, ol) {
+  margin: 0 0 0.5em;
+  padding-left: 1.6em;
+}
+.display-page-question .fitted-question .markdown blockquote {
+  margin: 0 0 0.5em;
+  padding-left: 1em;
+}
+.display-page-question .fitted-question .markdown img {
+  max-width: 100%;
+  height: auto;
+}
+.display-page-question .fitted-question .markdown > :last-child {
+  margin-bottom: 0;
+}

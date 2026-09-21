@@ -1,5 +1,6 @@
 import type { Question, RoomView } from "../shared/types";
 import { eventUrls } from "../shared/urls";
+import type { QuestionFit } from "./fit-question";
 
 export type DisplayPreviewPhase =
   "choicesReading" | "acceptingAnswers" | "answerRevealed";
@@ -12,9 +13,17 @@ export interface DisplayPreviewSnapshot {
   phase: DisplayPreviewPhase;
 }
 
+export interface DisplayPreviewFit extends QuestionFit {
+  questionId: string;
+  phase: DisplayPreviewPhase;
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
 export type DisplayPreviewMessage =
   | { type: "display-preview-ready" }
   | { type: "display-preview-closed" }
+  | { type: "display-preview-fit"; fit: DisplayPreviewFit }
   | { type: "display-preview-state"; snapshot: DisplayPreviewSnapshot };
 
 export function createDisplayPreviewView(

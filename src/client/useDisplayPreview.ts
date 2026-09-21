@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   DisplayPreviewMessage,
   DisplayPreviewSnapshot,
+  DisplayPreviewFit,
 } from "./display-preview";
 
 export function useDisplayPreview(snapshot: DisplayPreviewSnapshot | null) {
@@ -13,9 +14,11 @@ export function useDisplayPreview(snapshot: DisplayPreviewSnapshot | null) {
   );
   const channel = useRef<BroadcastChannel | null>(null);
   const latest = useRef(snapshot);
+  const [fit, setFit] = useState<DisplayPreviewFit | null>(null);
 
   useEffect(() => {
     latest.current = snapshot;
+    setFit(null);
     if (snapshot)
       channel.current?.postMessage({
         type: "display-preview-state",
@@ -36,6 +39,12 @@ export function useDisplayPreview(snapshot: DisplayPreviewSnapshot | null) {
     // 普通のリンクから開いた画面へ、準備完了後に最新の編集状態を送る。
     connection.onmessage = (event: MessageEvent<DisplayPreviewMessage>) => {
       if (event.data?.type === "display-preview-ready") send();
+      else if (
+        event.data?.type === "display-preview-fit" &&
+        event.data.fit.questionId === latest.current?.question.id &&
+        event.data.fit.phase === latest.current?.phase
+      )
+        setFit(event.data.fit);
     };
     const disconnected = () =>
       connection.postMessage({
@@ -52,5 +61,5 @@ export function useDisplayPreview(snapshot: DisplayPreviewSnapshot | null) {
     };
   }, [id]);
 
-  return `/questions/display-preview#${id}`;
+  return { url: `/questions/display-preview#${id}`, fit };
 }

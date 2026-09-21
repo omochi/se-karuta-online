@@ -53,6 +53,14 @@
   margin: 0;
   font-size: 12px;
 }
+.viewer-display-toolbar .viewer-fit-report {
+  color: var(--accent);
+}
+.viewer-display-toolbar .viewer-fit-small {
+  padding: 10px 12px;
+  background: #fff0e9;
+  border-radius: 6px;
+}
 .question-viewer .viewer-source {
   margin: 20px 0 28px;
 }

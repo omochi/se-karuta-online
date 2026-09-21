@@ -11,7 +11,7 @@
         "D": "SE-0157 · Recursive Protocol Constraints"
       },
       "correctChoice": "C",
-      "explanationMarkdown": "正解は **SE-0143 · Conditional conformances**。要素が Equatable なら Array も Equatable に適合できるようになり、ジェネリック関数や入れ子の配列にも比較を組み合わせられるようになりました。\n\n`==` という演算子が使えることと、その型が Equatable に適合していることは別です。SE-0185 は適合に必要な実装の自動合成、SE-0206 は Hashable の設計改善、SE-0157 は再帰的なプロトコル制約を扱います。\n\n[Proposal 原文・Motivation](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0143-conditional-conformances.md#motivation)"
+      "explanationMarkdown": "正解は **SE-0143 · Conditional conformances**。要素が Equatable なら Array も Equatable に適合できるようになり、ジェネリック関数や入れ子の配列にも比較を組み合わせられるようになりました。\n\n`==` という演算子が使えることと、その型が Equatable に適合していることは別です。SE-0185 は適合に必要な実装の自動合成、SE-0206 は Hashable の設計改善、SE-0157 は再帰的なプロトコル制約を扱います。\n\n[Swift Digest：SE-0143の日本語要約](https://swiftdigest.koherent.org/proposals/se-0143.html)"
     },
     {
       "id": "draft-01-open-existential",
@@ -23,7 +23,7 @@
         "D": "SE-0346 · Lightweight same-type requirements for primary associated types"
       },
       "correctChoice": "B",
-      "explanationMarkdown": "正解は **SE-0352 · Implicitly Opened Existentials**。呼び出し時に existential の中身の型を開き、その型をジェネリックパラメーター S に対応させます。`any Sequence` 自体が Sequence に適合したわけではありません。\n\nSE-0309 は関連型などを持つプロトコルも existential として扱えるようにする提案、SE-0335 は any の明示的な表記、SE-0346 は主要関連型に対する同一型制約の簡潔な表記です。この問題では showCount への引き渡しが決め手です。\n\n[Proposal 原文・Introduction](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0352-implicit-open-existentials.md#introduction)"
+      "explanationMarkdown": "正解は **SE-0352 · Implicitly Opened Existentials**。呼び出し時に existential の中身の型を開き、その型をジェネリックパラメーター S に対応させます。`any Sequence` 自体が Sequence に適合したわけではありません。\n\nSE-0309 は関連型などを持つプロトコルも existential として扱えるようにする提案、SE-0335 は any の明示的な表記、SE-0346 は主要関連型に対する同一型制約の簡潔な表記です。この問題では showCount への引き渡しが決め手です。\n\n[Swift Digest：SE-0352の日本語要約](https://swiftdigest.koherent.org/proposals/se-0352.html)"
     },
     {
       "id": "draft-01-region-isolation",
@@ -35,7 +35,7 @@
         "D": "SE-0414 · Region based Isolation"
       },
       "correctChoice": "D",
-      "explanationMarkdown": "正解は **SE-0414 · Region based Isolation**。値と、その値を参照しうる別の値との関係を解析し、隔離境界を越えて渡してもデータ競合が起こらないと確認できれば、非 Sendable な値も引き渡せます。\n\nこの例では新しく作った draft が他と共有されておらず、渡した後に呼び出し元で使われません。`await inbox.add(draft)` の後に `draft.text = \"Changed\"` を追加すると、競合しうるアクセスとして拒否されます。\n\nSE-0302 は Sendable による安全性の基礎、SE-0306 は actor を導入しました。SE-0430 はこの解析を土台に sending を引数・戻り値の契約として明示する提案です。この例の引き渡しには sending の指定は不要です。\n\n[Proposal 原文・Motivation](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0414-region-based-isolation.md#motivation)"
+      "explanationMarkdown": "正解は **SE-0414 · Region based Isolation**。値と、その値を参照しうる別の値との関係を解析し、隔離境界を越えて渡してもデータ競合が起こらないと確認できれば、非 Sendable な値も引き渡せます。\n\nこの例では新しく作った draft が他と共有されておらず、渡した後に呼び出し元で使われません。`await inbox.add(draft)` の後に `draft.text = \"Changed\"` を追加すると、競合しうるアクセスとして拒否されます。\n\nSE-0302 は Sendable による安全性の基礎、SE-0306 は actor を導入しました。SE-0430 はこの解析を土台に sending を引数・戻り値の契約として明示する提案です。この例の引き渡しには sending の指定は不要です。\n\n[Swift Digest：SE-0414の日本語要約](https://swiftdigest.koherent.org/proposals/se-0414.html)"
     }
   ]
 }

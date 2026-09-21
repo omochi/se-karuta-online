@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CHOICES, type Question } from "../shared/types";
 import { validateQuestions } from "../shared/questions";
 import {
@@ -55,20 +55,23 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
   const [displayPhase, setDisplayPhase] =
     useState<DisplayPreviewPhase>("acceptingAnswers");
   const q = document?.questions[selected];
-  const displayPreviewUrl = useDisplayPreview(
-    document && q
-      ? {
-          name:
-            typeof document.metadata?.name === "string"
-              ? document.metadata.name
-              : source,
-          question: q,
-          questionNumber: selected + 1,
-          totalQuestions: document.questions.length,
-          phase: displayPhase,
-        }
-      : null,
+  const displaySnapshot = useMemo(
+    () =>
+      document && q
+        ? {
+            name:
+              typeof document.metadata?.name === "string"
+                ? document.metadata.name
+                : source,
+            question: q,
+            questionNumber: selected + 1,
+            totalQuestions: document.questions.length,
+            phase: displayPhase,
+          }
+        : null,
+    [document, q, selected, source, displayPhase],
   );
+  const displayPreview = useDisplayPreview(displaySnapshot);
   const blocker = useBlocker(dirty);
   useEffect(() => {
     if (!dirty) return;
@@ -388,7 +391,7 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
                     <div className="viewer-display-toolbar">
                       <a
                         className="secondary"
-                        href={displayPreviewUrl}
+                        href={displayPreview.url}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -412,6 +415,22 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
                       <p className="muted">
                         選択・編集を自動で反映。タブを別ウィンドウに移して、大きさを変えて確認できます。
                       </p>
+                      {displayPreview.fit && (
+                        <p
+                          className={`viewer-fit-report ${displayPreview.fit.readable ? "" : "viewer-fit-small"}`}
+                          role="status"
+                        >
+                          直近のプレビュー：{displayPreview.fit.viewportWidth} ×{" "}
+                          {displayPreview.fit.viewportHeight}
+                          {" · 本文 "}
+                          {displayPreview.fit.fontSize}px
+                          {displayPreview.fit.readable
+                            ? " · 全文が収まっています"
+                            : displayPreview.fit.fits
+                              ? " · 18px未満です。問題を短くするか、大きな表示領域で確認してください。"
+                              : " · 全文が収まりません。問題の分量・長い行を調整してください。"}
+                        </p>
+                      )}
                     </div>
                     <div className="viewer-toolbar">
                       <div>

@@ -10,6 +10,9 @@ import {
   Ranking,
 } from "./components";
 import { GameProgress } from "./GameProgress";
+import { FittedQuestion } from "./FittedQuestion";
+import type { QuestionFit } from "./fit-question";
+import "./display-question.css";
 
 // 本番と問題ビューワの別窓で、DOM構造・CSS・進行表示を一致させる。
 // 通信と時計の更新は呼び出し元が担当する。
@@ -17,15 +20,22 @@ export function DisplayScreen({
   view: v,
   progress,
   status,
+  onQuestionFit,
 }: {
   view: RoomView;
   progress: GameProgressState;
   status: ReactNode;
+  onQuestionFit?: (fit: QuestionFit) => void;
 }) {
   const q = v.question;
   const revealing = ["answerRevealed", "rankingShown"].includes(v.phase);
+  const fitQuestion = ["acceptingAnswers", "answerRevealed"].includes(
+    progress.phase,
+  );
   return (
-    <div className="display-page">
+    <div
+      className={`display-page ${fitQuestion ? "display-page-question" : ""}`}
+    >
       <header className="display-header">
         <Brand small />
         <span className="display-event">{v.name}</span>
@@ -49,11 +59,20 @@ export function DisplayScreen({
           </div>
         ) : v.phase !== "questionVoided" && v.phase !== "finished" ? (
           <>
-            {!progress.closed && q?.bodyMarkdown && (
-              <section className="question-body" key={q.id}>
-                <MarkdownBody text={q.bodyMarkdown} />
-              </section>
-            )}
+            {!progress.closed &&
+              q?.bodyMarkdown !== undefined &&
+              (fitQuestion ? (
+                <FittedQuestion
+                  key={q.id}
+                  text={q.bodyMarkdown}
+                  layoutKey={progress.phase}
+                  onFit={onQuestionFit}
+                />
+              ) : (
+                <section className="question-body" key={q.id}>
+                  <MarkdownBody text={q.bodyMarkdown} />
+                </section>
+              ))}
             {q && <Choices question={q} showCorrect={revealing} />}
             {revealing && q?.explanationMarkdown && (
               <div className="display-explanation">
