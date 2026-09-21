@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
+    "deploy": "node scripts/deploy.mjs",
     "typecheck": "tsc --noEmit",
     "setup": "node scripts/setup.mjs",
     "db:migrate": "wrangler d1 migrations apply DB --local",

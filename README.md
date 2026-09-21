@@ -52,16 +52,17 @@ cp wrangler.jsonc wrangler.production.jsonc
 
 `wrangler.production.jsonc` は Git 管理外です。Account ID・DB ID・公開URLを本番設定にまとめ、ローカル開発用の `wrangler.jsonc` には個人の Account ID を書きません。以前 `.env` に設定した `CLOUDFLARE_ACCOUNT_ID` は削除できます。ログイントークンは Wrangler が管理します。アプリのローカル設定（`PUBLIC_ORIGIN` など）は、引き続き `.dev.vars` に設定します。
 
-本番の D1 操作やシークレット登録では、`--config wrangler.production.jsonc` を指定します。初回デプロイには本番 D1 の作成・マイグレーション適用と、`ADMIN_PASSWORD`・`SESSION_SECRET` の本番シークレット登録が必要です。
+本番の D1 操作やシークレット登録では、`--config wrangler.production.jsonc` を指定します。初回デプロイには本番 D1 の作成と、`ADMIN_PASSWORD`・`SESSION_SECRET` の本番シークレット登録が必要です。マイグレーションは下記のデプロイコマンドで適用します。
 
-本番設定を指定してビルドし、Vite が生成した設定でデプロイします。
+次のコマンドで、本番設定を指定したビルド → 本番D1の未適用マイグレーションの自動適用 → Vite が生成した設定でのデプロイを順に実行します。未適用のマイグレーションがなければそのまま進み、ビルドやマイグレーションに失敗した場合はデプロイしません。
 
 ```sh
-CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH=wrangler.production.jsonc npm run build
-npx wrangler deploy --config dist/se_karuta_online/wrangler.json
+npm run deploy
 ```
 
-出力先の `se_karuta_online` は Worker 名のハイフンをアンダースコアに置き換えた名前です。`name` を変更した場合は、デプロイ時のパスも合わせてください。本番設定を変更したときは、デプロイ前に再ビルドします。
+公開せずにビルドとデプロイ設定を確認する場合は、`npm run deploy -- --dry-run` を使います。この場合、マイグレーションの適用はスキップし、本番DBは変更しません。本番設定の指定はビルド時だけ有効で、通常の `npm run dev` には影響しません。
+
+出力先の `se_karuta_online` は Worker 名のハイフンをアンダースコアに置き換えた名前です。`name` を変更した場合は、`scripts/deploy.mjs` の `outputConfig` も合わせてください。
 
 ## 大会一覧
 
