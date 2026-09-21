@@ -6,6 +6,7 @@ dist/
 !.dev.vars.example
 .env
 .env.*
+!.env.example
 .DS_Store
 coverage/
 test-results/

@@ -28,6 +28,29 @@ npm run seed
 
 作成した大会の Control / Display / Player の URL が表示されます。試遊大会の Display 用パスワードは `display-karuta`。コマンドを再実行すると別の大会を作成します。管理画面から独自の問題 JSON を登録することもできます。
 
+## Cloudflare の認証とデプロイ先アカウント
+
+手動デプロイの認証は Wrangler のブラウザーログインを使います。
+
+```sh
+npx wrangler login
+npx wrangler whoami
+```
+
+複数アカウントがある場合は、`whoami` に表示されるデプロイ先の Account ID を、プロジェクトルートの `.env` に設定します。初回はテンプレートをコピーしてください。既存の `.env` がある場合はコピーせず、そのファイルに設定を追加します。
+
+```sh
+cp .env.example .env
+```
+
+```dotenv
+CLOUDFLARE_ACCOUNT_ID=デプロイ先のAccount ID
+```
+
+Wrangler は `.env` を読み込んで操作先アカウントを選びます。`.env` は Git 管理外、`.env.example` は共有用です。フォークした人が自分のアカウントを指定できるよう、`wrangler.jsonc` には `account_id` を書きません。ログイントークンは Wrangler が管理するため、`.env` への記入は不要です。アプリのローカル設定（`PUBLIC_ORIGIN` など）は、引き続き `.dev.vars` に設定します。
+
+これは認証と操作先の設定です。現在の `wrangler.jsonc` はローカル用なので、初回デプロイには本番 D1 の作成・DB ID の設定・マイグレーション適用、公開URLの設定、`ADMIN_PASSWORD` と `SESSION_SECRET` の本番シークレット登録も必要です。
+
 ## このゲームの提案資料
 
 トップページ下部の「このゲームの提案資料」から `/proposal/` を開けます。ローカルでは `npm run dev` の起動後、[http://localhost:5218/proposal/](http://localhost:5218/proposal/) でも確認できます。ログインは不要です。
