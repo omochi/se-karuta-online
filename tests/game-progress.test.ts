@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MemoryRouter } from "react-router";
 import { Control, Display, Player } from "../src/client/App";
 import { getGameProgress } from "../src/client/phase-presentation";
 import type { RoomConnection } from "../src/client/useRoom";
@@ -70,7 +71,9 @@ function fixture(phase: Phase): RoomConnection {
 }
 const screens = [Player, Display, Control];
 const render = (screen: typeof Player, room: RoomConnection) =>
-  renderToStaticMarkup(createElement(screen, { room }));
+  renderToStaticMarkup(
+    createElement(MemoryRouter, null, createElement(screen, { room })),
+  );
 const progressMarkup = (html: string) =>
   html
     .match(/<section class="game-progress .*?<\/section>/s)![0]

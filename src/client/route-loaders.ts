@@ -1,0 +1,143 @@
+import {
+  redirectDocument,
+  type LoaderFunctionArgs,
+  type DataRouter,
+} from "react-router";
+import type { EventUrls } from "../shared/urls";
+import type { Role, Question } from "../shared/types";
+import { api } from "./api";
+import { RoomSession } from "./RoomSession";
+export interface EventSummary {
+  id: string;
+  name: string;
+  created_at: number;
+  urls: EventUrls;
+}
+export interface HomeData {
+  events: EventSummary[] | null;
+}
+export interface ViewerData extends HomeData {
+  eventId: string;
+  document: { name: string; questions: Question[] } | null;
+}
+export interface GameData {
+  id: string;
+  role: Role;
+  name: string;
+  session: RoomSession | null;
+}
+export function createRouteLoaders() {
+  let config: { publicOrigin: string } | undefined;
+  const sessions = new Set<RoomSession>();
+  async function configuration({ request }: LoaderFunctionArgs) {
+    const loaded =
+      config ??
+      (await api<{ publicOrigin: string }>(
+        "/api/config",
+        undefined,
+        request.signal,
+      ));
+    request.signal.throwIfAborted();
+    config = loaded;
+    const url = new URL(request.url);
+    if (url.origin !== loaded.publicOrigin) {
+      // CookieとOriginの検証を統一するため、別名のアクセスだけは文書ごと移動する。
+      throw redirectDocument(
+        loaded.publicOrigin + url.pathname + url.search + url.hash,
+      );
+    }
+    return loaded;
+  }
+  async function home(args: LoaderFunctionArgs): Promise<HomeData> {
+    await configuration(args);
+    try {
+      return await api<HomeData>("/api/events", undefined, args.request.signal);
+    } catch (error) {
+      if ((error as { status?: number }).status === 401)
+        return { events: null };
+      throw error;
+    }
+  }
+  async function viewer(args: LoaderFunctionArgs): Promise<ViewerData> {
+    const data = await home(args);
+    const requested = new URL(args.request.url).searchParams.get("event") ?? "";
+    const document =
+      data.events && requested
+        ? await api<{ name: string; questions: Question[] }>(
+            `/api/e/${encodeURIComponent(requested)}/questions`,
+            undefined,
+            args.request.signal,
+          )
+        : null;
+    return {
+      ...data,
+      eventId: requested || data.events?.[0]?.id || "",
+      document,
+    };
+  }
+  const game =
+    (role: Role) =>
+    async (args: LoaderFunctionArgs): Promise<GameData> => {
+      const { publicOrigin } = await configuration(args);
+      const id = args.params.id!;
+      const { name } = await api<{ name: string }>(
+        `/api/e/${id}`,
+        undefined,
+        args.request.signal,
+      );
+      try {
+        await api(
+          `/api/e/${id}/session?role=${role}`,
+          undefined,
+          args.request.signal,
+        );
+      } catch (error) {
+        if ((error as { status?: number }).status === 401)
+          return { id, role, name, session: null };
+        throw error;
+      }
+      args.request.signal.throwIfAborted();
+      const session = new RoomSession(id, role, publicOrigin);
+      sessions.add(session);
+      const abort = () => session.dispose(args.request.signal.reason);
+      args.request.signal.addEventListener("abort", abort, { once: true });
+      try {
+        await session.ready;
+        args.request.signal.throwIfAborted();
+        return { id, role, name, session };
+      } catch (error) {
+        session.dispose();
+        sessions.delete(session);
+        if ((error as { status?: number }).status === 401)
+          return { id, role, name, session: null };
+        throw error;
+      } finally {
+        args.request.signal.removeEventListener("abort", abort);
+      }
+    };
+  function retain(active?: RoomSession) {
+    for (const session of sessions)
+      if (session !== active) {
+        session.dispose();
+        sessions.delete(session);
+      }
+  }
+  return { configuration, home, viewer, game, retain };
+}
+
+export function bindRoomSessions(
+  router: DataRouter,
+  loaders: ReturnType<typeof createRouteLoaders>,
+) {
+  // 次のloaderが完了するまでは現在の接続を維持する。
+  // 中断された先読みはrequest.signal、遷移完了後の旧接続はここで閉じる。
+  return router.subscribe((state) => {
+    if (state.navigation.state !== "idle" || state.revalidation !== "idle")
+      return;
+    const game = state.matches
+      .map((match) => state.loaderData[match.route.id])
+      .find((data) => data && typeof data === "object" && "session" in data) as
+      GameData | undefined;
+    loaders.retain(state.errors ? undefined : (game?.session ?? undefined));
+  });
+}

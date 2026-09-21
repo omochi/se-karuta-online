@@ -6,7 +6,7 @@ React + Cloudflare Workers / Durable Objects / D1。現在はローカルで試�
 
 ## ローカル起動
 
-Node.js 22.12 以上を用意し、プロジェクトのルートで実行します。
+Node.js 22.22 以上を用意し、プロジェクトのルートで実行します。
 
 ```sh
 npm ci

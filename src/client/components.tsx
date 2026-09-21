@@ -1,13 +1,12 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import { usePublicOrigin } from "./config";
+import { Link } from "react-router";
 import Markdown from "react-markdown";
 import { QRCodeSVG } from "qrcode.react";
 import type { Choice, RankRow, Results, RoomView } from "../shared/types";
 import { CHOICES } from "../shared/types";
 export function Brand({ small = false }: { small?: boolean }) {
-  const origin = usePublicOrigin();
   return (
-    <a className={`brand ${small ? "small" : ""}`} href={`${origin}/`}>
+    <Link className={`brand ${small ? "small" : ""}`} to="/">
       <span className="brand-mark" aria-hidden="true">
         ≋
       </span>
@@ -15,7 +14,7 @@ export function Brand({ small = false }: { small?: boolean }) {
         SE <strong>Karuta</strong>
         <small>SWIFT EVOLUTION KARUTA ONLINE</small>
       </span>
-    </a>
+    </Link>
   );
 }
 export function Header({ children }: { children?: ReactNode }) {

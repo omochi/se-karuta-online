@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import QuestionViewer from "./QuestionViewer";
-import { usePublicOrigin } from "./config";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useLoaderData, useNavigate, useRevalidator } from "react-router";
+import type { HomeData, GameData } from "./route-loaders";
+import type { RoomSession } from "./RoomSession";
 import type { EventUrls } from "../shared/urls";
-import type { Role, TimingSettings } from "../shared/types";
-import { api, useRoom, type RoomConnection } from "./useRoom";
+import type { TimingSettings } from "../shared/types";
+import { useRoom, type RoomConnection } from "./useRoom";
+import { api } from "./api";
 import {
   Brand,
   Choices,
@@ -19,14 +21,10 @@ import {
 import { GameProgress } from "./GameProgress";
 import { useGameProgress } from "./useGameProgress";
 import { PlayerAnswerStatus } from "./PlayerAnswerStatus";
-function Home() {
-  const origin = usePublicOrigin();
-  const [events, setEvents] = useState<Array<{
-    id: string;
-    name: string;
-    created_at: number;
-    urls: EventUrls;
-  }> | null>(null);
+export function Home() {
+  const { events } = useLoaderData<HomeData>();
+  const navigate = useNavigate();
+  const revalidator = useRevalidator();
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -34,22 +32,6 @@ function Home() {
   const [password, setPassword] = useState("");
   const [questions, setQuestions] = useState<unknown>(null);
   const [fileName, setFileName] = useState("");
-  const reload = () =>
-    api<{
-      events: Array<{
-        id: string;
-        name: string;
-        created_at: number;
-        urls: EventUrls;
-      }>;
-    }>("/api/events")
-      .then((data) => setEvents(data.events))
-      .catch((e) => {
-        if (e.status !== 401) setError(e.message);
-      });
-  useEffect(() => {
-    void reload();
-  }, []);
   async function create(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -60,7 +42,7 @@ function Home() {
         displayPassword: password,
         questions,
       });
-      location.href = data.urls.control;
+      await navigate(new URL(data.urls.control).pathname);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -70,9 +52,9 @@ function Home() {
   return (
     <>
       <Header>
-        <a className="viewer-home-link" href={`${origin}/questions`}>
+        <Link className="viewer-home-link" to="/questions">
           問題ビューワ →
-        </a>
+        </Link>
       </Header>
       <main className="home">
         <section className="hero">
@@ -110,7 +92,7 @@ function Home() {
                   try {
                     await api("/api/admin/login", { password });
                     setError("");
-                    await reload();
+                    await revalidator.revalidate();
                   } catch (e) {
                     setError((e as Error).message);
                   }
@@ -188,10 +170,10 @@ function Home() {
               ) : (
                 <div className="event-list">
                   {events.map((event) => (
-                    <a
+                    <Link
                       className="event-card"
                       key={event.id}
-                      href={event.urls.control}
+                      to={new URL(event.urls.control).pathname}
                     >
                       <div>
                         <small>
@@ -202,7 +184,7 @@ function Home() {
                         <h3>{event.name}</h3>
                       </div>
                       <span>進行画面へ →</span>
-                    </a>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -214,40 +196,41 @@ function Home() {
     </>
   );
 }
-function GamePage({ id, role }: { id: string; role: Role }) {
-  const [granted, setGranted] = useState(false);
-  const [checking, setChecking] = useState(true);
+export function GamePage() {
+  const data = useLoaderData<GameData>();
+  return data.session ? (
+    <ConnectedGame session={data.session} />
+  ) : (
+    <GameGate key={`${data.id}:${data.role}`} data={data} />
+  );
+}
+function ConnectedGame({ session }: { session: RoomSession }) {
+  const room = useRoom(session);
+  const revalidator = useRevalidator();
+  const unauthorized = session.getSnapshot().unauthorized;
+  useEffect(() => {
+    if (unauthorized) void revalidator.revalidate();
+  }, [unauthorized, revalidator.revalidate]);
+  return session.role === "control" ? (
+    <Control room={room} />
+  ) : session.role === "display" ? (
+    <Display room={room} />
+  ) : (
+    <Player room={room} />
+  );
+}
+function GameGate({ data }: { data: GameData }) {
+  const { id, role, name: eventName } = data;
+  const revalidator = useRevalidator();
   const [name, setName] = useState("");
-  const [eventName, setEventName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const unauthorized = useCallback(() => setGranted(false), []);
-  const room = useRoom(id, role, granted, unauthorized);
-  useEffect(() => {
-    let live = true;
-    (async () => {
-      try {
-        const info = await api<{ name: string }>(`/api/e/${id}`);
-        if (live) setEventName(info.name);
-        await api(`/api/e/${id}/session?role=${role}`);
-        if (live) setGranted(true);
-      } catch (e) {
-        if (live && (e as { status?: number }).status !== 401)
-          setError((e as Error).message);
-      } finally {
-        if (live) setChecking(false);
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, [id, role]);
   async function join(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
       await api(`/api/e/${id}/join`, { name });
-      setGranted(true);
+      await revalidator.revalidate();
       setError("");
     } catch (e) {
       setError((e as Error).message);
@@ -255,89 +238,64 @@ function GamePage({ id, role }: { id: string; role: Role }) {
       setBusy(false);
     }
   }
-  if (checking)
-    return (
-      <div className="loading">
-        <Brand />
-        <p>大会を読み込んでいます…</p>
-      </div>
-    );
-  if (!granted)
-    return (
-      <>
-        <Header />
-        <main className="gate">
-          <p className="eyebrow">
-            {role === "player"
-              ? "READY TO PLAY?"
-              : role === "display"
-                ? "SHARED DISPLAY"
-                : "HOST CONTROL"}
-          </p>
-          <h1>{eventName || "SE Karuta"}</h1>
-          {role === "player" ? (
-            <>
-              <p className="muted">
-                名前を入れたら、前のモニターを見て待とう。
-              </p>
-              <form onSubmit={join} className="stack">
-                <label>
-                  みんなに表示する名前
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    maxLength={20}
-                    placeholder="なまえ"
-                    autoComplete="nickname"
-                    required
-                    autoFocus
-                  />
-                </label>
-                <ErrorBox message={error} />
-                <button className="primary" disabled={busy}>
-                  {busy ? "参加中…" : "参加する →"}
-                </button>
-              </form>
-            </>
-          ) : (
-            <PasswordForm
-              label={
-                role === "control" ? "管理用パスワード" : "Display 用パスワード"
+  return (
+    <>
+      <Header />
+      <main className="gate">
+        <p className="eyebrow">
+          {role === "player"
+            ? "READY TO PLAY?"
+            : role === "display"
+              ? "SHARED DISPLAY"
+              : "HOST CONTROL"}
+        </p>
+        <h1>{eventName || "SE Karuta"}</h1>
+        {role === "player" ? (
+          <>
+            <p className="muted">名前を入れたら、前のモニターを見て待とう。</p>
+            <form onSubmit={join} className="stack">
+              <label>
+                みんなに表示する名前
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={20}
+                  placeholder="なまえ"
+                  autoComplete="nickname"
+                  required
+                  autoFocus
+                />
+              </label>
+              <ErrorBox message={error} />
+              <button className="primary" disabled={busy}>
+                {busy ? "参加中…" : "参加する →"}
+              </button>
+            </form>
+          </>
+        ) : (
+          <PasswordForm
+            label={
+              role === "control" ? "管理用パスワード" : "Display 用パスワード"
+            }
+            error={error}
+            onSubmit={async (password) => {
+              try {
+                await api(
+                  role === "control"
+                    ? "/api/admin/login"
+                    : `/api/e/${id}/display/login`,
+                  { password },
+                );
+                await revalidator.revalidate();
+                setError("");
+              } catch (e) {
+                setError((e as Error).message);
               }
-              error={error}
-              onSubmit={async (password) => {
-                try {
-                  await api(
-                    role === "control"
-                      ? "/api/admin/login"
-                      : `/api/e/${id}/display/login`,
-                    { password },
-                  );
-                  setGranted(true);
-                  setError("");
-                } catch (e) {
-                  setError((e as Error).message);
-                }
-              }}
-            />
-          )}
-        </main>
-      </>
-    );
-  if (!room.view)
-    return (
-      <div className="loading">
-        <Brand />
-        <p>大会に接続しています…</p>
-        <ErrorBox message={room.error} />
-      </div>
-    );
-  return role === "control" ? (
-    <Control room={room} />
-  ) : role === "display" ? (
-    <Display room={room} />
-  ) : (
-    <Player room={room} />
+            }}
+          />
+        )}
+      </main>
+    </>
   );
 }
 function TimingSettingsForm({ room }: { room: RoomConnection }) {
@@ -426,12 +384,9 @@ export function Control({ room }: { room: RoomConnection }) {
             <h1>{v.name}</h1>
           </div>
           <div className="links">
-            <a
-              className="button secondary"
-              href={`${v.urls.home}questions?event=${v.id}`}
-            >
-              問題ビューワ ↗
-            </a>
+            <Link className="button secondary" to={`/questions?event=${v.id}`}>
+              問題ビューワ →
+            </Link>
             <a
               className="button secondary"
               href={v.urls.display}
@@ -805,19 +760,5 @@ export function Player({ room }: { room: RoomConnection }) {
         )}
       </main>
     </>
-  );
-}
-export default function App() {
-  if (/^\/questions\/?$/.test(location.pathname)) return <QuestionViewer />;
-  const match = /^\/e\/([a-zA-Z0-9-]+)\/(control|display|play)\/?$/.exec(
-    location.pathname,
-  );
-  return match ? (
-    <GamePage
-      id={match[1]}
-      role={match[2] === "play" ? "player" : (match[2] as Role)}
-    />
-  ) : (
-    <Home />
   );
 }

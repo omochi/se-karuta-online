@@ -8,8 +8,9 @@ import {
   MarkdownBody,
   PasswordForm,
 } from "./components";
-import { usePublicOrigin } from "./config";
-import { api } from "./useRoom";
+import { Link, useBlocker, useLoaderData, useRevalidator } from "react-router";
+import type { ViewerData } from "./route-loaders";
+import { api } from "./api";
 import {
   readQuestionDocument,
   writeQuestionDocument,
@@ -17,18 +18,29 @@ import {
 } from "./question-document";
 import "./question-viewer.css";
 
-type Event = { id: string; name: string; created_at: number };
 export default function QuestionViewer() {
-  const origin = usePublicOrigin();
-  const [events, setEvents] = useState<Event[] | null>(null);
-  const [checking, setChecking] = useState(true);
+  const initial = useLoaderData<ViewerData>();
+  return (
+    <ViewerEditor
+      key={`${initial.eventId}:${!!initial.events}:${!!initial.document}`}
+      initial={initial}
+    />
+  );
+}
+function ViewerEditor({ initial }: { initial: ViewerData }) {
+  const { events } = initial;
+  const revalidator = useRevalidator();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [eventId, setEventId] = useState(
-    new URLSearchParams(location.search).get("event") ?? "",
+  const [eventId, setEventId] = useState(initial.eventId);
+  const [document, setDocument] = useState<QuestionDocument | null>(() =>
+    initial.document
+      ? readQuestionDocument(JSON.stringify(initial.document))
+      : null,
   );
-  const [document, setDocument] = useState<QuestionDocument | null>(null);
-  const [source, setSource] = useState("");
+  const [source, setSource] = useState(
+    initial.document ? `大会：${initial.document.name}` : "",
+  );
   const [filename, setFilename] = useState("questions.json");
   const [dirty, setDirty] = useState(false);
   const [selected, setSelected] = useState(0);
@@ -36,24 +48,9 @@ export default function QuestionViewer() {
   const [showAnswer, setShowAnswer] = useState(true);
   const [dark, setDark] = useState(false);
   const [paste, setPaste] = useState("");
-  const [sourcesOpen, setSourcesOpen] = useState(true);
+  const [sourcesOpen, setSourcesOpen] = useState(!initial.document);
   const [notice, setNotice] = useState("");
-  async function authenticate() {
-    try {
-      const result = await api<{ events: Event[] }>("/api/events");
-      setEvents(result.events);
-      setEventId((id) => id || result.events[0]?.id || "");
-      setError("");
-    } catch (e) {
-      if ((e as { status?: number }).status !== 401)
-        setError((e as Error).message);
-    } finally {
-      setChecking(false);
-    }
-  }
-  useEffect(() => {
-    void authenticate();
-  }, []);
+  const blocker = useBlocker(dirty);
   useEffect(() => {
     if (!dirty) return;
     const warn = (e: BeforeUnloadEvent) => {
@@ -170,11 +167,29 @@ export default function QuestionViewer() {
   return (
     <>
       <Header>
-        <a className="viewer-home-link" href={`${origin}/`}>
+        <Link className="viewer-home-link" to="/">
           大会一覧へ →
-        </a>
+        </Link>
       </Header>
       <main className="question-viewer">
+        {blocker.state === "blocked" && (
+          <div
+            className="confirmation"
+            role="dialog"
+            aria-labelledby="leave-viewer-title"
+          >
+            <h2 id="leave-viewer-title">編集内容を破棄して移動しますか？</h2>
+            <p>ダウンロードしていない変更があります。</p>
+            <div className="host-actions">
+              <button className="secondary" onClick={() => blocker.reset()}>
+                編集を続ける
+              </button>
+              <button className="danger" onClick={() => blocker.proceed()}>
+                破棄して移動
+              </button>
+            </div>
+          </div>
+        )}
         <div className="viewer-title">
           <div>
             <p className="eyebrow">QUESTION WORKSHOP</p>
@@ -191,9 +206,7 @@ export default function QuestionViewer() {
             </button>
           )}
         </div>
-        {checking ? (
-          <p>読み込み中…</p>
-        ) : events === null ? (
+        {events === null ? (
           <section className="panel viewer-login">
             <h2>管理用パスワードで開く</h2>
             <PasswordForm
@@ -202,7 +215,7 @@ export default function QuestionViewer() {
               onSubmit={async (password) => {
                 try {
                   await api("/api/admin/login", { password });
-                  await authenticate();
+                  await revalidator.revalidate();
                 } catch (e) {
                   setError((e as Error).message);
                 }
