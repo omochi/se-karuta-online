@@ -5,6 +5,7 @@ import {
 } from "react-router";
 import type { EventUrls } from "../shared/urls";
 import type { Role, Question } from "../shared/types";
+import type { TournamentReport } from "../shared/report";
 import { api } from "./api";
 import { RoomSession } from "./RoomSession";
 export interface EventSummary {
@@ -25,6 +26,12 @@ export interface GameData {
   role: Role;
   name: string;
   session: RoomSession | null;
+}
+export interface ReportData {
+  id: string;
+  report: TournamentReport | null;
+  loginRequired: boolean;
+  unavailable: boolean;
 }
 export function createRouteLoaders() {
   let config: { publicOrigin: string } | undefined;
@@ -115,6 +122,28 @@ export function createRouteLoaders() {
         args.request.signal.removeEventListener("abort", abort);
       }
     };
+  async function report(args: LoaderFunctionArgs): Promise<ReportData> {
+    await configuration(args);
+    const id = args.params.id!;
+    try {
+      const report = await api<TournamentReport>(
+        `/api/e/${encodeURIComponent(id)}/report`,
+        undefined,
+        args.request.signal,
+      );
+      return { id, report, loginRequired: false, unavailable: false };
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      if (status === 401 || status === 409)
+        return {
+          id,
+          report: null,
+          loginRequired: status === 401,
+          unavailable: status === 409,
+        };
+      throw error;
+    }
+  }
   function retain(active?: RoomSession) {
     for (const session of sessions)
       if (session !== active) {
@@ -122,7 +151,7 @@ export function createRouteLoaders() {
         sessions.delete(session);
       }
   }
-  return { configuration, home, viewer, game, retain };
+  return { configuration, home, viewer, game, report, retain };
 }
 
 export function bindRoomSessions(

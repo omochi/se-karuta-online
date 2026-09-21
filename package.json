@@ -13,6 +13,7 @@
     "setup": "node scripts/setup.mjs",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "seed": "node scripts/create-tournament.mjs data/questions/vol-01.json",
+    "seed:report": "node --import tsx scripts/create-report-demo.ts",
     "questions:check": "node --import tsx scripts/validate-questions.ts",
     "test": "vitest run",
     "test:integration": "node --import tsx --test tests/integration.test.ts",

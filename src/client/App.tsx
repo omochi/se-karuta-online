@@ -385,6 +385,11 @@ export function Control({ room }: { room: RoomConnection }) {
             <h1>{v.name}</h1>
           </div>
           <div className="links">
+            {v.phase === "finished" && (
+              <Link className="button primary" to={`/e/${v.id}/control/report`}>
+                詳細結果を見る →
+              </Link>
+            )}
             <Link className="button secondary" to={`/questions?event=${v.id}`}>
               問題ビューワ →
             </Link>

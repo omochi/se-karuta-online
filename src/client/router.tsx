@@ -9,6 +9,7 @@ import {
 import { Home, GamePage } from "./App";
 import QuestionViewer from "./QuestionViewer";
 import QuestionDisplayPreview from "./QuestionDisplayPreview";
+import TournamentReport from "./TournamentReport";
 import { Header } from "./components";
 import { createRouteLoaders } from "./route-loaders";
 export function InitialScreen() {
@@ -66,6 +67,11 @@ export function createAppRoutes(
       errorElement: <RouteError loaders={loaders} />,
       children: [
         { index: true, loader: loaders.home, Component: Home },
+        {
+          path: "e/:id/control/report",
+          loader: loaders.report,
+          Component: TournamentReport,
+        },
         {
           path: "questions/display-preview",
           Component: QuestionDisplayPreview,

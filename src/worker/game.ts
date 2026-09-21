@@ -275,18 +275,28 @@ function rank(rows: Omit<RankRow, "rank">[], ascending: boolean): RankRow[] {
     return { ...row, rank: currentRank };
   });
 }
-export function finalResults(g: Game): Results {
-  const valid = g.rounds.filter(
-    (r) => !r.isVoided && r.closedAt !== null && r.openedAt !== null,
+export function isScoredRound(r: Round): boolean {
+  return !r.isVoided && r.closedAt !== null && r.openedAt !== null;
+}
+export function isDifficultRound(
+  g: Game,
+  r: Round,
+  rankings = roundRanking(g, r),
+): boolean {
+  const count = Object.values(r.participants).filter(
+    (s) => s === "eligible",
+  ).length;
+  return (
+    isScoredRound(r) &&
+    count > 0 &&
+    rankings.length / count <= g.difficultyThreshold
   );
+}
+export function finalResults(g: Game): Results {
+  const valid = g.rounds.filter(isScoredRound);
   const minimumCorrect = Math.max(1, Math.ceil(valid.length / 2));
   const rankings = valid.map((r) => roundRanking(g, r));
-  const hard = valid.map((r, i) => {
-    const count = Object.values(r.participants).filter(
-      (s) => s === "eligible",
-    ).length;
-    return count > 0 && rankings[i].length / count <= g.difficultyThreshold;
-  });
+  const hard = valid.map((r, i) => isDifficultRound(g, r, rankings[i]));
   const scores = g.players.map((p) => {
     const rows = rankings.map((r) => r.find((x) => x.playerId === p.id));
     const correct = rows.filter(Boolean).length;

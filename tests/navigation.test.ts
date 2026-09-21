@@ -11,6 +11,8 @@ import {
 import { RoomSession } from "../src/client/RoomSession";
 import type { RoomView, ClientMessage } from "../src/shared/types";
 import { eventUrls } from "../src/shared/urls";
+import { newGame } from "../src/worker/game";
+import { tournamentReport } from "../src/worker/report";
 
 class Socket {
   static OPEN = 1;
@@ -106,6 +108,11 @@ beforeEach(() => {
             },
           ],
         });
+      if (path.endsWith("/report")) {
+        const game = newGame("game", "詳細結果テスト", [], 0);
+        game.phase = "finished";
+        return authorized ? json(tournamentReport(game)) : json({}, 401);
+      }
       if (path.includes("/session?"))
         return socketResponse
           ? socketResponse()
@@ -362,4 +369,27 @@ it("遷移完了による接続破棄では旧画面に再接続中の表示を�
   expect(Socket.all[0].readyState).toBe(3);
   expect(notify).not.toHaveBeenCalled();
   expect(session.getSnapshot()).toBe(snapshot);
+});
+
+it("詳細結果の直リンクは管理者認証を要求し、ログイン後はWebSocketなしで表示する", async () => {
+  authorized = false;
+  await start("/e/game/control/report");
+  expect(html()).toContain("管理用パスワード");
+  expect(html()).not.toContain("全体の集計");
+  authorized = true;
+  await router.revalidate();
+  expect(html()).toContain("詳細結果テスト");
+  expect(html()).toContain("集計対象の問題はありません");
+  expect(Socket.all).toHaveLength(0);
+});
+it("終了前の詳細結果は終了後の案内を表示する", async () => {
+  const original = fetch;
+  vi.stubGlobal("fetch", (path: string, options: RequestInit) =>
+    path.endsWith("/report")
+      ? Promise.resolve(json({}, 409))
+      : original(path, options),
+  );
+  await start("/e/game/control/report");
+  expect(html()).toContain("大会終了後に確認できます");
+  expect(Socket.all).toHaveLength(0);
 });

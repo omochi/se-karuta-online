@@ -282,3 +282,69 @@ it("難易度のない保存済み問題を標準の2として復元する", asy
   const document = (await response.json()) as { questions: Question[] };
   expect(document.questions[0].difficulty).toBe(2);
 });
+
+it("詳細結果は終了後に管理者だけが取得でき、認証情報を返さない", async () => {
+  const game = fixture();
+  await saveGame(bindings.DB, null, game, "PRIVATE_DISPLAY_HASH");
+  const url = `http://test/api/e/${game.id}/report`;
+  const { token } = await signSession(bindings.SESSION_SECRET, {
+    role: "admin",
+  });
+  const request = () =>
+    exports.default.fetch(
+      new Request(url, { headers: { Cookie: `se_admin=${token}` } }),
+    );
+  expect((await request()).status).toBe(409);
+  const finished = structuredClone(game);
+  applyCommand(finished, { command: "start", revision: finished.revision }, 0);
+  beginCountdownIfReady(
+    finished,
+    new Set(finished.players.map((p) => p.id)),
+    true,
+    0,
+  );
+  advanceTimer(finished, 5000);
+  advanceTimer(finished, 20000);
+  receiveAnswer(
+    finished,
+    finished.players[0].id,
+    finished.rounds[0].id,
+    "B",
+    20382,
+  );
+  for (const command of ["close", "reveal", "ranking", "finish"] as const)
+    applyCommand(finished, { command, revision: finished.revision }, 21000);
+  await saveGame(bindings.DB, game, finished);
+  expect((await exports.default.fetch(new Request(url))).status).toBe(401);
+  for (const role of ["display", "player"] as const) {
+    const session = await signSession(bindings.SESSION_SECRET, {
+      role,
+      eventId: game.id,
+      playerId: game.players[0].id,
+    });
+    const response = await exports.default.fetch(
+      new Request(url, {
+        headers: {
+          Cookie: `se_${role}_${game.id}=${session.token}; se_admin=${session.token}`,
+        },
+      }),
+    );
+    expect(response.status).toBe(401);
+    expect(await response.text()).not.toContain("body");
+  }
+  const response = await request();
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  const report = await response.text();
+  expect(report).not.toContain("test-hash");
+  expect(report).not.toContain("PRIVATE_DISPLAY_HASH");
+  expect(JSON.parse(report)).toMatchObject({
+    id: game.id,
+    name: game.name,
+    summary: { scored: 1, unasked: 0, correct: 1, averageElapsed: 382 },
+    rounds: [
+      { answers: [{ choice: "B", status: "correct", elapsed: 382, rank: 1 }] },
+    ],
+  });
+  expect((await loadGame(bindings.DB, game.id))?.phase).toBe("finished");
+});

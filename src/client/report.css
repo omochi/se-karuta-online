@@ -1,0 +1,217 @@
+.report-page {
+  max-width: 1320px;
+  padding: 40px;
+  margin: 0 auto;
+}
+.report-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 24px 0 16px;
+}
+.report-note {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 18px 0 28px;
+}
+.report-section {
+  margin-top: 32px;
+}
+.report-section h2 {
+  margin-top: 24px;
+  overflow-wrap: anywhere;
+}
+.report-section h3 {
+  margin: 28px 0 12px;
+}
+.report-section > label {
+  display: block;
+  max-width: 720px;
+}
+.report-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.report-metric {
+  padding: 20px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.report-metric > span {
+  font-size: 13px;
+  color: var(--muted);
+}
+.report-metric > strong {
+  font-size: clamp(20px, 2vw, 28px);
+  font-variant-numeric: tabular-nums;
+}
+.report-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 20px 0 12px;
+}
+.report-toolbar label {
+  min-width: 220px;
+}
+.report-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+.report-table th,
+.report-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.report-table thead th {
+  font-size: 12px;
+  color: var(--muted);
+  background: #f0eee7;
+}
+.report-table tbody th {
+  min-width: 180px;
+  max-width: 420px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.report-table tr:last-child > * {
+  border-bottom: 0;
+}
+.report-selected {
+  background: #fff1eb;
+}
+.report-link {
+  color: var(--accent);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  line-height: 1.6;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.report-person-id {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: normal;
+}
+.report-status {
+  border-radius: 5px;
+  background: #eeece6;
+  padding: 3px 7px;
+  font-size: 12px;
+}
+.report-status-correct {
+  color: #245b35;
+  background: #e2efdc;
+}
+.report-status-incorrect {
+  color: #922d21;
+  background: #ffe6df;
+}
+.report-notice {
+  padding: 16px;
+  border-left: 3px solid var(--accent);
+  background: #fff1eb;
+  line-height: 1.8;
+}
+.report-question {
+  border-block: 1px solid var(--line);
+  padding: 18px 0;
+  margin: 20px 0;
+}
+.report-question summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.report-question .markdown {
+  margin-top: 20px;
+}
+.report-distribution {
+  display: grid;
+  gap: 18px;
+  margin: 20px 0;
+}
+.report-choice-label {
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  font-size: 14px;
+}
+.report-choice-label > span {
+  overflow-wrap: anywhere;
+}
+.report-choice-label > strong {
+  white-space: nowrap;
+}
+.report-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: #eeece6;
+  overflow: hidden;
+}
+.report-bar span {
+  display: block;
+  height: 100%;
+  background: #a39e93;
+}
+.report-choice-correct .report-bar span {
+  background: var(--accent);
+}
+@media (max-width: 800px) {
+  .report-page {
+    padding: 24px 16px;
+  }
+  .report-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .report-section.panel {
+    padding: 20px 14px;
+  }
+}
+@media (max-width: 420px) {
+  .report-metrics {
+    grid-template-columns: 1fr;
+  }
+}
+.report-page select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+.report-page select:focus-visible,
+.report-table-scroll:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+.report-section[tabindex]:focus {
+  outline: none;
+}

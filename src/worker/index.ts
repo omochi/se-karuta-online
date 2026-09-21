@@ -9,7 +9,8 @@ import {
   verifyPassword,
 } from "./auth";
 import { newGame } from "./game";
-import { saveGame } from "./repository";
+import { loadGame, saveGame } from "./repository";
+import { tournamentReport } from "./report";
 import { validateQuestions } from "../shared/questions";
 export { TournamentRoom } from "./room";
 export const json = (
@@ -129,6 +130,15 @@ export default {
         .bind(id)
         .first<{ id: string; name: string; display_password_hash: string }>();
       if (!tournament) return json({ error: "大会が見つかりません。" }, 404);
+      if (action === "report" && request.method === "GET") {
+        if (!isAdmin)
+          return json({ error: "管理用パスワードを入力してください。" }, 401);
+        const game = await loadGame(env.DB, id);
+        if (!game) return json({ error: "大会が見つかりません。" }, 404);
+        if (game.phase !== "finished")
+          return json({ error: "大会終了後に詳細結果を確認できます。" }, 409);
+        return json(tournamentReport(game));
+      }
       if (action === "questions" && request.method === "GET") {
         if (!isAdmin)
           return json({ error: "管理用パスワードを入力してください。" }, 401);
