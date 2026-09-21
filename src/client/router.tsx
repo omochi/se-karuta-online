@@ -8,15 +8,12 @@ import {
 } from "react-router";
 import { Home, GamePage } from "./App";
 import QuestionViewer from "./QuestionViewer";
-import { Brand, Header } from "./components";
+import { Header } from "./components";
 import { createRouteLoaders } from "./route-loaders";
 export function InitialScreen() {
-  // 初回アクセスだけの外枠。ページ間の遷移では現在の画面が維持される。
-  return (
-    <div className="loading" aria-label="SE Karuta">
-      <Brand />
-    </div>
-  );
+  // 初回は共通の背景色だけを見せ、ロゴなどの一瞬の表示を挟まない。
+  // ページ間の遷移では現在の画面が維持される。
+  return null;
 }
 function Layout() {
   return (
