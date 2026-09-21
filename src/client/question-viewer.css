@@ -54,9 +54,10 @@
   font-size: 12px;
 }
 .viewer-display-toolbar .viewer-fit-report {
-  color: var(--accent);
+  color: #4d7b60;
 }
 .viewer-display-toolbar .viewer-fit-small {
+  color: var(--accent);
   padding: 10px 12px;
   background: #fff0e9;
   border-radius: 6px;

@@ -1,0 +1,41 @@
+{
+  "name": "問題ブラッシュアップ・第2回試作（難問・レビュー前）",
+  "questions": [
+    {
+      "id": "draft-02-isolated-reservation",
+      "bodyMarkdown": "`reserve` は `Stock` の外にある同期関数。在庫確認から減算まで、同じ actor 上の別タスクを割り込ませずに実行したい。`/* ? */` に入る修飾子と、その隔離の仕組みを導入した Proposal は？\n\n```swift\nactor Stock { var remaining = 1 }\n\nfunc reserve(_ stock: /* ? */ Stock) -> Bool {\n    guard stock.remaining > 0 else { return false }\n    stock.remaining -= 1\n    return true\n}\n\nfunc buy(_ stock: Stock) async {\n    print(await reserve(stock))\n}\n```\n\n`reserve` の本体は変更しない。Swift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
+      "choices": {
+        "A": "SE-0306 · Actors",
+        "B": "SE-0313 · Improved control over actor isolation",
+        "C": "SE-0316 · Global actors",
+        "D": "SE-0392 · Custom Actor Executors"
+      },
+      "correctChoice": "B",
+      "explanationMarkdown": "正解は **SE-0313 · Improved control over actor isolation**。空欄は `isolated` です。\n\n`isolated Stock` という引数によって、外部の関数も渡された stock の隔離領域で実行できます。呼び出し元がその actor の外にいれば `await reserve(stock)` が必要ですが、関数本体では remaining の読み書きに await は不要です。この本体には中断点がないので、在庫確認と減算の間に同じ actor の別タスクが実行されることはありません。\n\nactor のメソッドを「在庫を確認」「在庫を減らす」に分け、それぞれを await して呼ぶだけでは、2回の呼び出しの間に別タスクが動く可能性があります。actor の導入だけで、呼び出し側の複数操作が自動的に一続きになるわけではありません。\n\nSE-0306 は actor 自体、SE-0316 は MainActor などのグローバルな隔離領域、SE-0392 は actor の executor のカスタマイズです。ここで必要なのは、引数として渡された個別の actor に関数を隔離する仕組みです。\n\n[Swift Digest：SE-0313の日本語要約](https://swiftdigest.koherent.org/proposals/se-0313.html)"
+    },
+    {
+      "id": "draft-02-preserve-error-type",
+      "bodyMarkdown": "`catch` の error をキャストせず `Result<T, E>` に格納でき、投げないクロージャーなら E が Never になる。この両方を可能にした Proposal は？\n\n```swift\nfunc capture<T, E: Error>(\n    _ operation: () throws(E) -> T\n) -> Result<T, E> {\n    do { return .success(try operation()) }\n    catch { return .failure(error) }\n}\n\nlet result = capture { 42 }\n// result の型は Result<Int, Never>\n```\n\n引数の `throws(E)` を単なる `throws` に変えると、同じ本体のままではコンパイルできない。",
+      "choices": {
+        "A": "SE-0413 · Typed throws",
+        "B": "SE-0235 · Add Result to the Standard Library",
+        "C": "SE-0276 · Multi-Pattern Catch Clauses",
+        "D": "SE-0309 · Unlock existentials for all protocols"
+      },
+      "correctChoice": "A",
+      "explanationMarkdown": "正解は **SE-0413 · Typed throws**。関数が投げるエラーの型を関数型の一部として表せるため、operation が投げる型をジェネリックパラメーター E と結び付けられます。\n\nこの do 内の投げうる処理は `try operation()` だけなので、catch の error も E 型です。そのまま `.failure(error)` に渡せます。単なる throws ではエラーの型が any Error になり、任意の E として格納することはできません。\n\nさらに、投げないクロージャーでは E が Never と推論され、戻り値は `Result<Int, Never>` になります。成功の型だけでなく、失敗の型も汎用関数を通して維持されるのが決め手です。\n\nSE-0235 は Result 自体の導入ですが、クロージャーが投げる具体的な型を E に対応させる仕組みではありません。SE-0276 は複数パターンをまとめた catch、SE-0309 は existential として使えるプロトコルの制限緩和です。rethrows も、投げたエラーの型をこの戻り値の E に結び付ける指定ではありません。\n\n[Swift Digest：SE-0413の日本語要約](https://swiftdigest.koherent.org/proposals/se-0413.html)"
+    },
+    {
+      "id": "draft-02-conditional-copyability",
+      "bodyMarkdown": "`Box<Int>` と `Box<Token>` はどちらも作れるが、duplicate に渡せるのは前者だけ。このように、非コピー可能な要素も受け入れつつ、要素次第でコンテナーをコピー可能にする拡張を導入した Proposal は？\n\n```swift\nstruct Token: ~Copyable {}\nstruct Box<T: ~Copyable>: ~Copyable { var value: T }\nextension Box: Copyable where T: Copyable {}\n\nfunc duplicate<T>(_ value: T) -> (T, T) { (value, value) }\n\nfunc demo() {\n    let a = Box(value: 42)\n    _ = duplicate(a)                 // OK\n    let b = Box(value: Token())      // OK\n    // _ = duplicate(b)              // コンパイルエラー\n}\n```",
+      "choices": {
+        "A": "SE-0143 · Conditional conformances",
+        "B": "SE-0390 · Noncopyable structs and enums",
+        "C": "SE-0377 · Borrowing and consuming parameter ownership modifiers",
+        "D": "SE-0427 · Noncopyable generics"
+      },
+      "correctChoice": "D",
+      "explanationMarkdown": "正解は **SE-0427 · Noncopyable generics**。非コピー可能な型をジェネリックの型引数に使えるようにし、Copyable への条件付き適合も扱います。\n\n`T: ~Copyable` は「T はコピーできてはいけない」という制約ではなく、暗黙の Copyable 要求を外す指定です。そのため Int も Token も受け入れられます。Box 自体の無条件の Copyable 適合も外したうえで、extension により T が Copyable の場合だけ適合を与えています。\n\n一方、`duplicate<T>` の T には暗黙の Copyable 要求があります。Box<Int> はこれを満たしますが、Box<Token> は満たしません。Box<Token> を作れることと、複製できることは別です。\n\nSE-0143 は一般的な条件付き適合、SE-0390 は非コピー可能な構造体・列挙型の導入です。その先の「非コピー可能な型も受け入れるジェネリック」と「要素に応じた Copyable 適合」を扱うのが SE-0427。SE-0377 は引数の借用・消費を指定する仕組みです。\n\n[Swift Digest：SE-0427の日本語要約](https://swiftdigest.koherent.org/proposals/se-0427.html)"
+    }
+  ]
+}

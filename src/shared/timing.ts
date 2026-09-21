@@ -3,7 +3,7 @@ import type { TimingSettings } from "./types";
 export const DEFAULT_TIMING: Readonly<TimingSettings> = {
   countdownSeconds: 5,
   readingSeconds: 15,
-  answeringSeconds: 15,
+  answeringSeconds: 30,
 };
 
 export function validateTiming(input: unknown): TimingSettings {

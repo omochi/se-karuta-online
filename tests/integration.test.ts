@@ -258,7 +258,7 @@ test(
       demo.questions[0].choices,
     );
     await control.wait((v) => v.phase === "acceptingAnswers", 18000);
-    assert.equal(control.state!.phaseDurationMs, 15000);
+    assert.equal(control.state!.phaseDurationMs, 30000);
     await display.wait((v) => v.phase === "acceptingAnswers");
     await Promise.all(
       players.map((p) => p.wait((v) => v.phase === "acceptingAnswers")),
@@ -324,7 +324,7 @@ test(
     const first = answers[0];
     assert.equal(first.type, "ack");
     if (first.type !== "ack") throw new Error("missing ack");
-    await control.wait((v) => v.phase === "answersClosed", 18000);
+    await control.wait((v) => v.phase === "answersClosed", 33000);
     await display.wait((v) => v.phase === "answersClosed");
     assert.equal(display.state!.question!.bodyMarkdown, undefined);
     await players[38].wait((v) => v.phase === "answersClosed");

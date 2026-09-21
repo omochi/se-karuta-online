@@ -100,7 +100,7 @@ it("D1に問題のスナップショット・参加資格・回答を保存し�
     },
     20400,
   );
-  expect(next.phaseEndsAt).toBe(35100);
+  expect(next.phaseEndsAt).toBe(50100);
   await saveGame(bindings.DB, g, next);
   expect(await loadGame(bindings.DB, g.id)).toEqual(next);
   await bindings.DB.prepare(
@@ -248,6 +248,6 @@ it("時間設定のない既存大会をデフォルト値で復元する", asyn
   expect((await loadGame(bindings.DB, game.id))?.timing).toEqual({
     countdownSeconds: 5,
     readingSeconds: 15,
-    answeringSeconds: 15,
+    answeringSeconds: 30,
   });
 });

@@ -76,7 +76,7 @@ describe("全員の準備確認と時間進行", () => {
     ).toBe(false);
     expect(g.phaseEndsAt).toBe(5100);
   });
-  it("公開前5秒、選択肢公開後15秒を経て出題し、15秒で締め切る", () => {
+  it("公開前5秒、選択肢公開後15秒を経て出題し、30秒で締め切る", () => {
     const g = fixture();
     command(g, "start");
     beginCountdownIfReady(g, new Set(["p0", "p1", "p2"]), true, 100);
@@ -87,10 +87,12 @@ describe("全員の準備確認と時間進行", () => {
     expect(advanceTimer(g, 20100)).toBe(true);
     expect(g.phase).toBe("acceptingAnswers");
     expect(currentRound(g)?.openedAt).toBe(20100);
-    expect(advanceTimer(g, 35099)).toBe(false);
-    expect(advanceTimer(g, 35100)).toBe(true);
+    expect(advanceTimer(g, 35100)).toBe(false);
+    expect(g.phase).toBe("acceptingAnswers");
+    expect(advanceTimer(g, 50099)).toBe(false);
+    expect(advanceTimer(g, 50100)).toBe(true);
     expect(g.phase).toBe("answersClosed");
-    expect(currentRound(g)?.closedAt).toBe(35100);
+    expect(currentRound(g)?.closedAt).toBe(50100);
     expect(g.phaseEndsAt).toBeNull();
   });
   it("遅延したタイマーで過去の時刻へ出題を遡らせない", () => {
@@ -314,12 +316,12 @@ describe("表彰と無効問題", () => {
   });
 });
 describe("時間設定と期限", () => {
-  it("大会ごとに5秒・15秒・15秒で初期化する", () => {
+  it("大会ごとに5秒・15秒・30秒で初期化する", () => {
     const g = fixture();
     expect(g.timing).toEqual({
       countdownSeconds: 5,
       readingSeconds: 15,
-      answeringSeconds: 15,
+      answeringSeconds: 30,
     });
     g.timing.readingSeconds = 60;
     expect(fixture().timing.readingSeconds).toBe(15);
@@ -375,15 +377,15 @@ describe("時間設定と期限", () => {
     const g = fixture(2);
     open(g);
     const r = currentRound(g)!;
-    const answer = receiveAnswer(g, "p0", r.id, "B", 34999);
-    expect(() => receiveAnswer(g, "p1", r.id, "B", 35000)).toThrow("受付中");
+    const answer = receiveAnswer(g, "p0", r.id, "B", 49999);
+    expect(() => receiveAnswer(g, "p1", r.id, "B", 50000)).toThrow("受付中");
     expect(() => receiveAnswer(g, "p1", r.id, "B", 60000)).toThrow("受付中");
     expect(
-      viewFor(g, "display", undefined, presence, "e", 35000, "http://test")
+      viewFor(g, "display", undefined, presence, "e", 50000, "http://test")
         .question?.bodyMarkdown,
     ).toBeUndefined();
     advanceTimer(g, 60000);
-    expect(r.closedAt).toBe(35000);
+    expect(r.closedAt).toBe(50000);
     expect(r.answers.p1).toBeUndefined();
     expect(receiveAnswer(g, "p0", r.id, "C", 61000)).toEqual(answer);
     expect(

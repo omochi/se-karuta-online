@@ -1,5 +1,6 @@
 import type { Question, RoomView } from "../shared/types";
 import { eventUrls } from "../shared/urls";
+import { DEFAULT_TIMING } from "../shared/timing";
 import type { QuestionFit } from "./fit-question";
 
 export type DisplayPreviewPhase =
@@ -31,6 +32,12 @@ export function createDisplayPreviewView(
   origin: string,
 ): RoomView {
   const { question, phase } = snapshot;
+  const phaseDurationMs =
+    phase === "answerRevealed"
+      ? 0
+      : (phase === "choicesReading"
+          ? DEFAULT_TIMING.readingSeconds
+          : DEFAULT_TIMING.answeringSeconds) * 1000;
   return {
     type: "state",
     id: "preview",
@@ -41,9 +48,9 @@ export function createDisplayPreviewView(
     revision: 0,
     epoch: "preview",
     serverNow: 0,
-    phaseEndsAt: phase === "answerRevealed" ? null : 15000,
-    phaseDurationMs: phase === "answerRevealed" ? 0 : 15000,
-    timing: { countdownSeconds: 5, readingSeconds: 15, answeringSeconds: 15 },
+    phaseEndsAt: phase === "answerRevealed" ? null : phaseDurationMs,
+    phaseDurationMs,
+    timing: { ...DEFAULT_TIMING },
     questionNumber: snapshot.questionNumber,
     totalQuestions: snapshot.totalQuestions,
     playerCount: 0,
