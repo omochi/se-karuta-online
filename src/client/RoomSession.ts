@@ -223,7 +223,6 @@ export class RoomSession {
     command: Command,
     extra: {
       playerId?: string;
-      displayId?: string;
       reason?: string;
       timing?: TimingSettings;
     } = {},

@@ -29,7 +29,6 @@ export function GameProgress({
               <strong>{progress.preparation.count}</strong>{" "}
               {progress.preparation.label}
             </p>
-            <p className="muted">{progress.preparation.display}</p>
           </div>
         )}
         {progress.playerCount && <p>{progress.playerCount}</p>}

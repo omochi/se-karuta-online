@@ -33,7 +33,6 @@ export class TournamentRoom extends DurableObject<Env> {
   private eventId: string | null = null;
   private readonly epoch = crypto.randomUUID();
   private connections = new Map<string, Connection>();
-  private selectedDisplayId: string | null = null;
   private tail: Promise<unknown> = Promise.resolve();
   // D1 の await を跨いでも同じ大会の変更を直列に処理する。受信時刻はこの列に入る前に採る。
   private enqueue<T>(work: () => Promise<T>): Promise<T> {
@@ -58,10 +57,6 @@ export class TournamentRoom extends DurableObject<Env> {
       (c) => Date.now() - c.lastSeen < 45000,
     );
     const displays = active.filter((c) => c.role === "display");
-    // 再接続では接続IDが変わるため、切断済みのIDを会場用として保持しない。
-    // 1台なら自動復帰し、候補が複数ならControlでの選択を待つ。
-    if (!displays.some((c) => c.id === this.selectedDisplayId))
-      this.selectedDisplayId = displays.length === 1 ? displays[0].id : null;
     return {
       onlinePlayers: new Set(
         active.filter((c) => c.role === "player").map((c) => c.playerId!),
@@ -76,8 +71,6 @@ export class TournamentRoom extends DurableObject<Env> {
       displays: displays.map((c) => ({
         id: c.id,
         label: `Display ${c.id.slice(0, 4)}`,
-        ready: c.readyRound === roundId && !!roundId,
-        selected: c.id === this.selectedDisplayId,
       })),
     };
   }
@@ -133,14 +126,7 @@ export class TournamentRoom extends DurableObject<Env> {
     const g = await this.getGame();
     const next = structuredClone(g);
     const presence = this.presence();
-    if (
-      beginCountdownIfReady(
-        next,
-        presence.readyPlayers,
-        presence.displays.some((d) => d.selected && d.ready),
-        Date.now(),
-      )
-    )
+    if (beginCountdownIfReady(next, presence.readyPlayers, Date.now()))
       await this.commit(next);
   }
   async fetch(request: Request): Promise<Response> {
@@ -240,7 +226,6 @@ export class TournamentRoom extends DurableObject<Env> {
       if ("requestId" in m && typeof m.requestId === "string")
         requestId = m.requestId;
       if (m.type === "ping") {
-        // 接続の失効で会場用が復帰した場合も、全員の準備が揃えば再開する。
         const phase = this.game!.phase;
         await this.maybeBegin();
         if (this.game!.phase !== phase) this.broadcast();
@@ -250,7 +235,7 @@ export class TournamentRoom extends DurableObject<Env> {
       }
       if (m.type === "ready") {
         if (
-          (c.role === "player" || c.role === "display") &&
+          c.role === "player" &&
           m.epoch === this.epoch &&
           m.roundId === currentRound(this.game!)?.id
         ) {
@@ -272,31 +257,8 @@ export class TournamentRoom extends DurableObject<Env> {
       } else if (m.type === "command") {
         if (c.role !== "control") throw new Error("進行役だけが操作できます。");
         const next = structuredClone(this.game!);
-        if (m.command === "selectDisplay") {
-          if (
-            m.revision !== next.revision ||
-            ![
-              "waiting",
-              "choicesPreparing",
-              "rankingShown",
-              "questionVoided",
-            ].includes(next.phase)
-          )
-            throw new Error(
-              "Display の切り替えは出題前の待機中に行ってください。",
-            );
-          if (
-            !this.connections.has(m.displayId!) ||
-            this.connections.get(m.displayId!)?.role !== "display"
-          )
-            throw new Error("接続中の Display を選んでください。");
-          next.revision += 1;
-          await this.commit(next);
-          this.selectedDisplayId = m.displayId!;
-        } else {
-          applyCommand(next, m, Date.now());
-          await this.commit(next);
-        }
+        applyCommand(next, m, Date.now());
+        await this.commit(next);
         await this.maybeBegin();
         this.send(c, { type: "ack", requestId: m.requestId });
       } else throw new Error("不明なメッセージです。");

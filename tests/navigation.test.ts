@@ -61,7 +61,6 @@ function roomView(): RoomView {
     eligibleCount: 0,
     readyCount: 0,
     answerCount: 0,
-    displayReady: false,
     question: null,
   };
 }

@@ -65,7 +65,6 @@ export function createDisplayPreviewView(
         sample: true,
       },
     }),
-    displayReady: false,
     question: {
       id: question.id,
       choices: question.choices,

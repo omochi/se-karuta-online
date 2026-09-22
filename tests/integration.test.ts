@@ -90,7 +90,7 @@ class Peer {
   }
 }
 test(
-  "40人のWebSocket・D1・Durable Objectsで準備確認から表彰まで遊べる",
+  "40人と複数DisplayのWebSocket・D1・Durable Objectsで準備確認から表彰まで遊べる",
   { timeout: 100000 },
   async (t) => {
     const folder = await mkdtemp(join(tmpdir(), "se-karuta-integration-"));
@@ -173,7 +173,9 @@ test(
     );
     assert.equal(questionSet.questions.length, 12);
     assert.deepEqual(
-      questionSet.questions.map((q: { difficulty: number }) => q.difficulty).sort(),
+      questionSet.questions
+        .map((q: { difficulty: number }) => q.difficulty)
+        .sort(),
       [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
     );
     const firstCorrectChoice = questionSet.questions[0].correctChoice as Choice;
@@ -220,30 +222,23 @@ test(
     assert.equal(display.state!.question!.difficulty, undefined);
     assert.equal(display.state!.question!.correctChoice, undefined);
     assert.equal(players[0].state!.preview, undefined);
-    display.send({ type: "ready", roundId, epoch: display.state!.epoch });
-    await control.wait((v) => v.displayReady);
-    const selectedId = control.state!.displays!.find((d) => d.selected)!.id;
-    // 閲覧用の追加・切断では、接続中の会場用Displayを変更しない。
+    // Displayは随時追加・切断でき、準備完了通知は不要。
     const viewer = await connect("display", displayCookie);
     await control.wait((v) => v.displays?.length === 2);
-    assert.equal(
-      control.state!.displays!.find((d) => d.selected)!.id,
-      selectedId,
-    );
     viewer.close();
     await control.wait((v) => v.displays?.length === 1);
-    assert.equal(control.state!.displayReady, true);
-    // 会場用Displayを再読み込みするとWebSocketのIDが変わる。
-    // 古い接続の準備完了を引き継がず、新しい接続を会場用として待つ。
     display.close();
-    await control.wait((v) => v.displays?.length === 0 && !v.displayReady);
+    await control.wait((v) => v.displays?.length === 0);
     display = await connect("display", displayCookie);
     await control.wait((v) => v.displays?.length === 1);
-    assert.equal(control.state!.displays![0].selected, true);
-    assert.equal(control.state!.displayReady, false);
-    assert.equal(control.state!.phase, "choicesPreparing");
-    display.send({ type: "ready", roundId, epoch: display.state!.epoch });
-    await control.wait((v) => v.displayReady);
+    const monitor = await connect("display", displayCookie);
+    // 別PCで同じパスワードを使ってログインしたサテライト画面。
+    const satelliteLogin = await request(`/api/e/${id}/display/login`, {
+      password: "display-karuta",
+    });
+    assert.equal(satelliteLogin.status, 200);
+    const satellite = await connect("display", cookieOf(satelliteLogin));
+    await control.wait((v) => v.displays?.length === 3);
     // 古い世代の通知を送っても準備完了にしない。
     players[0].send({ type: "ready", roundId, epoch: "old-connection" });
     players[0].send({ type: "ping" });
@@ -259,6 +254,7 @@ test(
     const restedId = players[39].state!.me!.id;
     assert.equal(players[0].state!.question!.choices, undefined);
     assert.equal(display.state!.question!.choices, undefined);
+    // 3画面から準備完了が届かなくても、参加者が揃えば開始する。
     const countdown = await control.command("rest", { playerId: restedId });
     assert.equal(countdown.phase, "countdown");
     assert.equal(countdown.eligibleCount, 39);
@@ -288,6 +284,16 @@ test(
     assert.equal(players[0].state!.question!.bodyMarkdown, undefined);
     assert.equal(display.state!.question!.difficulty, 1);
     assert.equal(players[0].state!.question!.difficulty, undefined);
+    for (const screen of [monitor, satellite]) {
+      await screen.wait((v) => v.phase === "acceptingAnswers");
+      assert.deepEqual(screen.state!.question, display.state!.question);
+      assert.equal(screen.state!.phaseEndsAt, display.state!.phaseEndsAt);
+    }
+    // 出題中に増えた画面にも同じ問題・期限を送り、進行は巻き戻さない。
+    const lateDisplay = await connect("display", displayCookie);
+    assert.equal(lateDisplay.state!.phase, "acceptingAnswers");
+    assert.deepEqual(lateDisplay.state!.question, display.state!.question);
+    assert.equal(lateDisplay.state!.phaseEndsAt, display.state!.phaseEndsAt);
     const invalidId = crypto.randomUUID();
     players[39].send({
       type: "answer",
@@ -328,16 +334,14 @@ test(
     await db.exec("DROP TRIGGER fail_test_answer;");
     const started = performance.now();
     const ids = players.slice(0, 38).map(() => crypto.randomUUID());
-    players
-      .slice(0, 38)
-      .forEach((p, i) =>
-        p.send({
-          type: "answer",
-          requestId: ids[i],
-          roundId,
-          choice: firstCorrectChoice,
-        }),
-      );
+    players.slice(0, 38).forEach((p, i) =>
+      p.send({
+        type: "answer",
+        requestId: ids[i],
+        roundId,
+        choice: firstCorrectChoice,
+      }),
+    );
     const answers = await Promise.all(
       players.slice(0, 38).map((p, i) => p.reply(ids[i])),
     );
@@ -381,7 +385,18 @@ test(
     await display.wait((v) => v.phase === "answerRevealed");
     const counts = { A: 0, B: 0, C: 0, D: 0 };
     counts[firstCorrectChoice] = 38;
-    assert.deepEqual(display.state!.answerDistribution, { counts, unanswered: 1 });
+    assert.deepEqual(display.state!.answerDistribution, {
+      counts,
+      unanswered: 1,
+    });
+    for (const screen of [monitor, satellite, lateDisplay]) {
+      await screen.wait((v) => v.phase === "answerRevealed");
+      assert.deepEqual(screen.state!.question, display.state!.question);
+      assert.deepEqual(screen.state!.answerDistribution, {
+        counts,
+        unanswered: 1,
+      });
+    }
     await reconnected.wait((v) => v.phase === "answerRevealed");
     assert.equal(reconnected.state!.me!.correct, true);
     assert.equal(reconnected.state!.rankings, undefined);
@@ -389,7 +404,10 @@ test(
     await control.command("ranking");
     await display.wait((v) => v.phase === "rankingShown");
     assert.equal(display.state!.rankings!.length, 38);
-    assert.deepEqual(display.state!.answerDistribution, { counts, unanswered: 1 });
+    assert.deepEqual(display.state!.answerDistribution, {
+      counts,
+      unanswered: 1,
+    });
     assert.equal(
       (
         await db
@@ -404,6 +422,31 @@ test(
     assert.equal(players[39].state!.me!.participation, "eligible");
     await late.wait((v) => v.questionNumber === 2);
     assert.equal(late.state!.me!.participation, "eligible");
+    // 全Displayを閉じても、参加者の準備だけで次問を開始できる。
+    for (const screen of [display, monitor, satellite, lateDisplay])
+      screen.close();
+    await control.wait((v) => v.displays?.length === 0);
+    const nextRoundId = control.state!.question!.id;
+    for (const player of [...players.slice(1), reconnected, late]) {
+      await player.wait((v) => v.questionNumber === 2);
+      player.send({
+        type: "ready",
+        roundId: nextRoundId,
+        epoch: player.state!.epoch,
+      });
+    }
+    await control.wait((v) => v.phase === "countdown");
+    assert.equal(control.state!.readyCount, 41);
+    assert.equal(control.state!.displays!.length, 0);
+    const deadline = control.state!.phaseEndsAt;
+    // 開始後に追加・全切断しても進行と期限を変えない。
+    const replacement = await connect("display", displayCookie);
+    assert.equal(replacement.state!.phase, "countdown");
+    assert.equal(replacement.state!.phaseEndsAt, deadline);
+    replacement.close();
+    await control.wait((v) => v.displays?.length === 0);
+    assert.equal(control.state!.phase, "countdown");
+    assert.equal(control.state!.phaseEndsAt, deadline);
     await control.command("void", { reason: "試遊のためスキップ" });
     await control.command("finish");
     await reconnected.wait((v) => v.phase === "finished");

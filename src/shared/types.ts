@@ -91,8 +91,6 @@ export interface Presence {
   displays: Array<{
     id: string;
     label: string;
-    ready: boolean;
-    selected: boolean;
   }>;
 }
 export interface AnswerDistribution {
@@ -121,7 +119,6 @@ export interface RoomView {
   eligibleCount: number;
   readyCount: number;
   answerCount: number;
-  displayReady: boolean;
   question: null | {
     id: string;
     difficulty?: Difficulty;
@@ -163,7 +160,6 @@ export type Command =
   | "finish"
   | "rest"
   | "void"
-  | "selectDisplay"
   | "updateTiming";
 export type ClientMessage =
   | { type: "ping" }
@@ -175,7 +171,6 @@ export type ClientMessage =
       revision: number;
       command: Command;
       playerId?: string;
-      displayId?: string;
       reason?: string;
       timing?: TimingSettings;
     };

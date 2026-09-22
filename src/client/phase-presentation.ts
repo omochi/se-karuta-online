@@ -79,9 +79,6 @@ export function getGameProgress(view: RoomView, elapsedMs: number) {
         ? {
             count: `${view.readyCount} / ${view.eligibleCount}`,
             label: "人が準備完了",
-            display: view.displayReady
-              ? "共有画面も準備できています"
-              : "共有画面の準備を待っています",
           }
         : null,
     playerCount: phase === "waiting" ? `${view.playerCount} 人が参加中` : null,

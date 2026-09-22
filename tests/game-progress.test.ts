@@ -43,7 +43,6 @@ function fixture(phase: Phase): RoomConnection {
     eligibleCount: 3,
     readyCount: 2,
     answerCount: 1,
-    displayReady: false,
     question: {
       id: "q1",
       choices: { A: "Choice A", B: "Choice B", C: "Choice C", D: "Choice D" },
@@ -84,6 +83,23 @@ const progressMarkup = (html: string) =>
 afterEach(() => vi.restoreAllMocks());
 
 describe("3画面の進行案内", () => {
+  it("Controlに任意の共有画面の接続数と共有URLを表示し、準備を要求しない", () => {
+    const room = fixture("choicesPreparing");
+    room.view!.displays = [
+      { id: "monitor", label: "Display monitor" },
+      { id: "satellite", label: "Display satellite" },
+    ];
+    const html = render(Control, room);
+    expect(html).toContain("接続中 2画面");
+    expect(html).not.toContain("準備完了 1画面");
+    expect(html).not.toContain("共有画面の準備を待っています");
+    expect(html).toContain("開始時には待ち合わせません");
+    expect(html).toContain("Display monitor");
+    expect(html).toContain("Display satellite");
+    expect(html).toContain("http://test/e/game/display</a>");
+    expect(html).not.toContain("会場用にする");
+    expect(html).not.toContain("閲覧のみ");
+  });
   it.each(phases)("%sで同じ見出し・補足・人数・タイマーを表示する", (phase) => {
     vi.spyOn(performance, "now").mockReturnValue(1000);
     const room = fixture(phase);

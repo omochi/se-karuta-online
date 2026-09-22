@@ -183,10 +183,10 @@ export function applyCommand(
 export function beginCountdownIfReady(
   g: Game,
   ready: Set<string>,
-  displayReady: boolean,
   now: number,
 ): boolean {
-  if (g.phase !== "choicesPreparing" || !displayReady) return false;
+  // Displayは任意の閲覧画面なので、参加者の準備だけを開始条件にする。
+  if (g.phase !== "choicesPreparing") return false;
   const r = currentRound(g)!;
   const eligible = Object.keys(r.participants).filter(
     (id) => r.participants[id] === "eligible",
@@ -397,7 +397,6 @@ export function viewFor(
     eligibleCount: eligible.length,
     readyCount: eligible.filter((id) => presence.readyPlayers.has(id)).length,
     answerCount: r ? Object.keys(r.answers).length : 0,
-    displayReady: presence.displays.some((d) => d.selected && d.ready),
     question: r
       ? {
           id: r.id,

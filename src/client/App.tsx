@@ -425,7 +425,7 @@ export function Control({ room }: { room: RoomConnection }) {
                   >
                     {v.questionNumber
                       ? "次の問題を開始"
-                      : "全員の準備確認を開始"}{" "}
+                      : "最初の問題を開始"}{" "}
                     →
                   </button>
                 )}
@@ -626,39 +626,32 @@ export function Control({ room }: { room: RoomConnection }) {
             </section>
             <section className="panel">
               <h2>共有画面</h2>
+              <p className="muted">
+                同じDisplay
+                URLを開くと、会場の複数モニターやPCをサテライト画面として使えます。
+                Display用パスワードで入室してください。
+              </p>
+              <p className="display-url">
+                <a href={v.urls.display} target="_blank" rel="noreferrer">
+                  {v.urls.display}
+                </a>
+              </p>
+              <p>接続中 {v.displays?.length ?? 0}画面</p>
+              <p className="muted">
+                共有画面はいつでも追加・切断できます。開始時には待ち合わせません。
+                表示は運営が目で確認してください。
+              </p>
               {v.displays?.length ? (
                 v.displays.map((d) => (
                   <div className="display-device" key={d.id}>
                     <div>
                       <strong>{d.label}</strong>
-                      <small>
-                        {d.selected ? "会場用" : "閲覧のみ"} ·{" "}
-                        {d.ready ? "準備完了" : "準備待ち"}
-                      </small>
+                      <small>接続中</small>
                     </div>
-                    {!d.selected && (
-                      <button
-                        className="secondary compact-button"
-                        disabled={
-                          disabled ||
-                          ![
-                            "waiting",
-                            "choicesPreparing",
-                            "rankingShown",
-                            "questionVoided",
-                          ].includes(v.phase)
-                        }
-                        onClick={() =>
-                          room.command("selectDisplay", { displayId: d.id })
-                        }
-                      >
-                        会場用にする
-                      </button>
-                    )}
                   </div>
                 ))
               ) : (
-                <p className="muted">共有画面を開いて接続してください。</p>
+                <p className="muted">共有画面は接続されていません（任意）。</p>
               )}
             </section>
           </aside>

@@ -191,12 +191,7 @@ it("D1に問題のスナップショット・参加資格・回答を保存し�
   await saveGame(bindings.DB, null, g, "display-hash");
   const next = structuredClone(g);
   applyCommand(next, { command: "start", revision: 0 }, 100);
-  beginCountdownIfReady(
-    next,
-    new Set(next.players.map((p) => p.id)),
-    true,
-    100,
-  );
+  beginCountdownIfReady(next, new Set(next.players.map((p) => p.id)), 100);
   advanceTimer(next, 5100);
   advanceTimer(next, 20100);
   receiveAnswer(next, next.players[0].id, next.rounds[0].id, "B", 20382);
@@ -408,7 +403,6 @@ it("詳細結果は終了後に管理者だけが取得でき、認証情報を�
   beginCountdownIfReady(
     finished,
     new Set(finished.players.map((p) => p.id)),
-    true,
     0,
   );
   advanceTimer(finished, 5000);

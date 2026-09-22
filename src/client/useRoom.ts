@@ -21,7 +21,7 @@ export function useRoom(session: RoomSession) {
         !connected ||
         !view?.question ||
         view.phase !== "choicesPreparing" ||
-        session.role === "control" ||
+        session.role !== "player" ||
         document.visibilityState !== "visible"
       )
         return;

@@ -639,6 +639,9 @@ input::placeholder {
   font-size: 11px;
   color: #baa79c;
 }
+.display-url {
+  overflow-wrap: anywhere;
+}
 .host-actions {
   display: flex;
   gap: 12px;
@@ -1194,21 +1197,35 @@ input::placeholder {
   gap: 24px;
   align-items: center;
   flex: 1;
-  padding: 25px 0;
+  padding: 12px 0;
+}
+/* 待機画面は内容の高さを確保し、短い画面でもフッターと重ねない。 */
+.display-page.display-page-waiting {
+  height: auto;
+  min-height: 100dvh;
+}
+.phase-waiting .game-progress-display {
+  padding: 0;
+}
+.phase-waiting .game-progress-message > :last-child {
+  margin-bottom: 0;
 }
 .display-welcome > div > p:not(.eyebrow) {
   color: #c5b3a8;
   font-size: 17px;
 }
 .display-welcome .join-code {
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center;
   width: 100%;
-  max-width: 600px;
+  max-width: 900px;
   padding: 30px;
   border: 1px solid #605048;
   border-radius: 14px;
   background: #342d2d;
+}
+.display-welcome .join-code > div:not(.qr) {
+  min-width: 0;
 }
 .display-welcome .qr {
   padding: 18px;

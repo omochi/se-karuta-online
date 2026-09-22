@@ -43,7 +43,7 @@ export function DisplayScreen({
   );
   return (
     <div
-      className={`display-page ${fitQuestion ? "display-page-question" : ""}`}
+      className={`display-page ${fitQuestion ? "display-page-question" : v.phase === "waiting" ? "display-page-waiting" : ""}`}
     >
       <header className="display-header">
         <Brand small />
