@@ -18,7 +18,7 @@
     {
       "id": "if-let-shorthand",
       "difficulty": 1,
-      "bodyMarkdown": "右辺の変数名を省いて、こう書けるようにした Proposal は？\n\n```swift\nlet nickname: String? = \"Swifty\"\nif let nickname {\n    print(\"Hello, \\(nickname)!\")\n}\n```",
+      "bodyMarkdown": "`if let nickname = nickname` を `if let nickname` と省略できるようにした Proposal は？\n\n```swift\nlet nickname: String? = \"Swifty\"\nif let nickname {\n    print(\"Hello, \\(nickname)!\")\n}\n```",
       "choices": {
         "A": "SE-0345 · if let shorthand for shadowing an existing optional variable",
         "B": "SE-0380 · if and switch expressions",
@@ -26,12 +26,12 @@
         "D": "SE-0230 · Flatten nested optionals resulting from 'try?'"
       },
       "correctChoice": "A",
-      "explanationMarkdown": "SE-0345 では、同名の Optional を取り出す if let nickname = nickname を if let nickname と省略できるようになりました。\n\nSE-0099 は if・guard・while の条件節の構文整理、SE-0230 は try? による Optional の入れ子の解消、SE-0380 は if・switch の分岐から値を作る式の導入です。どちらも if を使う新しい書き方ですが、ここでは分岐から値を作るのではなく、既存の Optional を取り出しています。この問題は「同名の変数を取り出すときの右辺の省略」を尋ねています。\n\n[Swift Digest：SE-0345の日本語要約](https://swiftdigest.koherent.org/proposals/se-0345.html)"
+      "explanationMarkdown": "SE-0345 では、同名の Optional を取り出す if let nickname = nickname を if let nickname と省略できるようになりました。\n\nSE-0099 は if・guard・while の条件節の構文整理、SE-0230 は try? による Optional の入れ子の解消、SE-0380 は if・switch の分岐から値を作る式の導入です。SE-0380 も if を使う機能ですが、ここでは分岐から値を作るのではなく、既存の Optional を取り出しています。この問題は「同名の変数を取り出すときの右辺の省略」を尋ねています。\n\n[Swift Digest：SE-0345の日本語要約](https://swiftdigest.koherent.org/proposals/se-0345.html)"
     },
     {
       "id": "array-equatable",
       "difficulty": 2,
-      "bodyMarkdown": "配列同士の `==` は以前からあった。さらに、配列を `T: Equatable` に渡せるようにし、次の入れ子の比較も可能にした Proposal は？\n\n```swift\nfunc same<T: Equatable>(_ a: T, _ b: T) -> Bool {\n    a == b\n}\n\nsame([1, 2], [1, 2])             // true\nsame([[1], [2]], [[1], [2]])     // true\n```",
+      "bodyMarkdown": "配列同士の `==` は以前からあった。配列を `T: Equatable` を要求する関数 `same` に渡せるようにし、次の入れ子の比較も可能にした Proposal は？\n\n```swift\nfunc same<T: Equatable>(_ a: T, _ b: T) -> Bool {\n    a == b\n}\n\nsame([1, 2], [1, 2])             // true\nsame([[1], [2]], [[1], [2]])     // true\n```",
       "choices": {
         "A": "SE-0157 · Recursive Protocol Constraints",
         "B": "SE-0015 · Tuple comparison operators",
@@ -44,7 +44,7 @@
     {
       "id": "isolated-reservation",
       "difficulty": 3,
-      "bodyMarkdown": "`reserve` は `Stock` の外にある同期関数。在庫確認から減算まで、同じ actor 上の別タスクを割り込ませずに実行したい。`/* ? */` に入る修飾子と、その隔離の仕組みを導入した Proposal は？\n\n```swift\nactor Stock { var remaining = 1 }\n\nfunc reserve(_ stock: /* ? */ Stock) -> Bool {\n    guard stock.remaining > 0 else { return false }\n    stock.remaining -= 1\n    return true\n}\n\nfunc buy(_ stock: Stock) async {\n    print(await reserve(stock))\n}\n```\n\n`reserve` の本体は変更しない。Swift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
+      "bodyMarkdown": "`reserve` は `Stock` の外にある同期関数。在庫確認から減算まで、引数の `stock` の隔離領域で、中断せずに実行したい。本体を変えず、`/* ? */` に修飾子を補ってこれを可能にした Proposal は？\n\n```swift\nactor Stock { var remaining = 1 }\n\nfunc reserve(_ stock: /* ? */ Stock) -> Bool {\n    guard stock.remaining > 0 else { return false }\n    stock.remaining -= 1\n    return true\n}\n\nfunc buy(_ stock: Stock) async {\n    print(await reserve(stock))\n}\n```\n\n`reserve` の本体は変更しない。Swift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
       "choices": {
         "A": "SE-0420 · Inheritance of actor isolation",
         "B": "SE-0313 · Improved control over actor isolation",
@@ -96,7 +96,7 @@
     {
       "id": "optional-try",
       "difficulty": 2,
-      "bodyMarkdown": "検索結果なしと通信失敗を区別したかったのに、missing と failed はどちらも `Int?` の nil になる。戻り値が既に Optional のとき、`try?` がもう一段 Optional を重ねない仕様に変えた Proposal は？\n\n```swift\nenum LookupError: Error { case offline }\nfunc find(_ online: Bool) throws -> Int? {\n    if !online { throw LookupError.offline }\n    return nil\n}\n\nlet missing = try? find(true)   // 成功したが結果なし\nlet failed = try? find(false)   // エラーが発生\n```",
+      "bodyMarkdown": "`find` の戻り値は `Int?`。`try? find(...)` の結果を `Int??` から `Int?` に変え、成功時の「結果なし」とエラー発生時が、どちらも `nil` になるようにした Proposal は？\n\n```swift\nenum LookupError: Error { case offline }\nfunc find(_ online: Bool) throws -> Int? {\n    if !online { throw LookupError.offline }\n    return nil\n}\n\nlet missing = try? find(true)   // 成功したが結果なし\nlet failed = try? find(false)   // エラーが発生\n```",
       "choices": {
         "A": "SE-0230 · Flatten nested optionals resulting from 'try?'",
         "B": "SE-0008 · Add a Lazy flatMap for Sequences of Optionals",
@@ -109,7 +109,7 @@
     {
       "id": "compact-map-values",
       "difficulty": 1,
-      "bodyMarkdown": "この Dictionary の変換を、一度の呼び出しで書けるようにした Proposal は？\n\n```swift\nlet scores = [\"Swift\": \"100\", \"Mystery\": \"?\"]\nlet numbers = scores.compactMapValues(Int.init)\n// [\"Swift\": 100]\n```",
+      "bodyMarkdown": "Dictionary のキーを保ったまま値を変換し、変換結果が `nil` の要素を取り除く `compactMapValues` を追加した Proposal は？\n\n```swift\nlet scores = [\"Swift\": \"100\", \"Mystery\": \"?\"]\nlet numbers = scores.compactMapValues(Int.init)\n// [\"Swift\": 100]\n```",
       "choices": {
         "A": "SE-0187 · Introduce Sequence.compactMap(_:)",
         "B": "SE-0218 · Introduce compactMapValues to Dictionary",
@@ -122,7 +122,7 @@
     {
       "id": "builder-opaque-branches",
       "difficulty": 3,
-      "bodyMarkdown": "pair の2引数は同じ型 V が必要。それでも、表示が Image と Text に分かれる2回の badge 呼び出しを渡せる。分岐の結果を単一の具体型へ組み立てる変換を導入した Proposal は？\n\n```swift\nimport SwiftUI\n@ViewBuilder\nfunc badge(_ ready: Bool) -> some View {\n    if ready { Image(systemName: \"checkmark\") }\n    else { Text(\"Waiting\") }\n}\n\nfunc pair<V: View>(_ first: V, _ second: V) {}\n\npair(badge(true), badge(false))  // OK\n// pair(Image(systemName: \"checkmark\"), Text(\"Waiting\")) // NG\n```",
+      "bodyMarkdown": "`Image` と `Text` を直接 `pair` に渡すと型が一致しない。一方、`pair(badge(true), badge(false))` は成立する。`badge` 内の異なる型の分岐を、単一の具体型へ組み立てる変換を導入した Proposal は？\n\n```swift\nimport SwiftUI\n@ViewBuilder\nfunc badge(_ ready: Bool) -> some View {\n    if ready { Image(systemName: \"checkmark\") }\n    else { Text(\"Waiting\") }\n}\n\nfunc pair<V: View>(_ first: V, _ second: V) {}\n\npair(badge(true), badge(false))  // OK\n// pair(Image(systemName: \"checkmark\"), Text(\"Waiting\")) // NG\n```",
       "choices": {
         "A": "SE-0328 · Structural opaque result types",
         "B": "SE-0289 · Result builders",
@@ -135,7 +135,7 @@
     {
       "id": "region-isolation",
       "difficulty": 2,
-      "bodyMarkdown": "`Draft` は非 `Sendable` なクラス。新しく作った値を渡した後に使わないと解析し、この actor への引き渡しを許可した Proposal は？\n\n```swift\nfinal class Draft { var text = \"\" }\nactor Inbox {\n    var drafts: [Draft] = []\n    func add(_ draft: Draft) { drafts.append(draft) }\n}\n\n@MainActor\nfunc submit(to inbox: Inbox) async {\n    let draft = Draft()\n    draft.text = \"Hello\"\n    await inbox.add(draft)\n}\n```\n\nSwift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
+      "bodyMarkdown": "`Draft` は非 `Sendable` なクラス。`submit` で新しく作った `draft` は他と共有されておらず、引き渡した後も使われない。このコードで、MainActor から別の `Inbox` actor への安全な引き渡しを解析して許可する仕組みを導入した Proposal は？\n\n```swift\nfinal class Draft { var text = \"\" }\nactor Inbox {\n    var drafts: [Draft] = []\n    func add(_ draft: Draft) { drafts.append(draft) }\n}\n\n@MainActor\nfunc submit(to inbox: Inbox) async {\n    let draft = Draft()\n    draft.text = \"Hello\"\n    await inbox.add(draft)\n}\n```\n\nSwift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
       "choices": {
         "A": "SE-0430 · sending parameter and result values",
         "B": "SE-0302 · Sendable and @Sendable closures",
