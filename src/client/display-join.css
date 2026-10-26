@@ -140,6 +140,17 @@
   font-size: 26px;
 }
 @media (max-height: 780px) and (min-width: 761px) {
+  .display-page-waiting .display-header {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .display-content.phase-waiting {
+    padding-top: 20px;
+    padding-bottom: 14px;
+  }
+  .phase-waiting .display-welcome {
+    padding: 0;
+  }
   .display-join-heading {
     margin-bottom: 16px;
   }
