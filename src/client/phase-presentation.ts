@@ -95,7 +95,7 @@ export function getGameProgress(
     preparation:
       phase === "choicesPreparing"
         ? {
-            count: `${view.readyCount} / ${view.eligibleCount}`,
+            count: `${view.readyCount} / ${view.readyWaitCount}`,
             label: "人が準備完了",
           }
         : null,

@@ -70,10 +70,10 @@ for (let n = 0; n < 10; n++) {
   for (let i = 0; i < game.players.length; i++) {
     const p = game.players[i];
     if (i === 15 || (i === 14 && n < 2)) continue;
-    r.participants[p.id] =
-      (i === 12 && n % 3 === 0) || i === 13 ? "resting" : "eligible";
+    r.participants[p.id] = "eligible";
     if (
-      r.participants[p.id] !== "eligible" ||
+      (i === 12 && n % 3 === 0) ||
+      i === 13 ||
       (i === 11 && n % 2 === 0) ||
       (i + n) % 11 === 10
     )

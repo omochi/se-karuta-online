@@ -5,7 +5,6 @@ export type ReportAnswerStatus =
   | "correct"
   | "incorrect"
   | "unanswered"
-  | "resting"
   | "ineligible"
   | "unasked"
   | "notOpened";
@@ -26,7 +25,6 @@ export interface ReportRound {
   answered: number;
   correct: number;
   unanswered: number;
-  resting: number;
   ineligible: number;
   correctRate: number | null;
   difficult: boolean;
@@ -44,7 +42,6 @@ export interface ReportPlayer {
   correct: number;
   incorrect: number;
   unanswered: number;
-  resting: number;
   ineligible: number;
   correctRate: number | null;
   averageElapsed: number | null;

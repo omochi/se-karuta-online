@@ -3,6 +3,8 @@ import { beforeAll, expect, it } from "vitest";
 import { env, exports } from "cloudflare:workers";
 import { evictDurableObject } from "cloudflare:test";
 import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
+import readyWaitMigration from "../migrations/0003_unify_resting_with_unanswered.sql?raw";
+import { tournamentReport } from "../src/worker/report";
 import migration from "../migrations/0001_initial.sql?raw";
 import {
   newGame,
@@ -155,7 +157,7 @@ it("HostやForwardedヘッダーではなく公開URLを使用する", async () 
 });
 beforeAll(async () => {
   await bindings.DB.batch(
-    (migration + joinCodeMigration)
+    (migration + joinCodeMigration + readyWaitMigration)
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -711,4 +713,56 @@ it("参加コードから認証なしで参加URLだけを取得でき、終了�
       )
     ).status,
   ).toBe(401);
+});
+
+it("旧お休み記録の移行で回答を維持し、回答なしを通常の未回答と分母に含める", async () => {
+  const game = fixture();
+  const player = game.players[0];
+  game.phase = "finished";
+  game.currentIndex = 0;
+  const round = game.rounds[0];
+  round.openedAt = 100;
+  round.closedAt = 200;
+  round.participants[player.id] = "eligible";
+  await saveGame(bindings.DB, null, game, "hash");
+  await bindings.DB.prepare(
+    "UPDATE participations SET status = 'resting' WHERE tournament_id = ?",
+  )
+    .bind(game.id)
+    .run();
+  await bindings.DB.exec(readyWaitMigration);
+  await bindings.DB.exec(readyWaitMigration);
+  const restored = (await loadGame(bindings.DB, game.id))!;
+  expect(restored.rounds[0].participants[player.id]).toBe("eligible");
+  expect(restored.players).toEqual(game.players);
+  expect(tournamentReport(restored).players[0]).toMatchObject({
+    eligible: 1,
+    unanswered: 1,
+    correctRate: 0,
+  });
+  expect(tournamentReport(restored).rounds[0]).not.toHaveProperty("resting");
+});
+it("待ち合わせ免除をD1から復元し、次問でも維持する", async () => {
+  const game = fixture();
+  const playerId = game.players[0].id;
+  applyCommand(
+    game,
+    {
+      command: "setReadyWait",
+      revision: game.revision,
+      playerId,
+      waitForReady: false,
+    },
+    0,
+  );
+  await saveGame(bindings.DB, null, game, "hash");
+  const restored = (await loadGame(bindings.DB, game.id))!;
+  expect(restored.readyExemptPlayerIds).toEqual([playerId]);
+  applyCommand(restored, { command: "start", revision: restored.revision }, 1);
+  expect(beginCountdownIfReady(restored, new Set(), 2)).toBe(true);
+  expect(restored.rounds[0].participants[playerId]).toBe("eligible");
+  await saveGame(bindings.DB, game, restored);
+  const loaded = (await loadGame(bindings.DB, game.id))!;
+  expect(loaded.rounds[0].readyWaitPlayerIds).toEqual([]);
+  expect(loaded.readyExemptPlayerIds).toEqual([playerId]);
 });

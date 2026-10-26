@@ -21,7 +21,6 @@ const statusLabels = {
   incorrect: "不正解",
   unanswered: "未回答",
   notOpened: "受付前",
-  resting: "お休み",
   ineligible: "対象外",
   unasked: "未出題",
 };
@@ -162,7 +161,7 @@ function ReportContent({ report }: { report: Report }) {
       </nav>
       <p className="report-note">
         集計は有効な出題のみ。正答率は正解数 ÷
-        参加対象数で、未回答を含み、お休み・対象外を除きます。無効・未出題の問題は全体と個人成績に含めません。
+        参加対象数で、未回答を含み、途中参加前の対象外を除きます。無効・未出題の問題は全体と個人成績に含めません。
       </p>
       {tab === "overview" ? (
         <>
@@ -274,9 +273,8 @@ function ReportContent({ report }: { report: Report }) {
                 </Metric>
               </div>
               <p className="muted">
-                正解 {round.correct} 人 · 未回答 {round.unanswered} 人 · お休み{" "}
-                {round.resting} 人 · 対象外 {round.ineligible} 人 · 最速正解{" "}
-                {seconds(round.fastestCorrect)}
+                正解 {round.correct} 人 · 未回答 {round.unanswered} 人 · 対象外{" "}
+                {round.ineligible} 人 · 最速正解 {seconds(round.fastestCorrect)}
               </p>
               <h3>選択肢ごとの回答人数</h3>
               <p className="muted">
@@ -403,8 +401,7 @@ function ReportContent({ report }: { report: Report }) {
               </p>
               <p className="muted">
                 不正解 {player.incorrect} 問 · 未回答 {player.unanswered} 問 ·
-                お休み {player.resting} 問 · 対象外 {player.ineligible} 問 ·
-                安定王{" "}
+                対象外 {player.ineligible} 問 · 安定王{" "}
                 {player.stableQualified
                   ? "資格あり"
                   : `資格なし（${report.results.minimumCorrect}問以上の正解が必要）`}

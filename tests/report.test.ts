@@ -57,7 +57,7 @@ function fixture(): Game {
     p1: "eligible",
     p2: "eligible",
     p3: "eligible",
-    p4: "resting",
+    p4: "eligible",
   };
   first.answers = {
     p0: { choice: "B", receivedAt: 2000 },
@@ -71,7 +71,7 @@ function fixture(): Game {
     p1: "eligible",
     p2: "eligible",
     p3: "eligible",
-    p4: "resting",
+    p4: "eligible",
     p5: "eligible",
   };
   second.answers = { p0: { choice: "B", receivedAt: 25000 } };
@@ -87,25 +87,24 @@ function fixture(): Game {
   beforeOpening.participants = { p0: "eligible" };
   return g;
 }
-it("未回答を分母に含め、お休み・途中参加前・無効・未出題を正しく分離する", () => {
+it("未回答を分母に含め、途中参加前・無効・未出題を正しく分離する", () => {
   const report = tournamentReport(fixture());
   expect(report.summary).toMatchObject({
     scored: 2,
     voided: 2,
     unasked: 1,
-    eligible: 9,
+    eligible: 11,
     answered: 4,
     correct: 3,
-    correctRate: 1 / 3,
+    correctRate: 3 / 11,
     averageElapsed: 2750,
   });
   expect(report.rounds[0]).toMatchObject({
-    eligible: 4,
+    eligible: 5,
     answered: 3,
     correct: 2,
-    correctRate: 0.5,
-    unanswered: 1,
-    resting: 1,
+    correctRate: 0.4,
+    unanswered: 2,
     ineligible: 1,
     distribution: { A: 1, B: 2, C: 0, D: 0 },
     averageElapsed: 2000,
@@ -135,9 +134,9 @@ it("未回答を分母に含め、お休み・途中参加前・無効・未出�
     correctRate: 0,
   });
   expect(report.players.find((p) => p.id === "p4")).toMatchObject({
-    eligible: 0,
-    resting: 2,
-    correctRate: null,
+    eligible: 2,
+    unanswered: 2,
+    correctRate: 0,
     averageElapsed: null,
   });
 });
@@ -181,7 +180,7 @@ it("最多得票以外の正解だけを問題別レポート・参加者・最�
   const report = tournamentReport(g);
   expect(report.rounds[1]).toMatchObject({
     difficult: true,
-    correctRate: 0.2,
+    correctRate: 1 / 6,
     distribution: { A: 2, B: 1, C: 0, D: 0 },
   });
   expect(report.results.difficult).toEqual([

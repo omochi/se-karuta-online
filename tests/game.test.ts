@@ -148,25 +148,73 @@ describe("全員の準備確認と時間進行", () => {
     command(g, "start", 2);
     expect(currentRound(g)?.participants.late).toBe("eligible");
   });
-  it("お休みを待ち合わせから外し、次の問題で自動復帰する", () => {
+  it("待たない設定を次問でも維持し、回答資格は変えず、待つ設定への復帰は次問から反映する", () => {
     const g = fixture(2);
     command(g, "start");
-    command(g, "rest", 1, { playerId: "p1" });
+    command(g, "setReadyWait", 1, { playerId: "p1", waitForReady: false });
+    expect(currentRound(g)?.participants.p1).toBe("eligible");
     expect(beginCountdownIfReady(g, new Set(["p0"]), 2)).toBe(true);
     command(g, "void", 3, { reason: "test" });
     command(g, "start", 4);
-    expect(currentRound(g)?.participants.p1).toBe("eligible");
+    expect(currentRound(g)?.readyWaitPlayerIds).toEqual(["p0"]);
+    command(g, "setReadyWait", 5, { playerId: "p1", waitForReady: true });
+    expect(currentRound(g)?.readyWaitPlayerIds).toEqual(["p0"]);
+    expect(beginCountdownIfReady(g, new Set(["p0"]), 6)).toBe(true);
+    command(g, "void", 7, { reason: "test" });
+    command(g, "start", 8);
+    expect(beginCountdownIfReady(g, new Set(["p0"]), 9)).toBe(false);
+    expect(beginCountdownIfReady(g, new Set(["p0", "p1"]), 10)).toBe(true);
   });
-  it("対象者が0人では開始しない。出題前に全員お休みなら停止する", () => {
+  it("全員を待たない設定でも出題し、readyなしの参加者の回答を受け付ける", () => {
     const g = fixture(1);
+    command(g, "setReadyWait", 0, { playerId: "p0", waitForReady: false });
     command(g, "start");
-    beginCountdownIfReady(g, new Set(["p0"]), 0);
+    expect(beginCountdownIfReady(g, new Set(), 0)).toBe(true);
     advanceTimer(g, 5000);
-    command(g, "rest", 11000, { playerId: "p0" });
-    expect(g.phase).toBe("choicesPreparing");
-    expect(g.phaseEndsAt).toBeNull();
-    expect(beginCountdownIfReady(g, new Set(), 12000)).toBe(false);
-    expect(advanceTimer(g, 20000)).toBe(false);
+    advanceTimer(g, 20000);
+    expect(receiveAnswer(g, "p0", currentRound(g)!.id, "B", 20100)).toEqual({
+      choice: "B",
+      receivedAt: 20100,
+    });
+  });
+  it("待ち合わせ人数だけを減らし、回答・未回答の対象人数は全員のまま表示する", () => {
+    const g = fixture(2);
+    command(g, "start");
+    command(g, "setReadyWait", 1, { playerId: "p1", waitForReady: false });
+    const view = viewFor(
+      g,
+      "control",
+      undefined,
+      { ...presence, readyPlayers: new Set(["p0", "p1"]) },
+      "e",
+      1,
+      "http://test",
+    );
+    expect(view).toMatchObject({
+      eligibleCount: 2,
+      readyCount: 1,
+      readyWaitCount: 1,
+    });
+    expect(view.players?.[1]).toMatchObject({
+      participation: "eligible",
+      waitForReady: false,
+    });
+  });
+  it("不正な参加者・設定値・終了後の設定変更を拒否する", () => {
+    const g = fixture(1);
+    expect(() =>
+      command(g, "setReadyWait", 0, {
+        playerId: "missing",
+        waitForReady: false,
+      }),
+    ).toThrow("参加者");
+    expect(() => command(g, "setReadyWait", 0, { playerId: "p0" })).toThrow(
+      "設定が不正",
+    );
+    command(g, "finish");
+    expect(() =>
+      command(g, "setReadyWait", 0, { playerId: "p0", waitForReady: false }),
+    ).toThrow("終了した大会");
   });
   it("古い操作と二重クリックを拒否する", () => {
     const g = fixture();
@@ -183,12 +231,12 @@ describe("回答の確定と受付境界", () => {
     command(g, "start");
     const id = currentRound(g)!.id;
     expect(() => receiveAnswer(g, "p0", id, "B", 1)).toThrow("受付中");
-    command(g, "rest", 2, { playerId: "p2" });
+    command(g, "setReadyWait", 2, { waitForReady: false, playerId: "p2" });
     beginCountdownIfReady(g, new Set(["p0", "p1"]), 0);
     advanceTimer(g, 5000);
     advanceTimer(g, 20000);
     expect(() => receiveAnswer(g, "p0", id, "B", 19999)).toThrow("受付中");
-    expect(() => receiveAnswer(g, "p2", id, "B", 20001)).toThrow("対象");
+    expect(receiveAnswer(g, "p2", id, "B", 20001).choice).toBe("B");
     expect(() => receiveAnswer(g, "stranger", id, "B", 20001)).toThrow("対象");
   });
   it("再送・別選択肢・次問移行後も最初の回答と受信時刻を維持する", () => {
@@ -205,13 +253,14 @@ describe("回答の確定と受付境界", () => {
     expect(receiveAnswer(g, "p0", id, "A", 23000)).toEqual(first);
     expect(currentRound(g)?.answers).toEqual({});
   });
-  it("締切後の未保存回答と出題後のお休み指定を拒否する", () => {
+  it("出題後の待ち合わせ設定変更は現在の回答・期限を変えず、締切後の初回回答を拒否する", () => {
     const g = fixture();
     open(g);
     const id = currentRound(g)!.id;
-    expect(() => command(g, "rest", 20001, { playerId: "p0" })).toThrow(
-      "出題前",
-    );
+    const deadline = g.phaseEndsAt;
+    command(g, "setReadyWait", 20001, { waitForReady: false, playerId: "p0" });
+    expect(g.phaseEndsAt).toBe(deadline);
+    expect(currentRound(g)?.participants.p0).toBe("eligible");
     command(g, "close", 21000);
     expect(() => receiveAnswer(g, "p0", id, "B", 21001)).toThrow("受付中");
   });
@@ -345,7 +394,7 @@ describe("表彰と無効問題", () => {
   it("最多得票以外の正解を難問王に加算し、誤答を最速記録にしない", () => {
     const g = fixture(5);
     command(g, "start");
-    command(g, "rest", 0, { playerId: "p4" });
+    command(g, "setReadyWait", 0, { waitForReady: false, playerId: "p4" });
     beginCountdownIfReady(g, new Set(["p0", "p1", "p2", "p3"]), 0);
     advanceTimer(g, 5000);
     advanceTimer(g, 20000);
@@ -362,7 +411,7 @@ describe("表彰と無効問題", () => {
   it("未回答が多くても、正解が最多得票なら難問にしない", () => {
     const g = fixture(4);
     command(g, "start");
-    command(g, "rest", 0, { playerId: "p3" });
+    command(g, "setReadyWait", 0, { waitForReady: false, playerId: "p3" });
     beginCountdownIfReady(g, new Set(["p0", "p1", "p2"]), 0);
     advanceTimer(g, 5000);
     advanceTimer(g, 20000);
@@ -415,7 +464,7 @@ describe("表彰と無効問題", () => {
     receiveAnswer(g, "p0", r.id, "B", 20100);
     receiveAnswer(g, "p1", r.id, "A", 20200);
     receiveAnswer(g, "p2", r.id, "A", 20300);
-    r.participants.p3 = "resting";
+    delete r.participants.p3;
     r.answers.p3 = { choice: "B", receivedAt: 20400 };
     r.answers.late = { choice: "B", receivedAt: 20400 };
     command(g, "close", 21000);
@@ -818,7 +867,7 @@ describe("会場の回答分布", () => {
       viewFor(g, role, "p0", presence, "e", 22000, "http://test");
     expect(view().answerDistribution).toBeUndefined();
     command(g, "start");
-    command(g, "rest", 0, { playerId: "p5" });
+    command(g, "setReadyWait", 0, { waitForReady: false, playerId: "p5" });
     beginCountdownIfReady(g, new Set(["p0", "p1", "p2", "p3", "p4"]), 0);
     expect(view().answerDistribution).toBeUndefined();
     advanceTimer(g, 5000);
@@ -827,12 +876,12 @@ describe("会場の回答分布", () => {
     const r = currentRound(g)!;
     expect(view().answerDistribution).toEqual({
       counts: { A: 0, B: 0, C: 0, D: 0 },
-      unanswered: 5,
+      unanswered: 6,
     });
     receiveAnswer(g, "p0", r.id, "B", 20100);
     expect(view().answerDistribution).toEqual({
       counts: { A: 0, B: 1, C: 0, D: 0 },
-      unanswered: 4,
+      unanswered: 5,
     });
     receiveAnswer(g, "p1", r.id, "B", 20200);
     receiveAnswer(g, "p2", r.id, "A", 20300);
@@ -843,7 +892,7 @@ describe("会場の回答分布", () => {
       joinedAt: 20500,
       sessionHash: "hash",
     });
-    const expected = { counts: { A: 1, B: 2, C: 0, D: 1 }, unanswered: 1 };
+    const expected = { counts: { A: 1, B: 2, C: 0, D: 1 }, unanswered: 2 };
     expect(view().answerDistribution).toEqual(expected);
     expect(view().question?.correctChoice).toBeUndefined();
     expect(view("player").answerDistribution).toBeUndefined();

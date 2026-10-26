@@ -70,6 +70,7 @@ export async function loadGame(
     rounds: [],
   };
   game.timing = restoreTiming(game.timing);
+  game.readyExemptPlayerIds ??= [];
   game.rounds = data[1].results.map((row) => ({
     ...JSON.parse(row.state_json as string),
     question: JSON.parse(row.question_json as string),
@@ -90,7 +91,7 @@ export async function loadGame(
   const rounds = new Map(game.rounds.map((r) => [r.id, r]));
   for (const row of data[3].results)
     rounds.get(row.round_id as string)!.participants[row.player_id as string] =
-      row.status as "eligible" | "resting";
+      row.status as "eligible";
   for (const row of data[4].results)
     rounds.get(row.round_id as string)!.answers[row.player_id as string] = {
       choice: row.choice as "A" | "B" | "C" | "D",

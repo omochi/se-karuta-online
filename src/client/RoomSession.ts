@@ -257,6 +257,7 @@ export class RoomSession {
     command: Command,
     extra: {
       playerId?: string;
+      waitForReady?: boolean;
       reason?: string;
       timing?: TimingSettings;
     } = {},
