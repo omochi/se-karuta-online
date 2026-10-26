@@ -404,10 +404,12 @@ export function viewFor(
           ...(!["choicesPreparing", "countdown"].includes(g.phase)
             ? { choices: r.question.choices }
             : {}),
+          ...(role !== "player" && !r.isVoided
+            ? { difficulty: r.question.difficulty }
+            : {}),
           ...(showBody && role !== "player"
             ? {
                 bodyMarkdown: r.question.bodyMarkdown,
-                difficulty: r.question.difficulty,
               }
             : {}),
           ...(reveal

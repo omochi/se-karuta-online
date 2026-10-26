@@ -67,10 +67,10 @@ export function createDisplayPreviewView(
     }),
     question: {
       id: question.id,
+      difficulty: question.difficulty,
       choices: question.choices,
       ...(phase !== "choicesReading" && {
         bodyMarkdown: question.bodyMarkdown,
-        difficulty: question.difficulty,
       }),
       ...(phase === "answerRevealed" && {
         correctChoice: question.correctChoice,

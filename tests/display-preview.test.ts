@@ -11,6 +11,7 @@ import {
 } from "../src/client/display-preview";
 import { getGameProgress } from "../src/client/phase-presentation";
 import type { RoomConnection } from "../src/client/useRoom";
+import type { Difficulty, Phase } from "../src/shared/types";
 
 const question = {
   id: "preview-question",
@@ -40,6 +41,37 @@ function preview(phase: DisplayPreviewPhase) {
   );
 }
 afterEach(() => vi.restoreAllMocks());
+
+it.each([1, 2, 3] as const)(
+  "出題前の各画面に難易度%iだけを予告し、本文や正解は表示しない",
+  (difficulty: Difficulty) => {
+    for (const phase of [
+      "choicesPreparing",
+      "countdown",
+      "choicesReading",
+    ] satisfies Phase[]) {
+      const state = view("choicesReading");
+      state.phase = phase;
+      state.question!.difficulty = difficulty;
+      if (phase !== "choicesReading") state.question!.choices = undefined;
+      const html = render(
+        createElement(DisplayScreen, {
+          view: state,
+          progress: getGameProgress(state, 0),
+          status: null,
+        }),
+      );
+      expect(html).toContain(`data-difficulty="${difficulty}"`);
+      expect(html).toContain(`難易度 ${difficulty}`);
+      expect(html).toContain("★".repeat(difficulty));
+      expect(html.match(/class="question-difficulty"/g)).toHaveLength(1);
+      expect(html).not.toContain("QUESTION BODY");
+      expect(html).not.toContain("ANSWER EXPLANATION");
+      expect(html.includes("Alpha")).toBe(phase === "choicesReading");
+      expect(html).not.toMatch(/class="choice [^"]*correct/);
+    }
+  },
+);
 
 it.each<DisplayPreviewPhase>([
   "choicesReading",
@@ -107,7 +139,7 @@ it("選択肢公開では問題を隠し、正解発表では本文・正解の�
   expect(reading).toContain("Alpha");
   expect(reading).toContain("残り 15 秒");
   expect(reading).not.toContain("QUESTION BODY");
-  expect(reading).not.toContain('class="question-difficulty"');
+  expect(reading).toContain('data-difficulty="2"');
   expect(reading).not.toContain("ANSWER EXPLANATION");
   const revealed = preview("answerRevealed");
   expect(revealed).toContain("QUESTION BODY");

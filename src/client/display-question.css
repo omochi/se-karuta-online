@@ -1,3 +1,9 @@
+/* 本文公開前は難易度を予告として見せる。本文公開後は本文内のバッジを使う。 */
+.display-content > .question-difficulty {
+  margin: 0;
+  font-size: clamp(18px, 1.8vw, 26px);
+}
+
 /* 出題から正解発表までは縦横比にかかわらず、表示領域内で各段の高さを割り当てる。 */
 .display-page.display-page-question {
   height: 100dvh;

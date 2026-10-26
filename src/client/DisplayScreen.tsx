@@ -11,6 +11,7 @@ import {
 import { GameProgress } from "./GameProgress";
 import { FittedQuestion } from "./FittedQuestion";
 import { QuestionBody } from "./QuestionBody";
+import { QuestionDifficulty } from "./QuestionDifficulty";
 import type { QuestionFit } from "./fit-question";
 import "./display-question.css";
 import { AnswerDistribution } from "./AnswerDistribution";
@@ -55,6 +56,10 @@ export function DisplayScreen({
       <main
         className={`display-content phase-${progress.phase}${distribution && v.phase === "answerRevealed" ? " has-distribution" : ""}`}
       >
+        {q?.difficulty !== undefined &&
+          ["choicesPreparing", "countdown", "choicesReading"].includes(
+            v.phase,
+          ) && <QuestionDifficulty difficulty={q.difficulty} />}
         {v.phase !== "rankingShown" && (
           <GameProgress progress={progress} layout="display" />
         )}

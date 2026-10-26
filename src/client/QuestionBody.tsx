@@ -1,6 +1,6 @@
 import type { Difficulty } from "../shared/types";
 import { MarkdownBody } from "./MarkdownBody";
-import "./question-body.css";
+import { QuestionDifficulty } from "./QuestionDifficulty";
 
 export function QuestionBody({
   text,
@@ -11,15 +11,7 @@ export function QuestionBody({
 }) {
   return (
     <>
-      <div className="question-difficulty" data-difficulty={difficulty}>
-        <span>難易度 {difficulty}</span>
-        <span className="question-difficulty-stars" aria-hidden="true">
-          {"★".repeat(difficulty)}
-          <span className="question-difficulty-empty">
-            {"☆".repeat(3 - difficulty)}
-          </span>
-        </span>
-      </div>
+      <QuestionDifficulty difficulty={difficulty} />
       <MarkdownBody text={text} />
     </>
   );
