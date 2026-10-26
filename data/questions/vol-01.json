@@ -5,7 +5,7 @@
     {
       "id": "if-expression",
       "difficulty": 1,
-      "bodyMarkdown": "if の分岐から直接値を作る。この書き方を導入した Proposal は？\n\n```swift\nlet score = 100\nlet message = if score == 100 {\n    \"Perfect!\"\n} else {\n    \"Try again\"\n}\n```",
+      "bodyMarkdown": "`if` の各分岐で選んだ文字列を、直接 `message` の初期値にしている。この書き方を可能にした提案は？\n\n```swift\nlet score = 100\nlet message = if score == 100 {\n    \"Perfect!\"\n} else {\n    \"Try again\"\n}\n```",
       "choices": {
         "A": {
           "number": "SE-0255",
@@ -38,7 +38,7 @@
     {
       "id": "if-let-shorthand",
       "difficulty": 1,
-      "bodyMarkdown": "`if let nickname = nickname` を `if let nickname` と省略できるようにした Proposal は？\n\n```swift\nlet nickname: String? = \"Swifty\"\nif let nickname {\n    print(\"Hello, \\(nickname)!\")\n}\n```",
+      "bodyMarkdown": "`if let nickname = nickname` を `if let nickname` と省略できるようにした提案は？\n\n```swift\nlet nickname: String? = \"Swifty\"\nif let nickname {\n    print(\"Hello, \\(nickname)!\")\n}\n```",
       "choices": {
         "A": {
           "number": "SE-0345",
@@ -71,7 +71,7 @@
     {
       "id": "array-equatable",
       "difficulty": 2,
-      "bodyMarkdown": "配列同士の `==` は以前からあった。配列を `T: Equatable` を要求する関数 `same` に渡せるようにし、次の入れ子の比較も可能にした Proposal は？\n\n```swift\nfunc same<T: Equatable>(_ a: T, _ b: T) -> Bool {\n    a == b\n}\n\nsame([1, 2], [1, 2])             // true\nsame([[1], [2]], [[1], [2]])     // true\n```",
+      "bodyMarkdown": "`same` は、`Equatable` に適合する型の値だけを受け取る関数。配列同士の `==` は以前から使えたが、配列を `same` に渡すことはできなかった。次のように、配列も入れ子の配列も `same` で比較できるようにした提案は？\n\n```swift\nfunc same<T: Equatable>(_ a: T, _ b: T) -> Bool {\n    a == b\n}\n\nsame([1, 2], [1, 2])             // true\nsame([[1], [2]], [[1], [2]])     // true\n```",
       "choices": {
         "A": {
           "number": "SE-0157",
@@ -104,7 +104,7 @@
     {
       "id": "isolated-reservation",
       "difficulty": 3,
-      "bodyMarkdown": "`reserve` は `Stock` の外にある同期関数。`reserve` の本体では、引数の `stock` の在庫確認と減算を `await` なしで同期的に行いたい。本体を変えず、`/* ? */` に修飾子を補ってこれを可能にした Proposal は？\n\n```swift\nactor Stock { var remaining = 1 }\n\nfunc reserve(_ stock: /* ? */ Stock) -> Bool {\n    guard stock.remaining > 0 else { return false }\n    stock.remaining -= 1\n    return true\n}\n\nfunc buy(_ stock: Stock) async {\n    print(await reserve(stock))\n}\n```\n\n`reserve` の本体は変更しない。Swift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
+      "bodyMarkdown": "`reserve` は `Stock` の外にある同期関数。`reserve` の本体では、引数の `stock` の在庫確認と減算を `await` なしで同期的に行いたい。本体を変えず、`/* ? */` に修飾子を補ってこれを可能にした提案は？\n\n```swift\nactor Stock { var remaining = 1 }\n\nfunc reserve(_ stock: /* ? */ Stock) -> Bool {\n    guard stock.remaining > 0 else { return false }\n    stock.remaining -= 1\n    return true\n}\n\nfunc buy(_ stock: Stock) async {\n    print(await reserve(stock))\n}\n```\n\nSwift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
       "choices": {
         "A": {
           "number": "SE-0420",
@@ -137,7 +137,7 @@
     {
       "id": "key-path-function",
       "difficulty": 1,
-      "bodyMarkdown": "`{ $0.name }` というクロージャーの代わりに、キーパスの式を map に直接渡せるようにした Proposal は？\n\n```swift\nstruct User { let name: String }\nlet users = [User(name: \"Mika\"), User(name: \"Ren\")]\n\nlet names = users.map(\\.name)\n// [\"Mika\", \"Ren\"]\n```",
+      "bodyMarkdown": "`{ $0.name }` というクロージャーの代わりに、キーパスの式 `\\.name` を `map` に直接渡せるようにした提案は？\n\n```swift\nstruct User { let name: String }\nlet users = [User(name: \"Mika\"), User(name: \"Ren\")]\n\nlet names = users.map(\\.name)\n// [\"Mika\", \"Ren\"]\n```",
       "choices": {
         "A": {
           "number": "SE-0249",
@@ -170,7 +170,7 @@
     {
       "id": "open-existential",
       "difficulty": 2,
-      "bodyMarkdown": "`any Sequence` として受け取った値を、下の `showCount(values)` のようにジェネリック関数へ直接渡せるようにした Proposal は？\n\n```swift\nfunc showCount<S: Sequence>(_ values: S) {\n    print(values.reduce(0) { n, _ in n + 1 })\n}\n\nfunc show(_ values: any Sequence) {\n    showCount(values)\n}\n```",
+      "bodyMarkdown": "`show` の引数は、具体的な型が隠された `any Sequence`。この値を、`Sequence` に適合する型を受け取るジェネリック関数 `showCount` に、そのまま渡せるようにした提案は？\n\n```swift\nfunc show(_ values: any Sequence) {\n    showCount(values)\n}\n\nfunc showCount<S: Sequence>(_ values: S) {\n    print(values.reduce(0) { n, _ in n + 1 })\n}\n```",
       "choices": {
         "A": {
           "number": "SE-0335",
@@ -203,7 +203,7 @@
     {
       "id": "preserve-error-type",
       "difficulty": 3,
-      "bodyMarkdown": "`catch` の error をキャストせず `Result<T, E>` に格納でき、投げないクロージャーなら E が Never になる。この両方を可能にした Proposal は？\n\n```swift\nfunc capture<T, E: Error>(\n    _ operation: () throws(E) -> T\n) -> Result<T, E> {\n    do { return .success(try operation()) }\n    catch { return .failure(error) }\n}\n\nlet result = capture { 42 }\n// result の型は Result<Int, Never>\n```\n\n引数の `throws(E)` を単なる `throws` に変えると、同じ本体のままではコンパイルできない。",
+      "bodyMarkdown": "`E` は、クロージャー `operation` が投げるエラーの型。`capture` の `catch` では、受け取った `error` を型変換せずに `Result<T, E>` に格納できる。さらに、エラーを投げないクロージャーを渡すと `E` は `Never` と推論される。この両方を可能にした提案は？\n\n```swift\nfunc capture<T, E: Error>(\n    _ operation: () throws(E) -> T\n) -> Result<T, E> {\n    do { return .success(try operation()) }\n    catch { return .failure(error) }\n}\n\nlet result = capture { 42 }\n// result の型は Result<Int, Never>\n```",
       "choices": {
         "A": {
           "number": "SE-0276",
@@ -236,7 +236,7 @@
     {
       "id": "optional-try",
       "difficulty": 2,
-      "bodyMarkdown": "`find` の戻り値は `Int?`。`try? find(...)` の結果を `Int??` から `Int?` に変え、成功時の「結果なし」とエラー発生時が、どちらも `nil` になるようにした Proposal は？\n\n```swift\nenum LookupError: Error { case offline }\nfunc find(_ online: Bool) throws -> Int? {\n    if !online { throw LookupError.offline }\n    return nil\n}\n\nlet missing = try? find(true)   // 成功したが結果なし\nlet failed = try? find(false)   // エラーが発生\n```",
+      "bodyMarkdown": "`find` の戻り値は `Int?`。`try? find(...)` の結果を `Int??` から `Int?` に変え、成功時の「結果なし」とエラー発生時が、どちらも `nil` になるようにした提案は？\n\n```swift\nenum LookupError: Error { case offline }\nfunc find(_ online: Bool) throws -> Int? {\n    if !online { throw LookupError.offline }\n    return nil\n}\n\nlet missing = try? find(true)   // 成功したが結果なし\nlet failed = try? find(false)   // エラーが発生\n```",
       "choices": {
         "A": {
           "number": "SE-0230",
@@ -269,7 +269,7 @@
     {
       "id": "compact-map-values",
       "difficulty": 1,
-      "bodyMarkdown": "Dictionary のキーを保ったまま値を変換し、変換結果が `nil` の要素を取り除く `compactMapValues` を追加した Proposal は？\n\n```swift\nlet scores = [\"Swift\": \"100\", \"Mystery\": \"?\"]\nlet numbers = scores.compactMapValues(Int.init)\n// [\"Swift\": 100]\n```",
+      "bodyMarkdown": "Dictionary のキーを保ったまま値を変換し、変換結果が `nil` の要素を取り除く `compactMapValues` を追加した提案は？\n\n```swift\nlet scores = [\"Swift\": \"100\", \"Mystery\": \"?\"]\nlet numbers = scores.compactMapValues(Int.init)\n// [\"Swift\": 100]\n```",
       "choices": {
         "A": {
           "number": "SE-0187",
@@ -302,7 +302,7 @@
     {
       "id": "builder-opaque-branches",
       "difficulty": 3,
-      "bodyMarkdown": "`Image` と `Text` を直接 `pair` に渡すと型が一致しない。一方、`pair(badge(true), badge(false))` は成立する。`badge` 内の異なる型の分岐を、単一の具体型へ組み立てる変換を導入した Proposal は？\n\n```swift\nimport SwiftUI\n@ViewBuilder\nfunc badge(_ ready: Bool) -> some View {\n    if ready { Image(systemName: \"checkmark\") }\n    else { Text(\"Waiting\") }\n}\n\nfunc pair<V: View>(_ first: V, _ second: V) {}\n\npair(badge(true), badge(false))  // OK\n// pair(Image(systemName: \"checkmark\"), Text(\"Waiting\")) // NG\n```",
+      "bodyMarkdown": "`pair` の2つの引数は、同じ型でなければならない。`Image` と `Text` を直接渡すとエラーになるが、異なる分岐を通る `badge(true)` と `badge(false)` は渡せる。このように、分岐で異なる型の値を使いながら、1つの型の戻り値に組み立てる仕組みを導入した提案は？\n\n```swift\nimport SwiftUI\n@ViewBuilder\nfunc badge(_ ready: Bool) -> some View {\n    if ready { Image(systemName: \"checkmark\") }\n    else { Text(\"Waiting\") }\n}\n\nfunc pair<V: View>(_ first: V, _ second: V) {}\n\npair(badge(true), badge(false))  // OK\n// pair(Image(systemName: \"checkmark\"), Text(\"Waiting\")) // NG\n```",
       "choices": {
         "A": {
           "number": "SE-0328",
@@ -335,7 +335,7 @@
     {
       "id": "region-isolation",
       "difficulty": 2,
-      "bodyMarkdown": "`Draft` は非 `Sendable` なクラス。`submit` で新しく作った `draft` は他と共有されておらず、引き渡した後も使われない。このコードで、MainActor から別の `Inbox` actor への安全な引き渡しを解析して許可する仕組みを導入した Proposal は？\n\n```swift\nfinal class Draft { var text = \"\" }\nactor Inbox {\n    var drafts: [Draft] = []\n    func add(_ draft: Draft) { drafts.append(draft) }\n}\n\n@MainActor\nfunc submit(to inbox: Inbox) async {\n    let draft = Draft()\n    draft.text = \"Hello\"\n    await inbox.add(draft)\n}\n```\n\nSwift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
+      "bodyMarkdown": "`Draft` は `Sendable` に適合していないクラス。`submit` で作った `draft` は他の処理と共有されておらず、`Inbox` actor に渡した後に `submit` で使うこともない。このように、値の使われ方から引き渡しの安全性を判断し、`MainActor` から別の actor へ渡せるようにした提案は？\n\n```swift\nfinal class Draft { var text = \"\" }\nactor Inbox {\n    var drafts: [Draft] = []\n    func add(_ draft: Draft) { drafts.append(draft) }\n}\n\n@MainActor\nfunc submit(to inbox: Inbox) async {\n    let draft = Draft()\n    draft.text = \"Hello\"\n    await inbox.add(draft)\n}\n```\n\nSwift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
       "choices": {
         "A": {
           "number": "SE-0430",
