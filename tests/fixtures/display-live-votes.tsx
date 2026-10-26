@@ -158,7 +158,7 @@ button.onclick = async () => {
       );
       assert(
         JSON.stringify(bounds()) === JSON.stringify(before),
-        "締切・正解発表でゲージが移動した",
+        `締切・正解発表でゲージが移動した: ${JSON.stringify(before)} → ${JSON.stringify(bounds())}`,
       );
       results.push(`PASS ${command}: 同じ位置・長さのバーを維持`);
     }
@@ -175,4 +175,50 @@ button.onclick = async () => {
     button.disabled = false;
   }
 };
-draw();
+const params = new URLSearchParams(location.search);
+const snapshot = params.get("snapshot");
+if (params.has("embedded")) {
+  if (snapshot === "acceptingAnswers" || snapshot === "answerRevealed") {
+    const round = currentRound(game)!;
+    const correct = round.question.correctChoice;
+    const other = CHOICES.find((choice) => choice !== correct)!;
+    for (let i = 0; i < 15; i++)
+      receiveAnswer(
+        game,
+        `p${i}`,
+        round.id,
+        i < 8 ? other : correct,
+        25100 + i,
+      );
+    if (snapshot === "answerRevealed") {
+      for (const command of ["close", "reveal"] as const)
+        applyCommand(game, { command, revision: game.revision }, 27000);
+    }
+    output.parentElement!.hidden = true;
+  }
+  draw();
+} else {
+  // 親ブラウザーのパネル幅に依存せず、実際のメディアクエリーと組版を確認する。
+  const width = Number(params.get("width")) || 1280;
+  const height = Number(params.get("height")) || 720;
+  const scale =
+    params.get("scale") === "1" ? 1 : Math.min(1, innerWidth / width);
+  const childParams = new URLSearchParams({ embedded: "1" });
+  if (snapshot) childParams.set("snapshot", snapshot);
+  output.parentElement!.hidden = true;
+  document.getElementById("screen")!.style.cssText =
+    `width:${width * scale}px;height:${height * scale}px`;
+  root.render(
+    <iframe
+      title="Displayの回答速報"
+      src={`?${childParams}`}
+      style={{
+        width,
+        height,
+        border: 0,
+        transform: `scale(${scale})`,
+        transformOrigin: "top left",
+      }}
+    />,
+  );
+}

@@ -98,10 +98,19 @@
 }
 /* タイマーが消えたり解説リンクが現れたりしても、集計欄を動かさない。 */
 .has-distribution > .game-progress {
-  min-height: 43px;
+  min-height: 44px;
 }
 .display-page-question .has-distribution > .choices .choice {
-  min-height: 62px;
+  min-height: 68px;
+  border-width: 2px;
+  padding-right: 68px;
+}
+.display-page-question .has-distribution .choice-explanation-link {
+  position: absolute;
+  right: 12px;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
 }
 .has-distribution > .answer-distribution {
   align-self: center;
