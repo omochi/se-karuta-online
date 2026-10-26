@@ -292,6 +292,90 @@ it("延長後の締切・通知時刻・回答をD1から復元し、古い大�
   expect(extended.rounds[0].answerExtendedAt).toBe(70099);
   expect(extended.rounds[0].answers).toEqual(legacy.rounds[0].answers);
 });
+it.each([0, 1])(
+  "参加者%i人で、手動開始後に待ち合わせ対象が0人ならカウントダウンへ進む",
+  async (count) => {
+    const game = fixture();
+    if (count === 0) game.players = [];
+    await saveGame(bindings.DB, null, game, "hash");
+    const { token } = await signSession(bindings.SESSION_SECRET, {
+      role: "admin",
+    });
+    const response = await exports.default.fetch(
+      new Request(`http://test/api/e/${game.id}/ws?role=control`, {
+        headers: {
+          Origin: "http://test",
+          Upgrade: "websocket",
+          Cookie: `se_admin=${token}`,
+        },
+      }),
+    );
+    expect(response.status).toBe(101);
+    const ws = response.webSocket!;
+    let latest: RoomView | undefined;
+    const listeners = new Set<(view: RoomView) => void>();
+    ws.addEventListener("message", (event) => {
+      const message = JSON.parse(event.data as string);
+      if (message.type !== "state") return;
+      latest = message;
+      for (const listener of listeners) listener(message);
+    });
+    const wait = (phase: RoomView["phase"]): Promise<RoomView> => {
+      if (latest?.phase === phase) return Promise.resolve(latest);
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          listeners.delete(listener);
+          reject(new Error(`state timeout: ${phase}`));
+        }, 5000);
+        const listener = (view: RoomView) => {
+          if (view.phase !== phase) return;
+          clearTimeout(timer);
+          listeners.delete(listener);
+          resolve(view);
+        };
+        listeners.add(listener);
+      });
+    };
+    try {
+      const initial = wait("waiting");
+      ws.accept();
+      const first = await initial;
+      expect(first.questionNumber).toBe(0);
+      ws.send(
+        JSON.stringify({
+          type: "command",
+          command: "start",
+          requestId: crypto.randomUUID(),
+          revision: first.revision,
+        }),
+      );
+      if (count === 1) {
+        const preparing = await wait("choicesPreparing");
+        ws.send(
+          JSON.stringify({
+            type: "command",
+            command: "setReadyWait",
+            playerId: game.players[0].id,
+            waitForReady: false,
+            requestId: crypto.randomUUID(),
+            revision: preparing.revision,
+          }),
+        );
+      }
+      const started = await wait("countdown");
+      expect(started).toMatchObject({
+        eligibleCount: count,
+        readyWaitCount: 0,
+        questionNumber: 1,
+      });
+      expect(started.phaseEndsAt).not.toBeNull();
+      expect((await loadGame(bindings.DB, game.id))!.phase).toBe("countdown");
+    } finally {
+      ws.close();
+    }
+  },
+);
+
 it("Durable Objectを破棄してもD1から進行状態を復元する", async () => {
   const g = fixture();
   addPlayer(g, {

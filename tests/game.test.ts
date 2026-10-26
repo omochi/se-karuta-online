@@ -91,6 +91,51 @@ const presence: Presence = {
   displays: [],
 };
 describe("全員の準備確認と時間進行", () => {
+  it("0人でも手動開始後は出題し、締切後の次問には自動で進まない", () => {
+    const g = fixture(0);
+    expect(beginCountdownIfReady(g, new Set(), 0)).toBe(false);
+    expect(advanceTimer(g, 100000)).toBe(false);
+    expect(g.phase).toBe("waiting");
+    command(g, "start");
+    expect(beginCountdownIfReady(g, new Set(), 0)).toBe(true);
+    expect(g.phase).toBe("countdown");
+    advanceTimer(g, 5000);
+    advanceTimer(g, 20000);
+    expect(g.phase).toBe("acceptingAnswers");
+    advanceTimer(g, g.phaseEndsAt!);
+    expect(g.phase).toBe("answersClosed");
+    expect(advanceTimer(g, 100000)).toBe(false);
+    expect(beginCountdownIfReady(g, new Set(), 100000)).toBe(false);
+    expect(g.currentIndex).toBe(0);
+    command(g, "reveal");
+    command(g, "ranking");
+    expect(g.currentIndex).toBe(0);
+    command(g, "start");
+    expect(beginCountdownIfReady(g, new Set(), 100000)).toBe(true);
+    expect(g.currentIndex).toBe(1);
+  });
+  it("0人で開始した後の途中参加者は次問から回答・待ち合わせの対象になる", () => {
+    const g = fixture(0);
+    command(g, "start");
+    beginCountdownIfReady(g, new Set(), 0);
+    addPlayer(g, {
+      id: "late",
+      name: "late",
+      joinedAt: 1,
+      sessionHash: "hash",
+    });
+    expect(currentRound(g)?.participants.late).toBeUndefined();
+    advanceTimer(g, 5000);
+    advanceTimer(g, 20000);
+    expect(() =>
+      receiveAnswer(g, "late", currentRound(g)!.id, "B", 20001),
+    ).toThrow("対象");
+    command(g, "void", 21000, { reason: "test" });
+    command(g, "start", 22000);
+    expect(currentRound(g)?.participants.late).toBe("eligible");
+    expect(beginCountdownIfReady(g, new Set(), 22000)).toBe(false);
+    expect(beginCountdownIfReady(g, new Set(["late"]), 22001)).toBe(true);
+  });
   it("参加者全員が揃うまで進まず、Displayなしでも開始し、同じ人の通知を重複計上しない", () => {
     const g = fixture();
     command(g, "start");

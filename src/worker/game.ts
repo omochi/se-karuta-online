@@ -144,10 +144,6 @@ export function applyCommand(
         g.currentIndex + 1 < g.rounds.length,
         "すべての問題が終了しています。",
       );
-      requireCondition(
-        g.players.length > 0,
-        "参加者が入室してから開始してください。",
-      );
       g.currentIndex += 1;
       const next = currentRound(g)!;
       next.participants = Object.fromEntries(
@@ -224,14 +220,7 @@ export function beginCountdownIfReady(
   // Displayは任意の閲覧画面なので、参加者の準備だけを開始条件にする。
   if (g.phase !== "choicesPreparing") return false;
   const r = currentRound(g)!;
-  const eligible = Object.keys(r.participants).filter(
-    (id) => r.participants[id] === "eligible",
-  );
-  if (
-    eligible.length === 0 ||
-    !readyWaitPlayers(r).every((id) => ready.has(id))
-  )
-    return false;
+  if (!readyWaitPlayers(r).every((id) => ready.has(id))) return false;
   r.countdownStartedAt = now;
   g.phase = "countdown";
   g.phaseEndsAt = now + g.timing.countdownSeconds * 1000;
