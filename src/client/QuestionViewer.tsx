@@ -180,7 +180,11 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
           question.id,
           question.bodyMarkdown,
           question.explanationMarkdown,
-          ...Object.values(question.choices),
+          ...Object.values(question.choices).flatMap((choice) => [
+            choice.number,
+            choice.title,
+            choice.titleJa ?? "",
+          ]),
         ]
           .join(" ")
           .toLowerCase()
@@ -541,21 +545,62 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
                         </label>
                         <div className="viewer-edit-choices">
                           {CHOICES.map((c) => (
-                            <label key={c}>
-                              選択肢 {c}
-                              <textarea
-                                rows={2}
-                                value={q.choices[c]}
-                                onChange={(e) =>
-                                  patchQuestion({
-                                    choices: {
-                                      ...q.choices,
-                                      [c]: e.target.value,
-                                    },
-                                  })
-                                }
-                              />
-                            </label>
+                            <div key={c} className="stack">
+                              <label>
+                                選択肢 {c} のSE番号
+                                <input
+                                  value={q.choices[c].number}
+                                  onChange={(e) =>
+                                    patchQuestion({
+                                      choices: {
+                                        ...q.choices,
+                                        [c]: {
+                                          ...q.choices[c],
+                                          number: e.target.value,
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label>
+                                選択肢 {c} の原題
+                                <textarea
+                                  rows={2}
+                                  value={q.choices[c].title}
+                                  onChange={(e) =>
+                                    patchQuestion({
+                                      choices: {
+                                        ...q.choices,
+                                        [c]: {
+                                          ...q.choices[c],
+                                          title: e.target.value,
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label>
+                                選択肢 {c} の邦題（Swift
+                                Digest・空欄は邦題なし）
+                                <textarea
+                                  rows={2}
+                                  value={q.choices[c].titleJa ?? ""}
+                                  onChange={(e) =>
+                                    patchQuestion({
+                                      choices: {
+                                        ...q.choices,
+                                        [c]: {
+                                          ...q.choices[c],
+                                          titleJa: e.target.value || null,
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                            </div>
                           ))}
                         </div>
                         <label>

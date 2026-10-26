@@ -1,3 +1,4 @@
+import { choiceLabel } from "../shared/proposal-title";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLoaderData, useRevalidator } from "react-router";
 import { CHOICES } from "../shared/types";
@@ -223,7 +224,7 @@ function ReportContent({ report }: { report: Report }) {
                   {report.rounds.map((r) => (
                     <option key={r.id} value={r.id}>
                       Q{r.number} ·{" "}
-                      {r.question.choices[r.question.correctChoice]} ·{" "}
+                      {choiceLabel(r.question, r.question.correctChoice)} ·{" "}
                       {roundLabels[r.status]}
                     </option>
                   ))}
@@ -231,7 +232,7 @@ function ReportContent({ report }: { report: Report }) {
               </label>
               <h2>
                 Q{round.number} ·{" "}
-                {round.question.choices[round.question.correctChoice]}
+                {choiceLabel(round.question, round.question.correctChoice)}
               </h2>
               <p className="muted">
                 難易度 {round.question.difficulty} · {roundLabels[round.status]}
@@ -254,7 +255,7 @@ function ReportContent({ report }: { report: Report }) {
                         {c}
                         {c === round.question.correctChoice ? "（正解）" : ""}
                       </strong>{" "}
-                      · {round.question.choices[c]}
+                      · {choiceLabel(round.question, c)}
                     </li>
                   ))}
                 </ul>
@@ -293,7 +294,7 @@ function ReportContent({ report }: { report: Report }) {
                   >
                     <div className="report-choice-label">
                       <span>
-                        <strong>{c}</strong> · {round.question.choices[c]}
+                        <strong>{c}</strong> · {choiceLabel(round.question, c)}
                         {c === round.question.correctChoice ? "（正解）" : ""}
                       </span>
                       <strong>{round.distribution[c]} 人</strong>
@@ -431,7 +432,7 @@ function ReportContent({ report }: { report: Report }) {
                             onClick={() => showRound(r.id)}
                           >
                             Q{r.number} ·{" "}
-                            {r.question.choices[r.question.correctChoice]}
+                            {choiceLabel(r.question, r.question.correctChoice)}
                           </button>
                         </th>
                         <td>{roundLabels[r.status]}</td>
@@ -510,7 +511,8 @@ function QuestionList({
                   aria-pressed={r.id === selected}
                   onClick={() => onSelect(r.id)}
                 >
-                  Q{r.number} · {r.question.choices[r.question.correctChoice]}
+                  Q{r.number} ·{" "}
+                  {choiceLabel(r.question, r.question.correctChoice)}
                 </button>
               </th>
               <td>{r.question.difficulty}</td>

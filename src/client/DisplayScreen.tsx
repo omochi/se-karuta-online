@@ -1,3 +1,4 @@
+import { choiceLabel } from "../shared/proposal-title";
 import type { ReactNode } from "react";
 import type { RoomView } from "../shared/types";
 import type { GameProgressState } from "./phase-presentation";
@@ -79,7 +80,7 @@ export function DisplayScreen({
               <GameProgress progress={progress} layout="display" />
               <p>
                 正解 {q?.correctChoice} ·{" "}
-                {q?.correctChoice && q.choices?.[q.correctChoice]}
+                {q?.correctChoice && choiceLabel(q, q.correctChoice)}
               </p>
               {distribution}
             </div>

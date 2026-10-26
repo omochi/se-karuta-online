@@ -7,10 +7,26 @@
       "difficulty": 1,
       "bodyMarkdown": "if の分岐から直接値を作る。この書き方を導入した Proposal は？\n\n```swift\nlet score = 100\nlet message = if score == 100 {\n    \"Perfect!\"\n} else {\n    \"Try again\"\n}\n```",
       "choices": {
-        "A": "SE-0255 · Implicit returns from single-expression functions",
-        "B": "SE-0289 · Result builders",
-        "C": "SE-0345 · if let shorthand for shadowing an existing optional variable",
-        "D": "SE-0380 · if and switch expressions"
+        "A": {
+          "number": "SE-0255",
+          "title": "Implicit returns from single-expression functions",
+          "titleJa": "単一式関数からの暗黙的return"
+        },
+        "B": {
+          "number": "SE-0289",
+          "title": "Result builders",
+          "titleJa": null
+        },
+        "C": {
+          "number": "SE-0345",
+          "title": "if let shorthand for shadowing an existing optional variable",
+          "titleJa": "既存オプショナル変数をシャドーするためのif let短縮構文"
+        },
+        "D": {
+          "number": "SE-0380",
+          "title": "if and switch expressions",
+          "titleJa": "ifとswitch式"
+        }
       },
       "correctChoice": "D",
       "explanationMarkdown": "SE-0380 によって、if と switch を式として使い、変数の初期化などに利用できるようになりました。\n\nSE-0255 は単一式の関数で return を省略する機能、SE-0289 は result builder による文からの値の組み立て、SE-0345 は if let で既存の Optional を取り出すときに右辺を省略する機能です。このコードの let は if の条件内ではなく、その外側で分岐の結果を受け取っています。ここでは関数やビルダーの中ではなく、通常の変数の初期化に if を直接使っています。\n\n[Swift Digest：SE-0380の日本語要約](https://swiftdigest.koherent.org/proposals/se-0380.html)"
@@ -20,10 +36,26 @@
       "difficulty": 1,
       "bodyMarkdown": "`if let nickname = nickname` を `if let nickname` と省略できるようにした Proposal は？\n\n```swift\nlet nickname: String? = \"Swifty\"\nif let nickname {\n    print(\"Hello, \\(nickname)!\")\n}\n```",
       "choices": {
-        "A": "SE-0345 · if let shorthand for shadowing an existing optional variable",
-        "B": "SE-0380 · if and switch expressions",
-        "C": "SE-0099 · Restructuring Condition Clauses",
-        "D": "SE-0230 · Flatten nested optionals resulting from 'try?'"
+        "A": {
+          "number": "SE-0345",
+          "title": "if let shorthand for shadowing an existing optional variable",
+          "titleJa": "既存オプショナル変数をシャドーするためのif let短縮構文"
+        },
+        "B": {
+          "number": "SE-0380",
+          "title": "if and switch expressions",
+          "titleJa": "ifとswitch式"
+        },
+        "C": {
+          "number": "SE-0099",
+          "title": "Restructuring Condition Clauses",
+          "titleJa": "条件句の再構成"
+        },
+        "D": {
+          "number": "SE-0230",
+          "title": "Flatten nested optionals resulting from 'try?'",
+          "titleJa": "try?で生じるネストしたオプショナルを平坦化する"
+        }
       },
       "correctChoice": "A",
       "explanationMarkdown": "SE-0345 では、同名の Optional を取り出す if let nickname = nickname を if let nickname と省略できるようになりました。\n\nSE-0099 は if・guard・while の条件節の構文整理、SE-0230 は try? による Optional の入れ子の解消、SE-0380 は if・switch の分岐から値を作る式の導入です。SE-0380 も if を使う機能ですが、ここでは分岐から値を作るのではなく、既存の Optional を取り出しています。この問題は「同名の変数を取り出すときの右辺の省略」を尋ねています。\n\n[Swift Digest：SE-0345の日本語要約](https://swiftdigest.koherent.org/proposals/se-0345.html)"
@@ -33,10 +65,26 @@
       "difficulty": 2,
       "bodyMarkdown": "配列同士の `==` は以前からあった。配列を `T: Equatable` を要求する関数 `same` に渡せるようにし、次の入れ子の比較も可能にした Proposal は？\n\n```swift\nfunc same<T: Equatable>(_ a: T, _ b: T) -> Bool {\n    a == b\n}\n\nsame([1, 2], [1, 2])             // true\nsame([[1], [2]], [[1], [2]])     // true\n```",
       "choices": {
-        "A": "SE-0157 · Recursive Protocol Constraints",
-        "B": "SE-0015 · Tuple comparison operators",
-        "C": "SE-0143 · Conditional conformances",
-        "D": "SE-0185 · Synthesizing Equatable and Hashable conformance"
+        "A": {
+          "number": "SE-0157",
+          "title": "Recursive Protocol Constraints",
+          "titleJa": "関連型に対する再帰的制約をサポートする"
+        },
+        "B": {
+          "number": "SE-0015",
+          "title": "Tuple comparison operators",
+          "titleJa": "タプル比較演算子"
+        },
+        "C": {
+          "number": "SE-0143",
+          "title": "Conditional conformances",
+          "titleJa": "条件付き適合"
+        },
+        "D": {
+          "number": "SE-0185",
+          "title": "Synthesizing Equatable and Hashable conformance",
+          "titleJa": "EquatableおよびHashable適合を合成する"
+        }
       },
       "correctChoice": "C",
       "explanationMarkdown": "正解は **SE-0143 · Conditional conformances**。要素が Equatable なら Array も Equatable に適合できるようになり、ジェネリック関数や入れ子の配列にも比較を組み合わせられるようになりました。\n\n`==` という演算子が使えることと、その型が Equatable に適合していることは別です。SE-0185 は適合に必要な実装の自動合成、SE-0015 はタプルの比較演算子、SE-0157 は再帰的なプロトコル制約を扱います。SE-0015 のように == を使えるようにすることと、ジェネリック関数の T: Equatable を満たすことは別です。この問題は Array の条件付き適合が決め手です。\n\n[Swift Digest：SE-0143の日本語要約](https://swiftdigest.koherent.org/proposals/se-0143.html)"
@@ -46,10 +94,26 @@
       "difficulty": 3,
       "bodyMarkdown": "`reserve` は `Stock` の外にある同期関数。在庫確認から減算まで、引数の `stock` の隔離領域で、中断せずに実行したい。本体を変えず、`/* ? */` に修飾子を補ってこれを可能にした Proposal は？\n\n```swift\nactor Stock { var remaining = 1 }\n\nfunc reserve(_ stock: /* ? */ Stock) -> Bool {\n    guard stock.remaining > 0 else { return false }\n    stock.remaining -= 1\n    return true\n}\n\nfunc buy(_ stock: Stock) async {\n    print(await reserve(stock))\n}\n```\n\n`reserve` の本体は変更しない。Swift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
       "choices": {
-        "A": "SE-0420 · Inheritance of actor isolation",
-        "B": "SE-0313 · Improved control over actor isolation",
-        "C": "SE-0316 · Global actors",
-        "D": "SE-0306 · Actors"
+        "A": {
+          "number": "SE-0420",
+          "title": "Inheritance of actor isolation",
+          "titleJa": "actor isolationの継承"
+        },
+        "B": {
+          "number": "SE-0313",
+          "title": "Improved control over actor isolation",
+          "titleJa": "actor isolationをより良く制御する"
+        },
+        "C": {
+          "number": "SE-0316",
+          "title": "Global actors",
+          "titleJa": "グローバルアクター"
+        },
+        "D": {
+          "number": "SE-0306",
+          "title": "Actors",
+          "titleJa": null
+        }
       },
       "correctChoice": "B",
       "explanationMarkdown": "正解は **SE-0313 · Improved control over actor isolation**。空欄は `isolated` です。\n\n`isolated Stock` という引数によって、外部の関数も渡された stock の隔離領域で実行できます。呼び出し元がその actor の外にいれば `await reserve(stock)` が必要ですが、関数本体では remaining の読み書きに await は不要です。この本体には中断点がないので、在庫確認と減算の間に同じ actor の別タスクが実行されることはありません。\n\nactor のメソッドを「在庫を確認」「在庫を減らす」に分け、それぞれを await して呼ぶだけでは、2回の呼び出しの間に別タスクが動く可能性があります。actor の導入だけで、呼び出し側の複数操作が自動的に一続きになるわけではありません。\n\nSE-0306 は actor 自体、SE-0316 は MainActor などのグローバルな隔離領域、SE-0420 は #isolation などによって呼び出し元の隔離を引き継ぐ仕組みです。ここで必要なのは呼び出し元の隔離の継承ではなく、明示的に渡された stock の隔離領域で同期関数を実行する仕組みです。\n\n[Swift Digest：SE-0313の日本語要約](https://swiftdigest.koherent.org/proposals/se-0313.html)"
@@ -59,10 +123,26 @@
       "difficulty": 1,
       "bodyMarkdown": "`{ $0.name }` というクロージャーの代わりに、キーパスの式を map に直接渡せるようにした Proposal は？\n\n```swift\nstruct User { let name: String }\nlet users = [User(name: \"Mika\"), User(name: \"Ren\")]\n\nlet names = users.map(\\.name)\n// [\"Mika\", \"Ren\"]\n```",
       "choices": {
-        "A": "SE-0249 · Key Path Expressions as Functions",
-        "B": "SE-0252 · Key Path Member Lookup",
-        "C": "SE-0161 · Smart KeyPaths: Better Key-Value Coding for Swift",
-        "D": "SE-0218 · Introduce compactMapValues to Dictionary"
+        "A": {
+          "number": "SE-0249",
+          "title": "Key Path Expressions as Functions",
+          "titleJa": "関数としてのKey Path式"
+        },
+        "B": {
+          "number": "SE-0252",
+          "title": "Key Path Member Lookup",
+          "titleJa": "Key Pathメンバールックアップ"
+        },
+        "C": {
+          "number": "SE-0161",
+          "title": "Smart KeyPaths: Better Key-Value Coding for Swift",
+          "titleJa": "Smart KeyPaths: Swiftのためのより良いKey-Value Coding"
+        },
+        "D": {
+          "number": "SE-0218",
+          "title": "Introduce compactMapValues to Dictionary",
+          "titleJa": "DictionaryにcompactMapValuesを導入する"
+        }
       },
       "correctChoice": "A",
       "explanationMarkdown": "正解は **SE-0249 · Key Path Expressions as Functions**。関数が求められる場所でキーパスのリテラル式を使うと、そのプロパティを取り出す関数として扱えるようになりました。ここでは `\\.name` が `(User) -> String` として使われ、`users.map { $0.name }` と同じ結果になります。\n\nSE-0161 はキーパス自体の導入です。プロパティへの参照を表せることと、map の関数引数として直接使えることは別です。SE-0252 はキーパスを使った dynamic member lookup、SE-0218 は Dictionary の compactMapValues の追加です。このコードで問うのは変換用 API の追加ではなく、キーパスの式を map の関数引数として直接渡せる仕組みです。\n\n[Swift Digest：SE-0249の日本語要約](https://swiftdigest.koherent.org/proposals/se-0249.html)"
@@ -72,10 +152,26 @@
       "difficulty": 2,
       "bodyMarkdown": "`any Sequence` として受け取った値を、下の `showCount(values)` のようにジェネリック関数へ直接渡せるようにした Proposal は？\n\n```swift\nfunc showCount<S: Sequence>(_ values: S) {\n    print(values.reduce(0) { n, _ in n + 1 })\n}\n\nfunc show(_ values: any Sequence) {\n    showCount(values)\n}\n```",
       "choices": {
-        "A": "SE-0335 · Introduce existential any",
-        "B": "SE-0309 · Unlock existentials for all protocols",
-        "C": "SE-0353 · Constrained Existential Types",
-        "D": "SE-0352 · Implicitly Opened Existentials"
+        "A": {
+          "number": "SE-0335",
+          "title": "Introduce existential any",
+          "titleJa": "existential anyを導入する"
+        },
+        "B": {
+          "number": "SE-0309",
+          "title": "Unlock existentials for all protocols",
+          "titleJa": "すべてのプロトコルでexistentialを解放する"
+        },
+        "C": {
+          "number": "SE-0353",
+          "title": "Constrained Existential Types",
+          "titleJa": "制約付きexistential型"
+        },
+        "D": {
+          "number": "SE-0352",
+          "title": "Implicitly Opened Existentials",
+          "titleJa": "暗黙的に開かれたexistential"
+        }
       },
       "correctChoice": "D",
       "explanationMarkdown": "正解は **SE-0352 · Implicitly Opened Existentials**。呼び出し時に existential の中身の型を開き、その型をジェネリックパラメーター S に対応させます。`any Sequence` 自体が Sequence に適合したわけではありません。\n\nSE-0309 は関連型などを持つプロトコルも existential として扱えるようにする提案、SE-0335 は any の明示的な表記、SE-0353 は any Sequence<Int> のように existential の関連型を制約する仕組みです。ここでは要素型を Int などに制限せず、隠された具体型をジェネリック関数の S として扱うことが決め手です。\n\n[Swift Digest：SE-0352の日本語要約](https://swiftdigest.koherent.org/proposals/se-0352.html)"
@@ -85,10 +181,26 @@
       "difficulty": 3,
       "bodyMarkdown": "`catch` の error をキャストせず `Result<T, E>` に格納でき、投げないクロージャーなら E が Never になる。この両方を可能にした Proposal は？\n\n```swift\nfunc capture<T, E: Error>(\n    _ operation: () throws(E) -> T\n) -> Result<T, E> {\n    do { return .success(try operation()) }\n    catch { return .failure(error) }\n}\n\nlet result = capture { 42 }\n// result の型は Result<Int, Never>\n```\n\n引数の `throws(E)` を単なる `throws` に変えると、同じ本体のままではコンパイルできない。",
       "choices": {
-        "A": "SE-0276 · Multi-Pattern Catch Clauses",
-        "B": "SE-0102 · Remove @noreturn attribute and introduce an empty Never type",
-        "C": "SE-0413 · Typed throws",
-        "D": "SE-0235 · Add Result to the Standard Library"
+        "A": {
+          "number": "SE-0276",
+          "title": "Multi-Pattern Catch Clauses",
+          "titleJa": "複数パターンcatch句"
+        },
+        "B": {
+          "number": "SE-0102",
+          "title": "Remove @noreturn attribute and introduce an empty Never type",
+          "titleJa": "@noreturn属性を削除し、空のNever型を導入する"
+        },
+        "C": {
+          "number": "SE-0413",
+          "title": "Typed throws",
+          "titleJa": "型付きthrows"
+        },
+        "D": {
+          "number": "SE-0235",
+          "title": "Add Result to the Standard Library",
+          "titleJa": "Resultを標準ライブラリに追加する"
+        }
       },
       "correctChoice": "C",
       "explanationMarkdown": "正解は **SE-0413 · Typed throws**。関数が投げるエラーの型を関数型の一部として表せるため、operation が投げる型をジェネリックパラメーター E と結び付けられます。\n\nこの do 内の投げうる処理は `try operation()` だけなので、catch の error も E 型です。そのまま `.failure(error)` に渡せます。単なる throws ではエラーの型が any Error になり、任意の E として格納することはできません。\n\nさらに、投げないクロージャーでは E が Never と推論され、戻り値は `Result<Int, Never>` になります。成功の型だけでなく、失敗の型も汎用関数を通して維持されるのが決め手です。\n\nSE-0235 は Result 自体の導入ですが、クロージャーが投げる具体的な型を E に対応させる仕組みではありません。SE-0276 は複数パターンをまとめた catch、SE-0102 は値を持たない Never 型の導入です。Never という型があるだけでは、クロージャーが投げないことから E を Never と推論し、投げる場合の具体的なエラー型も保持する仕組みにはなりません。rethrows も、投げたエラーの型をこの戻り値の E に結び付ける指定ではありません。\n\n[Swift Digest：SE-0413の日本語要約](https://swiftdigest.koherent.org/proposals/se-0413.html)"
@@ -98,10 +210,26 @@
       "difficulty": 2,
       "bodyMarkdown": "`find` の戻り値は `Int?`。`try? find(...)` の結果を `Int??` から `Int?` に変え、成功時の「結果なし」とエラー発生時が、どちらも `nil` になるようにした Proposal は？\n\n```swift\nenum LookupError: Error { case offline }\nfunc find(_ online: Bool) throws -> Int? {\n    if !online { throw LookupError.offline }\n    return nil\n}\n\nlet missing = try? find(true)   // 成功したが結果なし\nlet failed = try? find(false)   // エラーが発生\n```",
       "choices": {
-        "A": "SE-0230 · Flatten nested optionals resulting from 'try?'",
-        "B": "SE-0008 · Add a Lazy flatMap for Sequences of Optionals",
-        "C": "SE-0235 · Add Result to the Standard Library",
-        "D": "SE-0054 · Abolish ImplicitlyUnwrappedOptional type"
+        "A": {
+          "number": "SE-0230",
+          "title": "Flatten nested optionals resulting from 'try?'",
+          "titleJa": "try?で生じるネストしたオプショナルを平坦化する"
+        },
+        "B": {
+          "number": "SE-0008",
+          "title": "Add a Lazy flatMap for Sequences of Optionals",
+          "titleJa": "OptionalのSequence向けに遅延評価版flatMapを追加する"
+        },
+        "C": {
+          "number": "SE-0235",
+          "title": "Add Result to the Standard Library",
+          "titleJa": "Resultを標準ライブラリに追加する"
+        },
+        "D": {
+          "number": "SE-0054",
+          "title": "Abolish ImplicitlyUnwrappedOptional type",
+          "titleJa": "ImplicitlyUnwrappedOptional型を廃止する"
+        }
       },
       "correctChoice": "A",
       "explanationMarkdown": "正解は **SE-0230 · Flatten nested optionals resulting from 'try?'**。Optional を返す式に try? を適用しても、Optional の段数を増やさないようにしました。\n\nfind の戻り値は Int? なので、try? find(...) の結果も Int? です。成功時の nil と、エラーを捨てて得られた nil は区別できません。変更前は Int?? となり、成功して nil を返した場合の `.some(nil)` と、エラーになった場合の `.none` を区別できました。なお、任意の入れ子をすべて1段にする機能ではなく、もともと Int?? を返す式なら try? の結果も Int?? です。\n\nSE-0235 の Result を使えば、逆に `.success(nil)` と `.failure(...)` を分けて保持できます。SE-0008 は Sequence の遅延変換と nil の除去、SE-0054 は暗黙的アンラップ Optional の型の扱いの整理で、try? の結果の段数を変える提案ではありません。この例で情報が失われる理由は、検索関数の戻り値と try? が使う Optional を重ねないことです。\n\n[Swift Digest：SE-0230の日本語要約](https://swiftdigest.koherent.org/proposals/se-0230.html)"
@@ -111,10 +239,26 @@
       "difficulty": 1,
       "bodyMarkdown": "Dictionary のキーを保ったまま値を変換し、変換結果が `nil` の要素を取り除く `compactMapValues` を追加した Proposal は？\n\n```swift\nlet scores = [\"Swift\": \"100\", \"Mystery\": \"?\"]\nlet numbers = scores.compactMapValues(Int.init)\n// [\"Swift\": 100]\n```",
       "choices": {
-        "A": "SE-0187 · Introduce Sequence.compactMap(_:)",
-        "B": "SE-0218 · Introduce compactMapValues to Dictionary",
-        "C": "SE-0008 · Add a Lazy flatMap for Sequences of Optionals",
-        "D": "SE-0165 · Dictionary & Set Enhancements"
+        "A": {
+          "number": "SE-0187",
+          "title": "Introduce Sequence.compactMap(_:)",
+          "titleJa": "Sequence.compactMap(_:)を導入する"
+        },
+        "B": {
+          "number": "SE-0218",
+          "title": "Introduce compactMapValues to Dictionary",
+          "titleJa": "DictionaryにcompactMapValuesを導入する"
+        },
+        "C": {
+          "number": "SE-0008",
+          "title": "Add a Lazy flatMap for Sequences of Optionals",
+          "titleJa": "OptionalのSequence向けに遅延評価版flatMapを追加する"
+        },
+        "D": {
+          "number": "SE-0165",
+          "title": "Dictionary & Set Enhancements",
+          "titleJa": "DictionaryとSetの機能強化"
+        }
       },
       "correctChoice": "B",
       "explanationMarkdown": "SE-0218 は Dictionary の値を変換し、nil になった要素を取り除く compactMapValues を追加しました。Swift 5.0 で実装されています。\n\nSE-0187 は Sequence の compactMap、SE-0165 は Dictionary の mapValues や filter などの拡張、SE-0008 は変換結果が Optional になる flatMap の遅延版です。SE-0008 でも nil を除く変換は扱いますが、Dictionary のキーを保って値だけを変換する API の導入ではありません。ここでは「キーを保ち、値を変換し、nil を除く」を一度に行う点が決め手です。\n\n[Swift Digest：SE-0218の日本語要約](https://swiftdigest.koherent.org/proposals/se-0218.html)"
@@ -124,10 +268,26 @@
       "difficulty": 3,
       "bodyMarkdown": "`Image` と `Text` を直接 `pair` に渡すと型が一致しない。一方、`pair(badge(true), badge(false))` は成立する。`badge` 内の異なる型の分岐を、単一の具体型へ組み立てる変換を導入した Proposal は？\n\n```swift\nimport SwiftUI\n@ViewBuilder\nfunc badge(_ ready: Bool) -> some View {\n    if ready { Image(systemName: \"checkmark\") }\n    else { Text(\"Waiting\") }\n}\n\nfunc pair<V: View>(_ first: V, _ second: V) {}\n\npair(badge(true), badge(false))  // OK\n// pair(Image(systemName: \"checkmark\"), Text(\"Waiting\")) // NG\n```",
       "choices": {
-        "A": "SE-0328 · Structural opaque result types",
-        "B": "SE-0289 · Result builders",
-        "C": "SE-0244 · Opaque Result Types",
-        "D": "SE-0380 · if and switch expressions"
+        "A": {
+          "number": "SE-0328",
+          "title": "Structural opaque result types",
+          "titleJa": "構造的opaque result types"
+        },
+        "B": {
+          "number": "SE-0289",
+          "title": "Result builders",
+          "titleJa": null
+        },
+        "C": {
+          "number": "SE-0244",
+          "title": "Opaque Result Types",
+          "titleJa": null
+        },
+        "D": {
+          "number": "SE-0380",
+          "title": "if and switch expressions",
+          "titleJa": "ifとswitch式"
+        }
       },
       "correctChoice": "B",
       "explanationMarkdown": "正解は **SE-0289 · Result builders**。ViewBuilder はこの仕組みを使い、if / else の分岐を buildEither(first:)・buildEither(second:) などの呼び出しへ変換します。\n\nこの例では Image と Text をそのまま別々の戻り値の型にするのではなく、両方の可能性を表す1つの具体型に組み立てます。条件によって変わるのはその中身であり、badge の戻り値の具体型ではありません。そのため badge(true) と badge(false) は同じ型として pair に渡せます。一方、Image と Text を直接 pair に渡すと、同じ V という条件を満たせません。\n\nSE-0244 の some View は「関数が決めた1つの具体型を呼び出し側から隠す」機能で、実行時の条件ごとに異なる型をそのまま返せる指定ではありません。@ViewBuilder を外し、それぞれの枝から return Image(...) / return Text(...) と書くと、基になる型が一致せずエラーになります。\n\nSE-0380 の通常の if 式には、このように異なる型の View を組み立てるビルダーの変換はありません。SE-0328 は `(some View)?` など、より大きな型の一部に opaque result type を置けるようにする拡張です。some View で型を隠すことと、分岐を1つの型に組み立てることを分けて考えるのが決め手です。\n\n[Swift Digest：SE-0289の日本語要約](https://swiftdigest.koherent.org/proposals/se-0289.html)"
@@ -137,10 +297,26 @@
       "difficulty": 2,
       "bodyMarkdown": "`Draft` は非 `Sendable` なクラス。`submit` で新しく作った `draft` は他と共有されておらず、引き渡した後も使われない。このコードで、MainActor から別の `Inbox` actor への安全な引き渡しを解析して許可する仕組みを導入した Proposal は？\n\n```swift\nfinal class Draft { var text = \"\" }\nactor Inbox {\n    var drafts: [Draft] = []\n    func add(_ draft: Draft) { drafts.append(draft) }\n}\n\n@MainActor\nfunc submit(to inbox: Inbox) async {\n    let draft = Draft()\n    draft.text = \"Hello\"\n    await inbox.add(draft)\n}\n```\n\nSwift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
       "choices": {
-        "A": "SE-0430 · sending parameter and result values",
-        "B": "SE-0302 · Sendable and @Sendable closures",
-        "C": "SE-0461 · Run nonisolated async functions on the caller's actor by default",
-        "D": "SE-0414 · Region based Isolation"
+        "A": {
+          "number": "SE-0430",
+          "title": "sending parameter and result values",
+          "titleJa": "sendingパラメータと結果値"
+        },
+        "B": {
+          "number": "SE-0302",
+          "title": "Sendable and @Sendable closures",
+          "titleJa": "Sendableと@Sendableクロージャ"
+        },
+        "C": {
+          "number": "SE-0461",
+          "title": "Run nonisolated async functions on the caller's actor by default",
+          "titleJa": "nonisolated async関数をデフォルトで呼び出し元アクター上で実行する"
+        },
+        "D": {
+          "number": "SE-0414",
+          "title": "Region based Isolation",
+          "titleJa": null
+        }
       },
       "correctChoice": "D",
       "explanationMarkdown": "正解は **SE-0414 · Region based Isolation**。値と、その値を参照しうる別の値との関係を解析し、隔離境界を越えて渡してもデータ競合が起こらないと確認できれば、非 Sendable な値も引き渡せます。\n\nこの例では新しく作った draft が他と共有されておらず、渡した後に呼び出し元で使われません。`await inbox.add(draft)` の後に `draft.text = \"Changed\"` を追加すると、競合しうるアクセスとして拒否されます。\n\nSE-0302 は Sendable による安全性の基礎、SE-0461 は nonisolated な async 関数を呼び出し元の actor 上で実行する仕組みです。SE-0461 は隔離をまたがずに済む呼び出しを扱いますが、このコードは MainActor から別の Inbox actor へ実際に値を渡しています。SE-0430 はこの解析を土台に sending を引数・戻り値の契約として明示する提案です。この例の引き渡しには sending の指定は不要です。\n\n[Swift Digest：SE-0414の日本語要約](https://swiftdigest.koherent.org/proposals/se-0414.html)"
@@ -150,13 +326,34 @@
       "difficulty": 3,
       "bodyMarkdown": "`Box<Int>` と `Box<Token>` はどちらも作れるが、duplicate に渡せるのは前者だけ。このように、非コピー可能な要素も受け入れつつ、要素次第でコンテナーをコピー可能にする拡張を導入した Proposal は？\n\n```swift\nstruct Token: ~Copyable {}\nstruct Box<T: ~Copyable>: ~Copyable { var value: T }\nextension Box: Copyable where T: Copyable {}\n\nfunc duplicate<T>(_ value: T) -> (T, T) { (value, value) }\n\nfunc demo() {\n    let a = Box(value: 42)\n    _ = duplicate(a)                 // OK\n    let b = Box(value: Token())      // OK\n    // _ = duplicate(b)              // コンパイルエラー\n}\n```",
       "choices": {
-        "A": "SE-0426 · BitwiseCopyable",
-        "B": "SE-0390 · Noncopyable structs and enums",
-        "C": "SE-0427 · Noncopyable generics",
-        "D": "SE-0143 · Conditional conformances"
+        "A": {
+          "number": "SE-0426",
+          "title": "BitwiseCopyable",
+          "titleJa": null
+        },
+        "B": {
+          "number": "SE-0390",
+          "title": "Noncopyable structs and enums",
+          "titleJa": "noncopyableなstructとenum"
+        },
+        "C": {
+          "number": "SE-0427",
+          "title": "Noncopyable generics",
+          "titleJa": null
+        },
+        "D": {
+          "number": "SE-0143",
+          "title": "Conditional conformances",
+          "titleJa": "条件付き適合"
+        }
       },
       "correctChoice": "C",
       "explanationMarkdown": "正解は **SE-0427 · Noncopyable generics**。非コピー可能な型をジェネリックの型引数に使えるようにし、Copyable への条件付き適合も扱います。\n\n`T: ~Copyable` は「T はコピーできてはいけない」という制約ではなく、暗黙の Copyable 要求を外す指定です。そのため Int も Token も受け入れられます。Box 自体の無条件の Copyable 適合も外したうえで、extension により T が Copyable の場合だけ適合を与えています。\n\n一方、`duplicate<T>` の T には暗黙の Copyable 要求があります。Box<Int> はこれを満たしますが、Box<Token> は満たしません。Box<Token> を作れることと、複製できることは別です。\n\nSE-0143 は一般的な条件付き適合、SE-0390 は非コピー可能な構造体・列挙型の導入です。その先の「非コピー可能な型も受け入れるジェネリック」と「要素に応じた Copyable 適合」を扱うのが SE-0427。SE-0426 の BitwiseCopyable は、参照カウントの操作などを必要とせずビット列のコピーで扱える型を表します。要素に応じた条件付き適合も扱いますが、このコードが問うのは効率的なビット列コピーではなく、そもそも値の複製を許せるかという Copyable の制約です。\n\n[Swift Digest：SE-0427の日本語要約](https://swiftdigest.koherent.org/proposals/se-0427.html)"
     }
-  ]
+  ],
+  "choiceTitleSource": {
+    "name": "Swift Digest",
+    "url": "https://swiftdigest.koherent.org/proposals/",
+    "retrievedAt": "2026-10-26"
+  }
 }

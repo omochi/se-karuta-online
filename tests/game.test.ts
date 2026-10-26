@@ -17,7 +17,12 @@ const question: Question = {
   id: "test",
   difficulty: 2 as const,
   bodyMarkdown: "SECRET BODY",
-  choices: { A: "a", B: "b", C: "c", D: "d" },
+  choices: {
+    A: { number: "SE-0001", title: "a", titleJa: null },
+    B: { number: "SE-0002", title: "b", titleJa: null },
+    C: { number: "SE-0003", title: "c", titleJa: null },
+    D: { number: "SE-0004", title: "d", titleJa: null },
+  },
   correctChoice: "B",
   explanationMarkdown: "SECRET EXPLANATION",
 };
@@ -499,7 +504,16 @@ describe("問題JSONの検証", () => {
       [],
       [{ ...question, correctChoice: "E" }],
       [question, question],
-      [{ ...question, choices: { A: "a", B: "b", C: "c" } }],
+      [
+        {
+          ...question,
+          choices: {
+            A: { number: "SE-0001", title: "a", titleJa: null },
+            B: { number: "SE-0002", title: "b", titleJa: null },
+            C: { number: "SE-0003", title: "c", titleJa: null },
+          },
+        },
+      ],
       [{ ...question, bodyMarkdown: " " }],
       [{ ...question, id: "bad/id" }],
     ].map((input) => ({ input })),

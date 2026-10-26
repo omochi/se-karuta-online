@@ -17,7 +17,12 @@ const question = {
   id: "preview-question",
   difficulty: 2 as const,
   bodyMarkdown: "QUESTION BODY\n\n```swift\nlet value = 42\n```",
-  choices: { A: "Alpha", B: "Beta", C: "Gamma", D: "Delta" },
+  choices: {
+    A: { number: "SE-0001", title: "Alpha", titleJa: null },
+    B: { number: "SE-0002", title: "Beta", titleJa: null },
+    C: { number: "SE-0003", title: "Gamma", titleJa: null },
+    D: { number: "SE-0004", title: "Delta", titleJa: null },
+  },
   correctChoice: "B" as const,
   explanationMarkdown: "ANSWER EXPLANATION",
 };
@@ -96,7 +101,7 @@ it("出題中は問題と全選択肢・固定タイマーを表示し、正解�
   const html = preview("acceptingAnswers");
   expect(html).toContain("QUESTION BODY");
   for (const choice of Object.values(question.choices))
-    expect(html).toContain(choice);
+    expect(html).toContain(choice.title);
   expect(html).toContain("回答受付中");
   expect(html).toContain('data-difficulty="2"');
   expect(html).toContain("残り 30 秒");
@@ -126,7 +131,7 @@ it.each(["期限到達直後", "サーバーの締切確定後"])(
     expect(html).toContain("display-page-question");
     expect(html).toContain("fitted-question");
     for (const choice of Object.values(question.choices))
-      expect(html).toContain(choice);
+      expect(html).toContain(choice.title);
     expect(html).not.toContain("ANSWER EXPLANATION");
     expect(html).not.toContain("みんなの回答");
     expect(html).not.toMatch(/class="choice [^"]*correct/);

@@ -64,10 +64,18 @@ const view: RoomView = {
     id: "ranking-fixture",
     correctChoice: "A",
     choices: {
-      A: "SE-0296 · Async/await",
-      B: "SE-0235 · Add Result to the Standard Library",
-      C: "SE-0258 · Property Wrappers",
-      D: 'SE-0195 · Introduce User-defined "Dynamic Member Lookup" Types',
+      A: { number: "SE-0296", title: "Async/await", titleJa: null },
+      B: {
+        number: "SE-0235",
+        title: "Add Result to the Standard Library",
+        titleJa: null,
+      },
+      C: { number: "SE-0258", title: "Property Wrappers", titleJa: null },
+      D: {
+        number: "SE-0195",
+        title: 'Introduce User-defined "Dynamic Member Lookup" Types',
+        titleJa: null,
+      },
     },
   },
   answerDistribution: {

@@ -4,6 +4,8 @@ export { MarkdownBody } from "./MarkdownBody";
 import { QRCodeSVG } from "qrcode.react";
 import type { Choice, RankRow, Results, RoomView } from "../shared/types";
 import { formatJoinCode } from "../shared/join-code";
+import { choiceLabel } from "../shared/proposal-title";
+import { ProposalTitle } from "./ProposalTitle";
 import { CHOICES } from "../shared/types";
 export function Brand({ small = false }: { small?: boolean }) {
   return (
@@ -107,10 +109,12 @@ export function Choices({
           disabled={disabled}
           aria-pressed={selected === c}
           onClick={() => onChoose?.(c)}
-          aria-label={`${c}. ${choices[c]}`}
+          aria-label={`${c}. ${choiceLabel(question, c)}`}
         >
           <span className="choice-letter">{c}</span>
-          <span className="choice-text">{choices[c]}</span>
+          <span className="choice-text">
+            <ProposalTitle proposal={choices[c]} />
+          </span>
           {selected === c && <span className="choice-check">✓</span>}
         </button>
       ))}

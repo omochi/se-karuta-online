@@ -45,7 +45,12 @@ function fixture(phase: Phase): RoomConnection {
     answerCount: 1,
     question: {
       id: "q1",
-      choices: { A: "Choice A", B: "Choice B", C: "Choice C", D: "Choice D" },
+      choices: {
+        A: { number: "SE-0001", title: "Choice A", titleJa: null },
+        B: { number: "SE-0002", title: "Choice B", titleJa: null },
+        C: { number: "SE-0003", title: "Choice C", titleJa: null },
+        D: { number: "SE-0004", title: "Choice D", titleJa: null },
+      },
       bodyMarkdown: "SHARED QUESTION BODY",
       voidReason: phase === "questionVoided" ? "問題文の誤り" : null,
     },

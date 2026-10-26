@@ -7,13 +7,34 @@
       "difficulty": 1,
       "bodyMarkdown": "【練習問題】`async` と `await` を導入した Proposal はどれ？\n\n```swift\nfunc hello() async -> String {\n    return \"Hello!\"\n}\n\nfunc example() async {\n    let message = await hello()\n    print(message)\n}\n```",
       "choices": {
-        "A": "SE-0296 · Async/await",
-        "B": "SE-0235 · Add Result to the Standard Library",
-        "C": "SE-0258 · Property Wrappers",
-        "D": "SE-0195 · Introduce User-defined \"Dynamic Member Lookup\" Types"
+        "A": {
+          "number": "SE-0296",
+          "title": "Async/await",
+          "titleJa": null
+        },
+        "B": {
+          "number": "SE-0235",
+          "title": "Add Result to the Standard Library",
+          "titleJa": "Resultを標準ライブラリに追加する"
+        },
+        "C": {
+          "number": "SE-0258",
+          "title": "Property Wrappers",
+          "titleJa": null
+        },
+        "D": {
+          "number": "SE-0195",
+          "title": "Introduce User-defined \"Dynamic Member Lookup\" Types",
+          "titleJa": "ユーザー定義の”Dynamic Member Lookup”型を導入する"
+        }
       },
       "correctChoice": "A",
       "explanationMarkdown": "正解は **A：SE-0296 · Async/await**。`async` で非同期関数を宣言し、`await` を付けて非同期関数を呼び出せるようになりました。問題文・コードと同じ「Async/await」が選択肢のタイトルにあります。\n\nB は成功・失敗を表す `Result` 型の標準ライブラリへの追加、C はプロパティの処理を共通化する Property Wrappers、D は `@dynamicMemberLookup` によるメンバーアクセスの仕組みです。\n\nこの1問は、選択肢を読む・回答する・正解と解説を見る操作を試すための公開チュートリアルです。\n\n[Swift Digest：SE-0296の日本語要約](https://swiftdigest.koherent.org/proposals/se-0296.html)"
     }
-  ]
+  ],
+  "choiceTitleSource": {
+    "name": "Swift Digest",
+    "url": "https://swiftdigest.koherent.org/proposals/",
+    "retrievedAt": "2026-10-26"
+  }
 }

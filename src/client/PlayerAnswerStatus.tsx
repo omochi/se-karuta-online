@@ -1,3 +1,4 @@
+import { choiceLabel } from "../shared/proposal-title";
 import type { RoomConnection } from "./useRoom";
 import type { GameProgressState } from "./phase-presentation";
 
@@ -76,7 +77,7 @@ export function PlayerAnswerStatus({
       {revealed && v.question?.correctChoice && (
         <p>
           正解は <strong>{v.question.correctChoice}</strong> ·{" "}
-          {v.question.choices?.[v.question.correctChoice]}
+          {choiceLabel(v.question, v.question.correctChoice)}
         </p>
       )}
     </section>

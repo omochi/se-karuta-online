@@ -1,3 +1,4 @@
+import { choiceLabel } from "../shared/proposal-title";
 import { eventUrls } from "../shared/urls";
 import {
   CHOICES,
@@ -329,7 +330,7 @@ export function finalResults(g: Game): Results {
       name: row.name,
       elapsed: row.value,
       questionNumber: g.rounds.indexOf(r) + 1,
-      proposal: r.question.choices[r.question.correctChoice],
+      proposal: choiceLabel(r.question, r.question.correctChoice),
     })),
   );
   const best = Math.min(...allRecords.map((r) => r.elapsed));
@@ -402,7 +403,9 @@ export function viewFor(
       ? {
           id: r.id,
           ...(!["choicesPreparing", "countdown"].includes(g.phase)
-            ? { choices: r.question.choices }
+            ? {
+                choices: r.question.choices,
+              }
             : {}),
           ...(role !== "player" && !r.isVoided
             ? { difficulty: r.question.difficulty }
