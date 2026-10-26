@@ -4,4 +4,5 @@ export interface Env {
   ASSETS: Fetcher;
   ADMIN_PASSWORD: string;
   PUBLIC_ORIGIN: string;
+  DEBUG_MODE?: string;
 }

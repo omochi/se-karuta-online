@@ -20,6 +20,11 @@ export interface HomeData {
 export interface EventsData {
   listing: EventPage | null;
 }
+export interface DebugSessionData {
+  events: EventSummary[] | null;
+  eventId: string;
+  players: { id: string; name: string }[];
+}
 export interface ViewerData extends HomeData {
   eventId: string;
   document: { name: string; questions: Question[] } | null;
@@ -46,12 +51,12 @@ export interface ResultData {
   status: number;
 }
 export function createRouteLoaders() {
-  let config: { publicOrigin: string } | undefined;
+  let config: { publicOrigin: string; debugMode?: boolean } | undefined;
   const sessions = new Set<RoomSession>();
   async function configuration({ request }: LoaderFunctionArgs) {
     const loaded =
       config ??
-      (await api<{ publicOrigin: string }>(
+      (await api<{ publicOrigin: string; debugMode?: boolean }>(
         "/api/config",
         undefined,
         request.signal,
@@ -118,6 +123,37 @@ export function createRouteLoaders() {
       eventId: requested || events?.[0]?.id || "",
       document,
     };
+  }
+  async function debugSession(
+    args: LoaderFunctionArgs,
+  ): Promise<DebugSessionData> {
+    if (!(await configuration(args)).debugMode)
+      throw new Response(null, { status: 404 });
+    let data = await eventPage(args, "page=1");
+    const events = data ? [...data.events] : null;
+    while (data && data.page < data.pageCount) {
+      const next = await eventPage(args, `page=${data.page + 1}`);
+      if (!next) return { events: null, eventId: "", players: [] };
+      if (next.page <= data.page) break;
+      events!.push(...next.events);
+      data = next;
+    }
+    const eventId = new URL(args.request.url).searchParams.get("event") ?? "";
+    const players = events?.some((event) => event.id === eventId)
+      ? (
+          await api<{ players: DebugSessionData["players"] }>(
+            `/api/debug/session/players?event=${encodeURIComponent(eventId)}`,
+            undefined,
+            args.request.signal,
+          )
+        ).players
+      : [];
+    return { events, eventId, players };
+  }
+  async function debugStart(args: LoaderFunctionArgs) {
+    if (!(await configuration(args)).debugMode)
+      throw new Response(null, { status: 404 });
+    return null;
   }
   const game =
     (role: Role) =>
@@ -232,6 +268,8 @@ export function createRouteLoaders() {
     home,
     events,
     viewer,
+    debugSession,
+    debugStart,
     game,
     report,
     review,

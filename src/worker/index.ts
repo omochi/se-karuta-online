@@ -21,6 +21,8 @@ import { tournamentReport } from "./report";
 import { tournamentReview } from "./review";
 import { personalResult } from "./personal-result";
 import { listEvents } from "./event-list";
+import { debugModeEnabled } from "./debug-mode";
+import { debugSessionRoute } from "./debug-session";
 import { validateQuestions } from "../shared/questions";
 export { TournamentRoom } from "./room";
 export const json = (
@@ -47,11 +49,15 @@ async function existingPlayerSession(
   id: string,
 ): Promise<Response | null> {
   if (!session) return null;
-  const player = await env.DB.prepare(
-    "SELECT player_id FROM client_players WHERE client_id = ? AND tournament_id = ?",
-  )
-    .bind(session.clientId, id)
-    .first<{ player_id: string }>();
+  const player = session.debugPlayer
+    ? session.debugPlayer.eventId === id
+      ? { player_id: session.debugPlayer.playerId }
+      : null
+    : await env.DB.prepare(
+        "SELECT player_id FROM client_players WHERE client_id = ? AND tournament_id = ?",
+      )
+        .bind(session.clientId, id)
+        .first<{ player_id: string }>();
   if (!player) return null;
   return env.ROOMS.get(env.ROOMS.idFromName(id)).fetch(
     new Request("https://room/session", {
@@ -71,7 +77,7 @@ export default {
     try {
       const publicOrigin = normalizePublicOrigin(env.PUBLIC_ORIGIN);
       if (url.pathname === "/api/config" && request.method === "GET")
-        return json({ publicOrigin });
+        return json({ publicOrigin, debugMode: debugModeEnabled(env) });
       if (
         request.method !== "GET" ||
         request.headers.get("Upgrade")?.toLowerCase() === "websocket"
@@ -79,7 +85,9 @@ export default {
         if (request.headers.get("Origin") !== publicOrigin)
           return json({ error: "同じサイトから操作してください。" }, 403);
       }
-      const session = await readSession(request, env.DB);
+      const session = await readSession(request, env.DB, debugModeEnabled(env));
+      if (url.pathname.startsWith("/api/debug/session/"))
+        return await debugSessionRoute(request, env, session, publicOrigin);
       const isAdmin = session?.isAdmin === true;
       if (url.pathname === "/api/join-code" && request.method === "GET") {
         const code = normalizeJoinCode(url.searchParams.get("code") ?? "");
@@ -116,6 +124,11 @@ export default {
         });
       }
       if (url.pathname === "/api/admin/login" && request.method === "POST") {
+        if (session?.debugPlayer)
+          return json(
+            { error: "動作確認を終了してからログインしてください。" },
+            403,
+          );
         const b = await body(request);
         if (
           typeof b.password !== "string" ||
@@ -226,11 +239,16 @@ export default {
         const token = url.searchParams.get("share");
         const owner =
           !sharing && session
-            ? await env.DB.prepare(
-                "SELECT player_id FROM client_players WHERE client_id = ? AND tournament_id = ? AND player_id = ?",
-              )
-                .bind(session.clientId, id, playerId)
-                .first()
+            ? session.debugPlayer
+              ? session.debugPlayer.eventId === id &&
+                session.debugPlayer.playerId === playerId
+                ? { player_id: playerId }
+                : null
+              : await env.DB.prepare(
+                  "SELECT player_id FROM client_players WHERE client_id = ? AND tournament_id = ? AND player_id = ?",
+                )
+                  .bind(session.clientId, id, playerId)
+                  .first()
             : null;
         const player = await env.DB.prepare(
           "SELECT result_share_token FROM players WHERE tournament_id = ? AND id = ?",
@@ -369,6 +387,11 @@ export default {
           urls: eventUrls(publicOrigin, id),
         });
       if (action === "display/login" && request.method === "POST") {
+        if (session?.debugPlayer)
+          return json(
+            { error: "動作確認を終了してからログインしてください。" },
+            403,
+          );
         const b = await body(request);
         if (
           typeof b.password !== "string" ||
@@ -397,6 +420,11 @@ export default {
       if (action === "join" && request.method === "POST") {
         const previous = await existingPlayerSession(session, env, id);
         if (previous && previous.status !== 401) return previous;
+        if (session?.debugPlayer)
+          return json(
+            { error: "動作確認中は他の参加者として登録できません。" },
+            403,
+          );
         const b = await body(request);
         if (
           typeof b.name !== "string" ||
@@ -423,9 +451,14 @@ export default {
       if (role !== "control" && role !== "display" && role !== "player")
         return json({ error: "画面の種類が不正です。" }, 400);
       const authorization = session
-        ? (await readAuthorizations(env.DB, id, [session.tokenHash])).get(
-            session.tokenHash,
-          )
+        ? (
+            await readAuthorizations(
+              env.DB,
+              id,
+              [session.tokenHash],
+              debugModeEnabled(env),
+            )
+          ).get(session.tokenHash)
         : undefined;
       const headers: Record<string, string> = {
         "x-role": role,

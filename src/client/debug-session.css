@@ -1,0 +1,42 @@
+.gate.debug-session-page {
+  max-width: 760px;
+}
+.debug-session-page select {
+  border: 1px solid #cdd4ce;
+  background: #fffefa;
+  padding: 13px 14px;
+  border-radius: 7px;
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+}
+.debug-session-page select:focus-visible {
+  outline: 3px solid #f05138;
+  outline-offset: 4px;
+}
+.debug-session-page .panel {
+  margin-top: 24px;
+}
+.debug-qr {
+  padding: 16px;
+  background: white;
+  width: fit-content;
+  border-radius: 8px;
+}
+.debug-session-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #fff1c2;
+  color: #352b0d;
+}
+.debug-session-banner button {
+  color: #352b0d;
+  border: 1px solid #a48632;
+  background: white;
+}

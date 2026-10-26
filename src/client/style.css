@@ -344,6 +344,51 @@ input::placeholder {
   max-width: 400px;
   margin-top: 24px;
 }
+.home-tools {
+  margin-top: 24px;
+}
+.home-tools-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.home-tools-heading h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.home-tools-badge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.home-tool-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 18px;
+}
+.home-tool-link:hover {
+  background: #f4f6ef;
+}
+.home-tool-link strong {
+  font-size: 15px;
+}
+.home-tool-link p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.home-tool-link > span {
+  color: var(--accent);
+  flex-shrink: 0;
+}
 .home footer {
   text-align: center;
   color: #9aa39d;

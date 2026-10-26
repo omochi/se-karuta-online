@@ -9,6 +9,8 @@ import {
 import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
 import sessionMigration from "../migrations/0004_client_sessions.sql?raw";
 import resultMigration from "../migrations/0005_result_sharing.sql?raw";
+import debugMigration from "../migrations/0006_debug_player_sessions.sql?raw";
+import worker from "../src/worker/index";
 import readyWaitMigration from "../migrations/0003_unify_resting_with_unanswered.sql?raw";
 import { tournamentReport } from "../src/worker/report";
 import { tournamentReview } from "../src/worker/review";
@@ -150,7 +152,10 @@ it("HostやForwardedヘッダーではなく公開URLを使用する", async () 
       },
     }),
   );
-  expect(await config.json()).toEqual({ publicOrigin: "http://test" });
+  expect(await config.json()).toEqual({
+    publicOrigin: "http://test",
+    debugMode: false,
+  });
   const game = fixture();
   await saveGame(bindings.DB, null, game, "hash");
   const response = await exports.default.fetch(
@@ -230,7 +235,7 @@ beforeAll(async () => {
     ).bind(legacyGame.id, round.id, player.id, "B", 150),
   ]);
   await bindings.DB.batch(
-    (sessionMigration + resultMigration)
+    (sessionMigration + resultMigration + debugMigration)
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -1524,4 +1529,448 @@ it("pingで失効確認を先送りせず、接続中の期限切れではメッ
     time.mockRestore();
     ws.close();
   }
+});
+
+const debugOrigin = "http://192.168.1.2:5218";
+function debugRequest(
+  path: string,
+  cookie = "",
+  data?: unknown,
+  overrides: Partial<Env> = {},
+) {
+  return worker.fetch(
+    new Request(`${debugOrigin}${path}`, {
+      method: data === undefined ? "GET" : "POST",
+      headers: { Cookie: cookie, Origin: debugOrigin },
+      ...(data === undefined ? {} : { body: JSON.stringify(data) }),
+    }),
+    {
+      ...bindings,
+      PUBLIC_ORIGIN: debugOrigin,
+      DEBUG_MODE: "true",
+      ...overrides,
+    },
+  );
+}
+async function debugFixture() {
+  const game = fixture();
+  game.phase = "finished";
+  await saveGame(bindings.DB, null, game, "hash");
+  const owner = await sessionFixture({
+    role: "player",
+    eventId: game.id,
+    playerId: game.players[0].id,
+  });
+  // 実端末が管理者・共有画面・他大会の権限も持つ状況でも転送しない。
+  await bindings.DB.prepare("UPDATE clients SET is_admin = 1 WHERE id = ?")
+    .bind(owner.session.clientId)
+    .run();
+  await bindings.DB.prepare(
+    "INSERT INTO client_displays (client_id,tournament_id) VALUES (?,?)",
+  )
+    .bind(owner.session.clientId, game.id)
+    .run();
+  const other = fixture();
+  other.phase = "finished";
+  await saveGame(bindings.DB, null, other, "hash");
+  await bindings.DB.prepare(
+    "INSERT INTO client_players (client_id,tournament_id,player_id) VALUES (?,?,?)",
+  )
+    .bind(owner.session.clientId, other.id, other.players[0].id)
+    .run();
+  const admin = await sessionFixture({ role: "admin" });
+  const adminCookie = `se_session=${admin.token}`;
+  const issue = () =>
+    debugRequest("/api/debug/session/tickets", adminCookie, {
+      eventId: game.id,
+      playerId: game.players[0].id,
+    });
+  return { game, other, owner, admin, adminCookie, issue };
+}
+async function ticketOf(response: Response) {
+  expect(response.status).toBe(201);
+  const data = await response.json<{ handoffUrl: string; expiresAt: number }>();
+  const url = new URL(data.handoffUrl);
+  expect(url.origin).toBe(debugOrigin);
+  expect(url.search).toBe("");
+  expect(data.expiresAt - Date.now()).toBeGreaterThan(290000);
+  return url.hash.slice(1);
+}
+const debugCookie = (response: Response, name = "se_session") => {
+  const value = response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith(`${name}=`));
+  expect(value).toBeDefined();
+  return value!.split(";")[0];
+};
+
+it("参加者確認の一覧・発行・消費は設定と公開ホストで拒否し、一覧・発行には管理者認証も必要", async () => {
+  const f = await debugFixture();
+  const paths = [
+    "/api/debug/session/players?event=" + f.game.id,
+    "/api/debug/session/tickets",
+    "/api/debug/session/redeem",
+  ];
+  for (const overrides of [
+    { DEBUG_MODE: undefined },
+    { DEBUG_MODE: "false" },
+    { PUBLIC_ORIGIN: "https://public.example" },
+  ]) {
+    for (const path of paths) {
+      const response = await worker.fetch(
+        new Request(`http://localhost${path}`, {
+          method: path.includes("players?") ? "GET" : "POST",
+          headers: {
+            Origin: overrides.PUBLIC_ORIGIN ?? debugOrigin,
+            Cookie: f.adminCookie,
+            Host: "localhost",
+            "X-Forwarded-Host": "127.0.0.1",
+          },
+          ...(path.includes("players?") ? {} : { body: "{}" }),
+        }),
+        {
+          ...bindings,
+          PUBLIC_ORIGIN: debugOrigin,
+          DEBUG_MODE: "true",
+          ...overrides,
+        },
+      );
+      expect(response.status).toBe(404);
+    }
+  }
+  for (const cookie of [
+    "",
+    `se_session=${(await createSession(bindings.DB)).token}`,
+  ]) {
+    expect((await debugRequest(paths[0], cookie)).status).toBe(401);
+    expect(
+      (
+        await debugRequest(paths[1], cookie, {
+          eventId: f.game.id,
+          playerId: f.game.players[0].id,
+        })
+      ).status,
+    ).toBe(401);
+  }
+  const list = await debugRequest(paths[0], f.adminCookie);
+  expect(await list.json()).toMatchObject({
+    players: [{ id: f.game.players[0].id, name: f.game.players[0].name }],
+  });
+  expect(
+    (
+      await debugRequest(paths[1], f.adminCookie, {
+        eventId: f.other.id,
+        playerId: f.game.players[0].id,
+      })
+    ).status,
+  ).toBe(404);
+  const crossOrigin = await worker.fetch(
+    new Request(debugOrigin + paths[1], {
+      method: "POST",
+      headers: { Origin: "http://evil.example", Cookie: f.adminCookie },
+      body: "{}",
+    }),
+    { ...bindings, PUBLIC_ORIGIN: debugOrigin, DEBUG_MODE: "true" },
+  );
+  expect(crossOrigin.status).toBe(403);
+});
+
+it("確認セッションは参加者本人の権限だけを持ち、元クライアントの権限や紐づけは変更しない", async () => {
+  const f = await debugFixture();
+  const ticket = await ticketOf(await f.issue());
+  // GETは消費しない。
+  expect((await debugRequest("/api/debug/session/redeem")).status).toBe(401);
+  const response = await debugRequest("/api/debug/session/redeem", "", {
+    ticket,
+  });
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  const cookie = debugCookie(response);
+  expect(response.headers.getSetCookie()[0]).toContain("Max-Age=3600");
+  expect(response.headers.getSetCookie()[0]).toContain(
+    "HttpOnly; SameSite=Strict",
+  );
+  const session = await readSession(
+    new Request(debugOrigin, { headers: { Cookie: cookie } }),
+    bindings.DB,
+    true,
+  );
+  expect(session).toMatchObject({
+    isAdmin: false,
+    debugPlayer: { eventId: f.game.id, playerId: f.game.players[0].id },
+  });
+  expect(session!.clientId).not.toBe(f.owner.session.clientId);
+  const auth = (
+    await readAuthorizations(bindings.DB, f.game.id, [session!.tokenHash], true)
+  ).get(session!.tokenHash);
+  expect(auth).toMatchObject({
+    playerId: f.game.players[0].id,
+    isAdmin: false,
+    canDisplay: false,
+  });
+  expect(
+    (
+      await readAuthorizations(
+        bindings.DB,
+        f.other.id,
+        [session!.tokenHash],
+        true,
+      )
+    ).get(session!.tokenHash)?.playerId,
+  ).toBeNull();
+  expect(
+    (await debugRequest(`/api/e/${f.other.id}/session?role=player`, cookie))
+      .status,
+  ).toBe(401);
+  for (const role of ["control", "display"])
+    expect(
+      (await debugRequest(`/api/e/${f.game.id}/session?role=${role}`, cookie))
+        .status,
+    ).toBe(401);
+  expect((await debugRequest("/api/events", cookie)).status).toBe(401);
+  expect(
+    (await debugRequest("/api/admin/login", cookie, { password: "test-admin" }))
+      .status,
+  ).toBe(403);
+  expect(
+    (
+      await debugRequest(`/api/e/${f.game.id}/display/login`, cookie, {
+        password: "test",
+      })
+    ).status,
+  ).toBe(403);
+  expect(
+    (await debugRequest(`/api/e/${f.other.id}/join`, cookie, { name: "追加" }))
+      .status,
+  ).toBe(403);
+  const resultPath = `/api/e/${f.game.id}/result/${f.game.players[0].id}`;
+  expect(await (await debugRequest(resultPath, cookie)).json()).toMatchObject({
+    owner: true,
+  });
+  const share = await debugRequest(resultPath + "/share", cookie, {});
+  expect(share.status).toBe(200);
+  expect(await share.json()).toMatchObject({
+    shareUrl: expect.stringContaining("?share="),
+  });
+  expect(
+    (await debugRequest(resultPath + "/share/stop", cookie, {})).status,
+  ).toBe(200);
+  expect(
+    (
+      await debugRequest(
+        `/api/e/${f.other.id}/result/${f.other.players[0].id}`,
+        cookie,
+      )
+    ).status,
+  ).toBe(401);
+  const original = (
+    await readAuthorizations(bindings.DB, f.game.id, [
+      f.owner.session.tokenHash,
+    ])
+  ).get(f.owner.session.tokenHash);
+  expect(original).toMatchObject({
+    isAdmin: true,
+    canDisplay: true,
+    playerId: f.game.players[0].id,
+  });
+  expect(
+    (
+      await debugRequest("/api/debug/session/redeem", cookie, {
+        ticket: await ticketOf(await f.issue()),
+      })
+    ).status,
+  ).toBe(409);
+  // WebSocketと既存セッションAPIでも同じスコープを適用する。
+  const stub = bindings.ROOMS.get(bindings.ROOMS.idFromName(f.game.id));
+  await runInDurableObject(stub, (instance) => {
+    Object.assign(instance, {
+      env: { ...bindings, PUBLIC_ORIGIN: debugOrigin, DEBUG_MODE: "true" },
+    });
+  });
+  expect(
+    (await debugRequest(`/api/e/${f.game.id}/session?role=player`, cookie))
+      .status,
+  ).toBe(200);
+  const ws = await worker.fetch(
+    new Request(`${debugOrigin}/api/e/${f.game.id}/ws?role=player`, {
+      headers: { Cookie: cookie, Origin: debugOrigin, Upgrade: "websocket" },
+    }),
+    { ...bindings, PUBLIC_ORIGIN: debugOrigin, DEBUG_MODE: "true" },
+  );
+  expect(ws.status).toBe(101);
+  ws.webSocket!.accept();
+  // 発行元の管理者権限剥奪は接続中の認証検査にも反映される。
+  await bindings.DB.prepare("UPDATE clients SET is_admin = 0 WHERE id = ?")
+    .bind(f.admin.session.clientId)
+    .run();
+  const closed = new Promise<number>((resolve) =>
+    ws.webSocket!.addEventListener("close", (event) => resolve(event.code)),
+  );
+  await runDurableObjectAlarm(stub);
+  expect(await closed).toBe(4001);
+  expect((await debugRequest(resultPath, cookie)).status).toBe(401);
+});
+
+it("短期URLは一度だけ原子的に消費し、失効・発行元の失効・無効化を拒否する", async () => {
+  const f = await debugFixture();
+  const ticket = await ticketOf(await f.issue());
+  const replies = await Promise.all([
+    debugRequest("/api/debug/session/redeem", "", { ticket }),
+    debugRequest("/api/debug/session/redeem", "", { ticket }),
+  ]);
+  expect(replies.map((r) => r.status).sort()).toEqual([200, 410]);
+  const cookie = debugCookie(replies.find((r) => r.status === 200)!);
+  const hash = await digest(cookie.split("=")[1]);
+  expect(
+    (await readAuthorizations(bindings.DB, f.game.id, [hash], false)).size,
+  ).toBe(0);
+  expect(
+    (
+      await debugRequest(
+        `/api/e/${f.game.id}/result/${f.game.players[0].id}`,
+        cookie,
+        undefined,
+        { DEBUG_MODE: "false" },
+      )
+    ).status,
+  ).toBe(401);
+  await bindings.DB.prepare(
+    "UPDATE client_sessions SET expires_at = 0 WHERE token_hash = ?",
+  )
+    .bind(hash)
+    .run();
+  expect(
+    await readSession(
+      new Request(debugOrigin, { headers: { Cookie: cookie } }),
+      bindings.DB,
+      true,
+    ),
+  ).toBeNull();
+  const expired = await ticketOf(await f.issue());
+  await bindings.DB.prepare(
+    "UPDATE debug_session_tickets SET expires_at = 0 WHERE token_hash = ?",
+  )
+    .bind(await digest(expired))
+    .run();
+  expect(
+    (await debugRequest("/api/debug/session/redeem", "", { ticket: expired }))
+      .status,
+  ).toBe(410);
+  for (const operation of ["expire", "delete"] as const) {
+    const source = await debugFixture();
+    const value = await ticketOf(await source.issue());
+    if (operation === "expire")
+      await bindings.DB.prepare(
+        "UPDATE client_sessions SET expires_at = 0 WHERE token_hash = ?",
+      )
+        .bind(source.admin.session.tokenHash)
+        .run();
+    else
+      await bindings.DB.prepare(
+        "DELETE FROM client_sessions WHERE token_hash = ?",
+      )
+        .bind(source.admin.session.tokenHash)
+        .run();
+    expect(
+      (await debugRequest("/api/debug/session/redeem", "", { ticket: value }))
+        .status,
+    ).toBe(410);
+  }
+});
+
+it("同じブラウザのセッションをHttpOnly Cookieに退避し、機能無効化後も期限を延ばさず復帰できる", async () => {
+  const f = await debugFixture();
+  const response = await debugRequest(
+    "/api/debug/session/redeem",
+    f.adminCookie,
+    { ticket: await ticketOf(await f.issue()) },
+  );
+  const current = debugCookie(response);
+  const saved = debugCookie(response, "se_debug_return");
+  expect(saved.split("=")[1]).toBe(f.admin.token);
+  expect(
+    response.headers
+      .getSetCookie()
+      .find((v) => v.startsWith("se_debug_return=")),
+  ).toContain("HttpOnly");
+  expect(
+    await (
+      await debugRequest("/api/debug/session/status", `${current}; ${saved}`)
+    ).json(),
+  ).toMatchObject({ active: true, canReturn: true });
+  const restored = await debugRequest(
+    "/api/debug/session/restore",
+    `${current}; ${saved}`,
+    {},
+    { DEBUG_MODE: "false" },
+  );
+  expect(debugCookie(restored)).toBe(f.adminCookie);
+  expect(
+    restored.headers
+      .getSetCookie()
+      .find((v) => v.startsWith("se_debug_return=")),
+  ).toContain("Max-Age=0");
+  expect(
+    await bindings.DB.prepare(
+      "SELECT token_hash FROM client_sessions WHERE token_hash = ?",
+    )
+      .bind(await digest(current.split("=")[1]))
+      .first(),
+  ).toBeNull();
+  expect((await debugRequest("/api/events", f.adminCookie)).status).toBe(200);
+  expect(
+    (await debugRequest("/api/debug/session/restore", f.adminCookie, {}))
+      .status,
+  ).toBe(409);
+  // 復帰先セッション自体が失効した場合には、期限切れの権限を復活させない。
+  const next = await debugRequest("/api/debug/session/redeem", f.adminCookie, {
+    ticket: await ticketOf(await f.issue()),
+  });
+  await bindings.DB.prepare(
+    "UPDATE client_sessions SET expires_at = 0 WHERE token_hash = ?",
+  )
+    .bind(f.admin.session.tokenHash)
+    .run();
+  const ended = await debugRequest(
+    "/api/debug/session/restore",
+    `${debugCookie(next)}; ${debugCookie(next, "se_debug_return")}`,
+    {},
+  );
+  expect(debugCookie(ended)).toBe("se_session=");
+  expect(await ended.json()).toMatchObject({ restored: false });
+});
+
+it("確認セッション保存に失敗したら短期URLの消費もロールバックする", async () => {
+  const f = await debugFixture();
+  const ticket = await ticketOf(await f.issue());
+  const before = await bindings.DB.prepare(
+    "SELECT COUNT(*) AS count FROM clients",
+  ).first<{ count: number }>();
+  await bindings.DB.exec(
+    "CREATE TRIGGER fail_debug_registration BEFORE INSERT ON debug_player_sessions BEGIN SELECT RAISE(ABORT, 'injected debug registration failure'); END;",
+  );
+  try {
+    const response = await debugRequest("/api/debug/session/redeem", "", {
+      ticket,
+    });
+    expect(response.status).toBe(400);
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(
+      await bindings.DB.prepare(
+        "SELECT redeemed_session_hash FROM debug_session_tickets WHERE token_hash = ?",
+      )
+        .bind(await digest(ticket))
+        .first(),
+    ).toMatchObject({ redeemed_session_hash: null });
+    expect(
+      await bindings.DB.prepare(
+        "SELECT COUNT(*) AS count FROM clients",
+      ).first(),
+    ).toEqual(before);
+  } finally {
+    await bindings.DB.exec("DROP TRIGGER fail_debug_registration;");
+  }
+  expect(
+    (await debugRequest("/api/debug/session/redeem", "", { ticket })).status,
+  ).toBe(200);
 });
