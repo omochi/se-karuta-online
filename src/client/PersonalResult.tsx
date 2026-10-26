@@ -223,19 +223,10 @@ export function PersonalResultContent({ data }: { data: PersonalResultData }) {
       setBusy(false);
     }
   }
-  async function copyShareUrl() {
+  function copyShareUrl() {
     if (!shareUrl) return;
     setError("");
     showMessage("");
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(shareUrl);
-        showMessage("コピーしました", true);
-        return;
-      } catch {
-        // Clipboard APIを使えない場合も、ボタン操作に続けてコピーを試す。
-      }
-    }
     const temporaryInput = document.createElement("textarea");
     const previousFocus = document.activeElement;
     const setClipboardText = (event: ClipboardEvent) => {
@@ -245,7 +236,7 @@ export function PersonalResultContent({ data }: { data: PersonalResultData }) {
       }
     };
     try {
-      // HTTP用のコピーには見えない一時領域を使い、表示中のURL欄には触れない。
+      // 見えない一時領域を使ってコピーし、表示中のURL欄には触れない。
       // モーダルの外はinertになるため、開いているdialog内に置く。
       temporaryInput.value = shareUrl;
       temporaryInput.readOnly = true;
