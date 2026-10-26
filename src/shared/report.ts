@@ -39,12 +39,12 @@ export interface ReportPlayer {
   id: string;
   name: string;
   titles: PlayerTitle[];
+  // 大会全体の有効問題数。途中参加前も未回答として含む。
   eligible: number;
   answered: number;
   correct: number;
   incorrect: number;
   unanswered: number;
-  ineligible: number;
   correctRate: number | null;
   averageElapsed: number | null;
   averageCorrectElapsed: number | null;

@@ -11,6 +11,7 @@ import {
 import type { Role, Question } from "../shared/types";
 import type { TournamentReport } from "../shared/report";
 import type { TournamentReview } from "../shared/review";
+import type { PersonalResultData } from "../shared/personal-result";
 import { api } from "./api";
 import { RoomSession } from "./RoomSession";
 export interface HomeData {
@@ -39,6 +40,10 @@ export interface ReportData {
 export interface ReviewData {
   id: string;
   review: TournamentReview | null;
+}
+export interface ResultData {
+  data: PersonalResultData | null;
+  status: number;
 }
 export function createRouteLoaders() {
   let config: { publicOrigin: string } | undefined;
@@ -194,6 +199,27 @@ export function createRouteLoaders() {
       throw error;
     }
   }
+  async function result(args: LoaderFunctionArgs): Promise<ResultData> {
+    await configuration(args);
+    const params = new URL(args.request.url).searchParams;
+    const query = new URLSearchParams();
+    for (const token of params.getAll("share")) query.append("share", token);
+    try {
+      return {
+        data: await api<PersonalResultData>(
+          `/api/e/${encodeURIComponent(args.params.id!)}/result/${encodeURIComponent(args.params.playerId!)}${query.size ? `?${query}` : ""}`,
+          undefined,
+          args.request.signal,
+        ),
+        status: 200,
+      };
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      if (status === 401 || status === 404 || status === 409)
+        return { data: null, status };
+      throw error;
+    }
+  }
   function retain(active?: RoomSession) {
     for (const session of sessions)
       if (session !== active) {
@@ -201,7 +227,17 @@ export function createRouteLoaders() {
         sessions.delete(session);
       }
   }
-  return { configuration, home, events, viewer, game, report, review, retain };
+  return {
+    configuration,
+    home,
+    events,
+    viewer,
+    game,
+    report,
+    review,
+    result,
+    retain,
+  };
 }
 
 export function bindRoomSessions(

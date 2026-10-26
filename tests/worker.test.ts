@@ -8,9 +8,11 @@ import {
 } from "cloudflare:test";
 import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
 import sessionMigration from "../migrations/0004_client_sessions.sql?raw";
+import resultMigration from "../migrations/0005_result_sharing.sql?raw";
 import readyWaitMigration from "../migrations/0003_unify_resting_with_unanswered.sql?raw";
 import { tournamentReport } from "../src/worker/report";
 import { tournamentReview } from "../src/worker/review";
+import { personalResult } from "../src/worker/personal-result";
 import migration from "../migrations/0001_initial.sql?raw";
 import {
   newGame,
@@ -228,7 +230,7 @@ beforeAll(async () => {
     ).bind(legacyGame.id, round.id, player.id, "B", 150),
   ]);
   await bindings.DB.batch(
-    sessionMigration
+    (sessionMigration + resultMigration)
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -987,6 +989,159 @@ async function participantFixture() {
   });
   return { game, ...issued, cookie: `se_session=${issued.token}` };
 }
+
+it("個人成績は本人だけが開け、明示的に発行したURLはその人の結果だけを公開する", async () => {
+  const game = fixture();
+  const other = {
+    id: crypto.randomUUID(),
+    name: "非公開の参加者",
+    joinedAt: Date.now(),
+  };
+  addPlayer(game, other);
+  game.phase = "finished";
+  await saveGame(bindings.DB, null, game, "hash");
+  const owner = await sessionFixture({
+    role: "player",
+    eventId: game.id,
+    playerId: game.players[0].id,
+  });
+  const outsider = await sessionFixture({
+    role: "player",
+    eventId: game.id,
+    playerId: other.id,
+  });
+  const admin = await sessionFixture({ role: "admin" });
+  const path = `/api/e/${game.id}/result/${game.players[0].id}`;
+  const request = (
+    suffix = "",
+    token = "",
+    method = "GET",
+    origin = "http://test",
+  ) =>
+    exports.default.fetch(
+      new Request(`http://test${path}${suffix}`, {
+        method,
+        headers: { Cookie: `se_session=${token}`, Origin: origin },
+      }),
+    );
+  for (const token of ["", outsider.token, admin.token]) {
+    expect((await request("", token)).status).toBe(401);
+    expect((await request("/share", token, "POST")).status).toBe(401);
+    expect((await request("/share/stop", token, "POST")).status).toBe(401);
+  }
+  const initial = await request("", owner.token);
+  expect(initial.status).toBe(200);
+  expect(await initial.json()).toEqual({
+    result: personalResult(game, game.players[0].id),
+    owner: true,
+    shareUrl: null,
+  });
+  expect((await request("?share=" + "0".repeat(64))).status).toBe(404);
+  expect(
+    (await request("/share", owner.token, "POST", "https://evil.example"))
+      .status,
+  ).toBe(403);
+  const issued = await Promise.all([
+    request("/share", owner.token, "POST"),
+    request("/share", owner.token, "POST"),
+  ]);
+  const [one, two] = await Promise.all(
+    issued.map((r) => r.json() as Promise<{ shareUrl: string }>),
+  );
+  expect(one.shareUrl).toBe(two.shareUrl);
+  const url = new URL(one.shareUrl);
+  expect(url.origin).toBe("http://test");
+  expect(url.searchParams.get("share")).toMatch(/^[0-9a-f]{64}$/);
+  const publicResponse = await request(url.search);
+  expect(publicResponse.status).toBe(200);
+  expect(publicResponse.headers.get("Cache-Control")).toBe("no-store");
+  const shared = await publicResponse.json();
+  expect(shared).toEqual({
+    result: personalResult(game, game.players[0].id),
+    owner: false,
+    shareUrl: null,
+  });
+  expect(JSON.stringify(shared)).not.toContain(other.name);
+  expect(JSON.stringify(shared)).not.toContain(other.id);
+  expect(JSON.stringify(shared)).not.toContain(url.searchParams.get("share")!);
+  expect(await (await request(url.search, owner.token)).json()).toEqual(shared);
+  expect((await request(`/share${url.search}`, "", "POST")).status).toBe(403);
+  expect(
+    (await request(`/share/stop${url.search}`, outsider.token, "POST")).status,
+  ).toBe(403);
+  expect((await request(`${url.search}&share=another`)).status).toBe(404);
+  const otherPage = await exports.default.fetch(
+    new Request(`http://test/api/e/${game.id}/result/${other.id}${url.search}`),
+  );
+  expect(otherPage.status).toBe(404);
+  const secondGame = fixture();
+  secondGame.phase = "finished";
+  await saveGame(bindings.DB, null, secondGame, "hash");
+  expect(
+    (
+      await exports.default.fetch(
+        new Request(
+          `http://test/api/e/${secondGame.id}/result/${game.players[0].id}${url.search}`,
+        ),
+      )
+    ).status,
+  ).toBe(404);
+  const restored = await request("", owner.token);
+  expect(await restored.json()).toMatchObject({ shareUrl: one.shareUrl });
+  await request("/share/stop", owner.token, "POST");
+  expect((await request(url.search)).status).toBe(404);
+  expect((await request(url.search, owner.token)).status).toBe(404);
+  expect((await request("", owner.token)).status).toBe(200);
+  const reissued = (await (
+    await request("/share", owner.token, "POST")
+  ).json()) as { shareUrl: string };
+  expect(reissued.shareUrl).not.toBe(one.shareUrl);
+  expect((await request(url.search)).status).toBe(404);
+  await bindings.DB.prepare(
+    "UPDATE client_sessions SET expires_at = 0 WHERE client_id = ?",
+  )
+    .bind(owner.session.clientId)
+    .run();
+  expect((await request("", owner.token)).status).toBe(401);
+  expect((await request("/share", owner.token, "POST")).status).toBe(401);
+  expect((await request(new URL(reissued.shareUrl).search)).status).toBe(200);
+});
+
+it("大会終了前は本人も成績を取得・共有できず、既存参加者の共有は初期状態で無効", async () => {
+  const game = fixture();
+  await saveGame(bindings.DB, null, game, "hash");
+  const owner = await sessionFixture({
+    role: "player",
+    eventId: game.id,
+    playerId: game.players[0].id,
+  });
+  const url = `http://test/api/e/${game.id}/result/${game.players[0].id}`;
+  for (const [suffix, method] of [
+    ["", "GET"],
+    ["/share", "POST"],
+    ["/share/stop", "POST"],
+  ]) {
+    expect(
+      (
+        await exports.default.fetch(
+          new Request(url + suffix, {
+            method,
+            headers: {
+              Cookie: `se_session=${owner.token}`,
+              Origin: "http://test",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(409);
+  }
+  const row = await bindings.DB.prepare(
+    "SELECT result_share_token FROM players WHERE tournament_id = ? AND id = ?",
+  )
+    .bind(legacyGame.id, legacyGame.players[0].id)
+    .first();
+  expect(row).toEqual({ result_share_token: null });
+});
 function request(path: string, cookie = "", data?: unknown) {
   return exports.default.fetch(
     new Request(`http://test${path}`, {

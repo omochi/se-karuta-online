@@ -46,7 +46,9 @@ export function tournamentReport(g: Game): TournamentReport {
           status === "unasked"
             ? "unasked"
             : participation !== "eligible"
-              ? "ineligible"
+              ? scored
+                ? "unanswered"
+                : "ineligible"
               : r.openedAt === null
                 ? "notOpened"
                 : !answer
@@ -60,9 +62,10 @@ export function tournamentReport(g: Game): TournamentReport {
         rank: scored ? (ranks.get(p.id) ?? null) : null,
       };
     });
-    const eligible = Object.values(r.participants).filter(
-      (s) => s === "eligible",
-    ).length;
+    // 終了後の成績では途中参加前も未回答として扱い、全参加者を分母にする。
+    const eligible = scored
+      ? g.players.length
+      : Object.values(r.participants).filter((s) => s === "eligible").length;
     const answered = answers.filter((a) => a.choice !== null).length;
     const correct = answers.filter((a) => a.status === "correct").length;
     const elapsed = times(answers);
@@ -94,9 +97,7 @@ export function tournamentReport(g: Game): TournamentReport {
       r.answers.find((a) => a.playerId === p.id)!,
     );
     const correctAnswers = answers.filter((a) => a.status === "correct");
-    const eligible = answers.filter((a) =>
-      ["correct", "incorrect", "unanswered"].includes(a.status),
-    ).length;
+    const eligible = valid.length;
     const correct = correctAnswers.length;
     return {
       id: p.id,
@@ -107,7 +108,6 @@ export function tournamentReport(g: Game): TournamentReport {
       answered: answers.filter((a) => a.choice !== null).length,
       incorrect: answers.filter((a) => a.status === "incorrect").length,
       unanswered: answers.filter((a) => a.status === "unanswered").length,
-      ineligible: answers.filter((a) => a.status === "ineligible").length,
       correctRate: ratio(correct, eligible),
       averageElapsed: average(times(answers)),
       averageCorrectElapsed: average(times(correctAnswers)),

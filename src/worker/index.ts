@@ -1,4 +1,8 @@
-import { eventUrls, normalizePublicOrigin } from "../shared/urls";
+import {
+  eventUrls,
+  normalizePublicOrigin,
+  personalResultShareUrl,
+} from "../shared/urls";
 import { normalizeJoinCode } from "../shared/join-code";
 import type { Env } from "./env";
 import {
@@ -15,6 +19,7 @@ import { newGame } from "./game";
 import { ensureJoinCode, loadGame, saveGame } from "./repository";
 import { tournamentReport } from "./report";
 import { tournamentReview } from "./review";
+import { personalResult } from "./personal-result";
 import { listEvents } from "./event-list";
 import { validateQuestions } from "../shared/questions";
 export { TournamentRoom } from "./room";
@@ -213,6 +218,104 @@ export default {
           phase: string;
         }>();
       if (!tournament) return json({ error: "大会が見つかりません。" }, 404);
+      const resultMatch =
+        /^result\/([a-zA-Z0-9-]{1,80})(?:\/(share|share\/stop))?$/.exec(action);
+      if (resultMatch) {
+        const [, playerId, operation] = resultMatch;
+        const sharing = url.searchParams.has("share");
+        const token = url.searchParams.get("share");
+        const owner =
+          !sharing && session
+            ? await env.DB.prepare(
+                "SELECT player_id FROM client_players WHERE client_id = ? AND tournament_id = ? AND player_id = ?",
+              )
+                .bind(session.clientId, id, playerId)
+                .first()
+            : null;
+        const player = await env.DB.prepare(
+          "SELECT result_share_token FROM players WHERE tournament_id = ? AND id = ?",
+        )
+          .bind(id, playerId)
+          .first<{ result_share_token: string | null }>();
+        if (sharing) {
+          if (
+            !token ||
+            !/^[0-9a-f]{64}$/.test(token) ||
+            url.searchParams.getAll("share").length !== 1 ||
+            !player?.result_share_token ||
+            token !== player.result_share_token
+          )
+            return json(
+              { error: "共有URLが無効か、共有が停止されています。" },
+              404,
+            );
+        } else if (!owner) {
+          return json(
+            { error: "参加したブラウザーで自分の成績を開いてください。" },
+            401,
+          );
+        }
+        if (tournament.phase !== "finished")
+          return json({ error: "大会終了後に成績を確認できます。" }, 409);
+        if (!operation && request.method === "GET") {
+          const game = await loadGame(env.DB, id);
+          if (!game) return json({ error: "大会が見つかりません。" }, 404);
+          return json({
+            result: personalResult(game, playerId),
+            owner: !!owner,
+            shareUrl:
+              owner && player?.result_share_token
+                ? personalResultShareUrl(
+                    publicOrigin,
+                    id,
+                    playerId,
+                    player.result_share_token,
+                  )
+                : null,
+          });
+        }
+        if (operation && request.method === "POST") {
+          if (!owner)
+            return json({ error: "本人だけが共有を変更できます。" }, 403);
+          if (operation === "share/stop") {
+            await env.DB.prepare(
+              "UPDATE players SET result_share_token = NULL WHERE tournament_id = ? AND id = ?",
+            )
+              .bind(id, playerId)
+              .run();
+            return json({ shareUrl: null });
+          }
+          // 発行済みのURLは維持する。同時発行でもDBに保存された一つへ収束する。
+          const nextToken = Array.from(
+            crypto.getRandomValues(new Uint8Array(32)),
+            (b) => b.toString(16).padStart(2, "0"),
+          ).join("");
+          await env.DB.prepare(
+            "UPDATE players SET result_share_token = ? WHERE tournament_id = ? AND id = ? AND result_share_token IS NULL",
+          )
+            .bind(nextToken, id, playerId)
+            .run();
+          const saved = await env.DB.prepare(
+            "SELECT result_share_token FROM players WHERE tournament_id = ? AND id = ?",
+          )
+            .bind(id, playerId)
+            .first<{ result_share_token: string | null }>();
+          if (!saved?.result_share_token)
+            return json(
+              { error: "共有URLを発行できませんでした。再度お試しください。" },
+              409,
+            );
+          return json({
+            shareUrl: personalResultShareUrl(
+              publicOrigin,
+              id,
+              playerId,
+              saved.result_share_token,
+            ),
+          });
+        }
+        return json({ error: "見つかりません。" }, 404);
+      }
       if (action === "review" && request.method === "GET") {
         const game = await loadGame(env.DB, id);
         if (!game) return json({ error: "大会が見つかりません。" }, 404);

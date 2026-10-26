@@ -3,12 +3,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLoaderData, useRevalidator } from "react-router";
 import { CHOICES } from "../shared/types";
 import type {
-  ReportAnswer,
   ReportPlayer,
   TournamentReport as Report,
 } from "../shared/report";
 import type { ReportData } from "./route-loaders";
 import { api } from "./api";
+import { AnswerStatus } from "./AnswerStatus";
 import {
   FinalResults,
   Header,
@@ -22,22 +22,7 @@ const percent = (value: number | null) =>
   value === null ? "—" : `${(value * 100).toFixed(1)}%`;
 const seconds = (value: number | null) =>
   value === null ? "—" : `${(value / 1000).toFixed(3)} 秒`;
-const statusLabels = {
-  correct: "正解",
-  incorrect: "不正解",
-  unanswered: "未回答",
-  notOpened: "受付前",
-  ineligible: "対象外",
-  unasked: "未出題",
-};
 const roundLabels = { scored: "集計対象", voided: "無効", unasked: "未出題" };
-function AnswerStatus({ answer }: { answer: ReportAnswer }) {
-  return (
-    <span className={`report-status report-status-${answer.status}`}>
-      {statusLabels[answer.status]}
-    </span>
-  );
-}
 function Metric({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="report-metric">
@@ -169,8 +154,8 @@ function ReportContent({ report }: { report: Report }) {
         ))}
       </nav>
       <p className="report-note">
-        集計は有効な出題のみ。正答率は正解数 ÷
-        参加対象数で、未回答を含み、途中参加前の対象外を除きます。無効・未出題の問題は全体と個人成績に含めません。
+        集計は有効な出題のみ。個人の正答率は正解数 ÷
+        大会全体の有効問題数で、途中参加前も未回答に含みます。問題ごとの正答率も大会の全参加者を分母にします。無効・未出題の問題は全体と個人成績に含めません。
       </p>
       {tab === "overview" ? (
         <>
@@ -182,7 +167,7 @@ function ReportContent({ report }: { report: Report }) {
             <Metric label="全体正答率">
               {percent(report.summary.correctRate)}
             </Metric>
-            <Metric label="回答数 / 延べ参加対象数">
+            <Metric label="回答数 / 延べ集計人数">
               {report.summary.answered} / {report.summary.eligible}
             </Metric>
             <Metric label="平均回答時間（全回答）">
@@ -270,7 +255,7 @@ function ReportContent({ report }: { report: Report }) {
               </details>
               <div className="report-metrics">
                 <Metric label="正答率">{percent(round.correctRate)}</Metric>
-                <Metric label="回答数 / 参加対象数">
+                <Metric label="回答数 / 集計人数">
                   {round.answered} / {round.eligible}
                 </Metric>
                 <Metric label="平均回答時間（全回答）">
@@ -286,7 +271,7 @@ function ReportContent({ report }: { report: Report }) {
               </p>
               <h3>選択肢ごとの回答人数</h3>
               <p className="muted">
-                棒の長さは参加対象数に対する割合。未回答者がいる場合、A〜Dの合計は100%になりません。
+                棒の長さは集計人数に対する割合。途中参加前も未回答に含めるため、A〜Dの合計は100%にならない場合があります。
               </p>
               <div className="report-distribution">
                 {CHOICES.map((c) => (
@@ -340,7 +325,7 @@ function ReportContent({ report }: { report: Report }) {
                           </button>
                         </th>
                         <td>
-                          <AnswerStatus answer={a} />
+                          <AnswerStatus status={a.status} />
                         </td>
                         <td>{a.choice ?? "—"}</td>
                         <td>{seconds(a.elapsed)}</td>
@@ -389,7 +374,7 @@ function ReportContent({ report }: { report: Report }) {
               </h2>
               <PlayerTitles titles={player.titles} />
               <div className="report-metrics">
-                <Metric label="正解数 / 参加対象数">
+                <Metric label="正解数 / 有効問題数">
                   {player.correct} / {player.eligible}
                 </Metric>
                 <Metric label="正答率">{percent(player.correctRate)}</Metric>
@@ -410,8 +395,7 @@ function ReportContent({ report }: { report: Report }) {
                 {seconds(player.fastestCorrect)}
               </p>
               <p className="muted">
-                不正解 {player.incorrect} 問 · 未回答 {player.unanswered} 問 ·
-                対象外 {player.ineligible} 問
+                不正解 {player.incorrect} 問 · 未回答 {player.unanswered} 問
               </p>
               <h3>全問の回答履歴</h3>
               <Table label="参加者の全問履歴">
@@ -441,7 +425,7 @@ function ReportContent({ report }: { report: Report }) {
                         </th>
                         <td>{roundLabels[r.status]}</td>
                         <td>
-                          <AnswerStatus answer={a} />
+                          <AnswerStatus status={a.status} />
                         </td>
                         <td>
                           {a.choice ?? "—"} / {r.question.correctChoice}

@@ -1,0 +1,4 @@
+/e/:eventId/result/*
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
