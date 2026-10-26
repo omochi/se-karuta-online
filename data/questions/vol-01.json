@@ -368,7 +368,7 @@
     {
       "id": "conditional-copyability",
       "difficulty": 3,
-      "bodyMarkdown": "`Box<Int>` と `Box<Token>` はどちらも作れるが、duplicate に渡せるのは前者だけ。このように、非コピー可能な要素も受け入れつつ、要素次第でコンテナーをコピー可能にする拡張を導入した Proposal は？\n\n```swift\nstruct Token: ~Copyable {}\nstruct Box<T: ~Copyable>: ~Copyable { var value: T }\nextension Box: Copyable where T: Copyable {}\n\nfunc duplicate<T>(_ value: T) -> (T, T) { (value, value) }\n\nfunc demo() {\n    let a = Box(value: 42)\n    _ = duplicate(a)                 // OK\n    let b = Box(value: Token())      // OK\n    // _ = duplicate(b)              // コンパイルエラー\n}\n```",
+      "bodyMarkdown": "`Token` はコピーできない型。この `Box` では、`Box<Int>` と `Box<Token>` のどちらも作れるが、`duplicate` に渡せるのは前者だけ。このように、コピーできない要素も受け入れつつ、要素次第でコンテナ自身をコピー可能にする記述を可能にした提案は？\n\n```swift\nstruct Token: ~Copyable {}\nstruct Box<T: ~Copyable>: ~Copyable { var value: T }\nextension Box: Copyable where T: Copyable {}\n\nfunc duplicate<T>(_ value: T) -> (T, T) { (value, value) }\n\nfunc demo() {\n    let a = Box(value: 42)\n    _ = duplicate(a)                 // OK\n    let b = Box(value: Token())      // OK\n    // _ = duplicate(b)              // コンパイルエラー\n}\n```",
       "choices": {
         "A": {
           "number": "SE-0426",
