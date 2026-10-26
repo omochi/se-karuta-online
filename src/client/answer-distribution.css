@@ -56,6 +56,8 @@
   height: 100%;
   background: #ac9a91;
   border-radius: inherit;
+  /* タイムバーと同じく、受信した割合へ幅を補間する。 */
+  transition: width 100ms linear;
 }
 .distribution-correct {
   color: #ffb49c;
@@ -81,13 +83,34 @@
   font-size: 13px;
   color: #d3bfb3;
 }
-/* 本文の自動計測と同じgridで幅・高さを確定させ、正解発表にだけ横枠を用意する。 */
+@media (prefers-reduced-motion: reduce) {
+  .distribution-fill {
+    transition: none;
+  }
+}
+/* 回答受付から正解発表まで同じ枠を保ち、本文もこのgridの残り領域で計測する。 */
 .display-page.display-page-question .display-content.has-distribution {
   grid-template-columns: minmax(0, 1fr) minmax(290px, 32%);
 }
 .has-distribution > .game-progress,
 .has-distribution > .choices {
   grid-column: 1 / -1;
+}
+/* タイマーが消えたり解説リンクが現れたりしても、集計欄を動かさない。 */
+.has-distribution > .game-progress {
+  min-height: 44px;
+}
+.display-page-question .has-distribution > .choices .choice {
+  min-height: 68px;
+  border-width: 2px;
+  padding-right: 68px;
+}
+.display-page-question .has-distribution .choice-explanation-link {
+  position: absolute;
+  right: 12px;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
 }
 .has-distribution > .answer-distribution {
   align-self: center;

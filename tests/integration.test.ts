@@ -302,6 +302,10 @@ test(
     await control.wait((v) => v.phase === "acceptingAnswers", 23000);
     assert.equal(control.state!.phaseDurationMs, 30000);
     await display.wait((v) => v.phase === "acceptingAnswers");
+    assert.deepEqual(display.state!.answerDistribution, {
+      counts: { A: 0, B: 0, C: 0, D: 0 },
+      unanswered: 39,
+    });
     await Promise.all(
       players.map((p) => p.wait((v) => v.phase === "acceptingAnswers")),
     );
@@ -350,6 +354,10 @@ test(
       choice: "A",
     });
     assert.equal((await players[0].reply(failedId)).type, "error");
+    assert.deepEqual(display.state!.answerDistribution, {
+      counts: { A: 0, B: 0, C: 0, D: 0 },
+      unanswered: 39,
+    });
     assert.equal(
       (
         await db
@@ -375,6 +383,23 @@ test(
     );
     assert(answers.every((a) => a.type === "ack"));
     await control.wait((v) => v.answerCount === 38);
+    const counts = { A: 0, B: 0, C: 0, D: 0 };
+    counts[firstCorrectChoice] = 38;
+    const distribution = { counts, unanswered: 1 };
+    for (const screen of [display, monitor, satellite, lateDisplay]) {
+      await screen.wait((v) => v.answerCount === 38);
+      assert.equal(screen.state!.phase, "acceptingAnswers");
+      assert.deepEqual(screen.state!.answerDistribution, distribution);
+      assert.equal(screen.state!.question!.correctChoice, undefined);
+    }
+    assert.equal(control.state!.answerDistribution, undefined);
+    await players[0].wait((v) => v.answerCount === 38);
+    assert.equal(players[0].state!.answerDistribution, undefined);
+    // 途中接続したDisplayにも、保存済みの最新集計を即座に送る。
+    lateDisplay.close();
+    const liveDisplay = await connect("display", displayCookie);
+    assert.equal(liveDisplay.state!.phase, "acceptingAnswers");
+    assert.deepEqual(liveDisplay.state!.answerDistribution, distribution);
     t.diagnostic(
       `38 simultaneous answers persisted and acknowledged in ${Math.round(performance.now() - started)} ms (local)`,
     );
@@ -440,6 +465,7 @@ test(
     );
     assert.equal(display.state!.question!.correctChoice, undefined);
     assert.equal(display.state!.question!.explanationMarkdown, undefined);
+    assert.deepEqual(display.state!.answerDistribution, distribution);
     await players[38].wait((v) => v.phase === "answersClosed");
     assert.equal(players[38].state!.me!.answer, null);
     const tooLate = crypto.randomUUID();
@@ -464,16 +490,14 @@ test(
     players[0].close();
     const reconnected = await connect("player", cookies[0]);
     assert.deepEqual(reconnected.state!.me!.answer, first.answer);
-    assert.equal(display.state!.answerDistribution, undefined);
+    assert.deepEqual(display.state!.answerDistribution, distribution);
     await control.command("reveal");
     await display.wait((v) => v.phase === "answerRevealed");
-    const counts = { A: 0, B: 0, C: 0, D: 0 };
-    counts[firstCorrectChoice] = 38;
     assert.deepEqual(display.state!.answerDistribution, {
       counts,
       unanswered: 1,
     });
-    for (const screen of [monitor, satellite, lateDisplay]) {
+    for (const screen of [monitor, satellite, liveDisplay]) {
       await screen.wait((v) => v.phase === "answerRevealed");
       assert.deepEqual(screen.state!.question, display.state!.question);
       assert.deepEqual(screen.state!.answerDistribution, {
@@ -507,7 +531,7 @@ test(
     await late.wait((v) => v.questionNumber === 2);
     assert.equal(late.state!.me!.participation, "eligible");
     // 全Displayを閉じても、参加者の準備だけで次問を開始できる。
-    for (const screen of [display, monitor, satellite, lateDisplay])
+    for (const screen of [display, monitor, satellite, liveDisplay])
       screen.close();
     await control.wait((v) => v.displays?.length === 0);
     const nextRoundId = control.state!.question!.id;

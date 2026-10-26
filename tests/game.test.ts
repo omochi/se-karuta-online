@@ -6,6 +6,7 @@ import {
   beginCountdownIfReady,
   currentRound,
   finalResults,
+  isDifficultRound,
   newGame,
   receiveAnswer,
   roundRanking,
@@ -262,7 +263,7 @@ describe("権限と公開段階", () => {
     },
   );
   it.each(["自動締切", "手動締切"])(
-    "%s後もDisplayへ本文を送り、正解・解説・回答分布は正解発表まで送らない",
+    "%s後もDisplayへ本文と回答分布を送り、正解・解説は正解発表まで送らない",
     (closing) => {
       const g = fixture();
       open(g);
@@ -283,7 +284,10 @@ describe("権限と公開段階", () => {
       expect(display.question?.choices).toEqual(question.choices);
       expect(display.question?.correctChoice).toBeUndefined();
       expect(display.question?.explanationMarkdown).toBeUndefined();
-      expect(display.answerDistribution).toBeUndefined();
+      expect(display.answerDistribution).toEqual({
+        counts: { A: 0, B: 0, C: 0, D: 0 },
+        unanswered: 3,
+      });
       expect(
         viewFor(g, "player", "p0", presence, "e", 60000, "http://test").question
           ?.bodyMarkdown,
@@ -338,7 +342,7 @@ describe("権限と公開段階", () => {
   });
 });
 describe("表彰と無効問題", () => {
-  it("正答率は未回答を含み、お休みを除く。誤答を最速記録にしない", () => {
+  it("最多得票以外の正解を難問王に加算し、誤答を最速記録にしない", () => {
     const g = fixture(5);
     command(g, "start");
     command(g, "rest", 0, { playerId: "p4" });
@@ -348,13 +352,14 @@ describe("表彰と無効問題", () => {
     const r = currentRound(g)!;
     receiveAnswer(g, "p0", r.id, "B", 20200);
     receiveAnswer(g, "p1", r.id, "A", 20100);
+    receiveAnswer(g, "p2", r.id, "A", 20300);
     command(g, "close", 21000);
     const result = finalResults(g);
     expect(result.difficultQuestions).toBe(1);
     expect(result.difficult[0].playerId).toBe("p0");
     expect(result.record[0].elapsed).toBe(200);
   });
-  it("休みを除いた正答率が30%超なら難問にしない", () => {
+  it("未回答が多くても、正解が最多得票なら難問にしない", () => {
     const g = fixture(4);
     command(g, "start");
     command(g, "rest", 0, { playerId: "p3" });
@@ -364,6 +369,58 @@ describe("表彰と無効問題", () => {
     receiveAnswer(g, "p0", currentRound(g)!.id, "B", 20200);
     command(g, "close", 21000);
     expect(finalResults(g).difficultQuestions).toBe(0);
+  });
+  it.each([
+    { counts: [8, 7, 3, 2], difficult: true },
+    { counts: [8, 8, 2, 2], difficult: false },
+    { counts: [5, 5, 5, 5], difficult: false },
+    { counts: [2, 3, 0, 0], difficult: false },
+    { counts: [0, 1, 0, 0], difficult: false },
+    { counts: [1, 0, 0, 0], difficult: true },
+    { counts: [0, 0, 0, 0], difficult: false },
+  ])(
+    "締切時の票数 $counts で難問判定が $difficult になる",
+    ({ counts, difficult }) => {
+      const g = fixture(20);
+      open(g);
+      const r = currentRound(g)!;
+      let player = 0;
+      for (const [index, count] of counts.entries())
+        for (let i = 0; i < count; i++)
+          receiveAnswer(
+            g,
+            `p${player++}`,
+            r.id,
+            (["A", "B", "C", "D"] as const)[index],
+            20100 + player,
+          );
+      expect(isDifficultRound(r)).toBe(false);
+      command(g, "close", 21000);
+      const results = finalResults(g);
+      expect(isDifficultRound(r)).toBe(difficult);
+      expect(results.difficultQuestions).toBe(difficult ? 1 : 0);
+      expect(results.difficult).toHaveLength(difficult ? counts[1] : 0);
+      expect(
+        results.difficult.every((row) => row.value === 1 && row.rank === 1),
+      ).toBe(true);
+      r.isVoided = true;
+      expect(isDifficultRound(r)).toBe(false);
+      expect(finalResults(g).difficult).toEqual([]);
+    },
+  );
+  it("対象外の票や旧正答率しきい値を難問王の判定に使わない", () => {
+    const g = fixture(4);
+    open(g);
+    const r = currentRound(g)!;
+    receiveAnswer(g, "p0", r.id, "B", 20100);
+    receiveAnswer(g, "p1", r.id, "A", 20200);
+    receiveAnswer(g, "p2", r.id, "A", 20300);
+    r.participants.p3 = "resting";
+    r.answers.p3 = { choice: "B", receivedAt: 20400 };
+    r.answers.late = { choice: "B", receivedAt: 20400 };
+    command(g, "close", 21000);
+    Object.assign(g, { difficultyThreshold: 0 });
+    expect(isDifficultRound(r)).toBe(true);
   });
   it("同着1位を全員に加算し、安定王の最低正解数を大会全体から求める", () => {
     const g = fixture(2);
@@ -755,7 +812,7 @@ describe("問題JSONの検証", () => {
 });
 
 describe("会場の回答分布", () => {
-  it("正解発表前は送らず、発表・順位公開時だけDisplayに対象者の人数を送る", () => {
+  it("回答受付からDisplayだけへ対象者の集計を送り、締切・発表・順位公開で維持する", () => {
     const g = fixture(6);
     const view = (role: "display" | "player" | "control" = "display") =>
       viewFor(g, role, "p0", presence, "e", 22000, "http://test");
@@ -768,7 +825,15 @@ describe("会場の回答分布", () => {
     expect(view().answerDistribution).toBeUndefined();
     advanceTimer(g, 20000);
     const r = currentRound(g)!;
+    expect(view().answerDistribution).toEqual({
+      counts: { A: 0, B: 0, C: 0, D: 0 },
+      unanswered: 5,
+    });
     receiveAnswer(g, "p0", r.id, "B", 20100);
+    expect(view().answerDistribution).toEqual({
+      counts: { A: 0, B: 1, C: 0, D: 0 },
+      unanswered: 4,
+    });
     receiveAnswer(g, "p1", r.id, "B", 20200);
     receiveAnswer(g, "p2", r.id, "A", 20300);
     receiveAnswer(g, "p3", r.id, "D", 20400);
@@ -778,11 +843,15 @@ describe("会場の回答分布", () => {
       joinedAt: 20500,
       sessionHash: "hash",
     });
-    expect(view().answerDistribution).toBeUndefined();
-    command(g, "close", 21000);
-    expect(view().answerDistribution).toBeUndefined();
-    command(g, "reveal", 22000);
     const expected = { counts: { A: 1, B: 2, C: 0, D: 1 }, unanswered: 1 };
+    expect(view().answerDistribution).toEqual(expected);
+    expect(view().question?.correctChoice).toBeUndefined();
+    expect(view("player").answerDistribution).toBeUndefined();
+    expect(view("control").answerDistribution).toBeUndefined();
+    command(g, "close", 21000);
+    expect(view().answerDistribution).toEqual(expected);
+    expect(view().question?.correctChoice).toBeUndefined();
+    command(g, "reveal", 22000);
     expect(view().answerDistribution).toEqual(expected);
     expect(view("player").answerDistribution).toBeUndefined();
     expect(view("control").answerDistribution).toBeUndefined();

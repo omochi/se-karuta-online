@@ -211,7 +211,7 @@ export function FinalResults({
           ],
           [
             "難問王",
-            `正答率 30% 以下の ${results.difficultQuestions} 問`,
+            `最多得票以外が正解の ${results.difficultQuestions} 問`,
             results.difficult,
             "問",
           ],

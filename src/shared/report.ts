@@ -59,7 +59,6 @@ export interface TournamentReport {
   id: string;
   name: string;
   createdAt: number;
-  difficultyThreshold: number;
   results: Results;
   summary: {
     scored: number;

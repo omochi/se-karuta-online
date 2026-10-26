@@ -169,7 +169,9 @@ it.each(["期限到達直後", "サーバーの締切確定後"])(
     for (const choice of Object.values(question.choices))
       expect(html).toContain(choice.title);
     expect(html).not.toContain("ANSWER EXPLANATION");
-    expect(html).not.toContain("みんなの回答");
+    expect(html).toContain("みんなの回答");
+    expect(html).toContain("has-distribution");
+    expect(html).not.toContain("distribution-correct");
     expect(html).not.toMatch(/class="choice [^"]*correct/);
     expect(html).not.toContain('role="progressbar"');
   },
@@ -191,14 +193,27 @@ it("選択肢公開では問題を隠し、正解発表では本文と正解の�
   expect(revealed).not.toContain("残り 45 秒");
 });
 
-it("正解発表のプレビューにはサンプルの回答分布があり、公開前にはない", () => {
+it("回答受付から正解発表まで同じ分布と配置を保ち、正解の強調だけを加える", () => {
   expect(preview("choicesReading")).not.toContain("みんなの回答");
-  expect(preview("acceptingAnswers")).not.toContain("みんなの回答");
+  const accepting = preview("acceptingAnswers");
   const revealed = preview("answerRevealed");
+  expect(accepting).toContain("has-distribution");
+  expect(revealed).toContain("has-distribution");
+  expect(accepting).toContain('aria-label="B：9人"');
+  expect(accepting).not.toContain("distribution-correct");
+  expect(
+    [...accepting.matchAll(/style="width:([\d.]+)%"/g)]
+      .slice(-4)
+      .map((m) => m[1]),
+  ).toEqual(
+    [...revealed.matchAll(/style="width:([\d.]+)%"/g)]
+      .slice(-4)
+      .map((m) => m[1]),
+  );
   expect(revealed).toContain("みんなの回答");
   expect(revealed).toContain("サンプル");
   expect(revealed).toContain('aria-label="B：9人、正解"');
-  expect(revealed).toContain("回答 18人 · 未回答 2人");
+  expect(revealed).toContain("回答 18 / 20人 · 未回答 2人");
 });
 
 it("正解発表の全4択に、JSONで明示したURLを開くアイコンだけの独立リンクを表示する", () => {

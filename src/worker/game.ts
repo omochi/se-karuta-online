@@ -39,7 +39,6 @@ export function newGame(
     phase: "waiting",
     currentIndex: -1,
     phaseEndsAt: null,
-    difficultyThreshold: 0.3,
     timing: { ...DEFAULT_TIMING },
     players: [],
     rounds: questions.map((question) => ({
@@ -301,25 +300,18 @@ function rank(rows: Omit<RankRow, "rank">[], ascending: boolean): RankRow[] {
 export function isScoredRound(r: Round): boolean {
   return !r.isVoided && r.closedAt !== null && r.openedAt !== null;
 }
-export function isDifficultRound(
-  g: Game,
-  r: Round,
-  rankings = roundRanking(g, r),
-): boolean {
-  const count = Object.values(r.participants).filter(
-    (s) => s === "eligible",
-  ).length;
+export function isDifficultRound(r: Round): boolean {
+  const { counts } = roundAnswerDistribution(r);
   return (
     isScoredRound(r) &&
-    count > 0 &&
-    rankings.length / count <= g.difficultyThreshold
+    counts[r.question.correctChoice] < Math.max(...Object.values(counts))
   );
 }
 export function finalResults(g: Game): Results {
   const valid = g.rounds.filter(isScoredRound);
   const minimumCorrect = Math.max(1, Math.ceil(valid.length / 2));
   const rankings = valid.map((r) => roundRanking(g, r));
-  const hard = valid.map((r, i) => isDifficultRound(g, r, rankings[i]));
+  const hard = valid.map(isDifficultRound);
   const scores = g.players.map((p) => {
     const rows = rankings.map((r) => r.find((x) => x.playerId === p.id));
     const correct = rows.filter(Boolean).length;
@@ -447,12 +439,17 @@ export function viewFor(
         }
       : null,
   };
-  // 締切だけでは公開しない。正解発表以降の会場Displayに人数だけ送る。
+  // 回答受付から会場Displayに人数だけ送る。正解や個別の回答は公開しない。
   if (
     role === "display" &&
     r &&
     !r.isVoided &&
-    ["answerRevealed", "rankingShown"].includes(g.phase)
+    [
+      "acceptingAnswers",
+      "answersClosed",
+      "answerRevealed",
+      "rankingShown",
+    ].includes(g.phase)
   )
     view.answerDistribution = roundAnswerDistribution(r);
   if (g.phase === "rankingShown") view.rankings = rankings;
