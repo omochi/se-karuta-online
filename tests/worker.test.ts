@@ -1,7 +1,11 @@
 /// <reference types="@cloudflare/vitest-plugin/types" />
-import { beforeAll, expect, it } from "vitest";
+import { beforeAll, expect, it, vi } from "vitest";
 import { env, exports } from "cloudflare:workers";
-import { evictDurableObject } from "cloudflare:test";
+import {
+  evictDurableObject,
+  runDurableObjectAlarm,
+  runInDurableObject,
+} from "cloudflare:test";
 import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
 import sessionMigration from "../migrations/0004_client_sessions.sql?raw";
 import readyWaitMigration from "../migrations/0003_unify_resting_with_unanswered.sql?raw";
@@ -27,6 +31,7 @@ import type { Env } from "../src/worker/env";
 import type { Game, Question, RoomView } from "../src/shared/types";
 import type { EventPage } from "../src/shared/events";
 const bindings = env as unknown as Env;
+let legacyGame: Game;
 it("大会一覧は管理者だけが取得でき、件数制限・安定した並び順・状態を返す", async () => {
   const { token } = await sessionFixture({
     role: "admin",
@@ -164,7 +169,65 @@ it("HostやForwardedヘッダーではなく公開URLを使用する", async () 
 });
 beforeAll(async () => {
   await bindings.DB.batch(
-    (migration + joinCodeMigration + readyWaitMigration + sessionMigration)
+    (migration + joinCodeMigration + readyWaitMigration)
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => bindings.DB.prepare(s)),
+  );
+  legacyGame = fixture();
+  legacyGame.phase = "finished";
+  legacyGame.currentIndex = 0;
+  const round = legacyGame.rounds[0];
+  const player = legacyGame.players[0];
+  round.openedAt = 100;
+  round.closedAt = 200;
+  round.participants[player.id] = "eligible";
+  round.answers[player.id] = { choice: "B", receivedAt: 150 };
+  const { players: _p, rounds: _r, joinCode: _c, ...head } = legacyGame;
+  const { question: _q, participants: _ps, answers: _a, ...roundState } = round;
+  await bindings.DB.batch([
+    bindings.DB.prepare(
+      "INSERT INTO tournaments (id,name,created_at,display_password_hash,state_json,join_code) VALUES (?,?,?,?,?,?)",
+    ).bind(
+      legacyGame.id,
+      legacyGame.name,
+      legacyGame.createdAt,
+      "legacy-display",
+      JSON.stringify(head),
+      legacyGame.joinCode,
+    ),
+    bindings.DB.prepare(
+      "INSERT INTO questions (id,content_json) VALUES (?,?)",
+    ).bind(round.question.id, JSON.stringify(round.question)),
+    bindings.DB.prepare(
+      "INSERT INTO rounds (id,tournament_id,position,question_id,question_json,state_json) VALUES (?,?,?,?,?,?)",
+    ).bind(
+      round.id,
+      legacyGame.id,
+      0,
+      round.question.id,
+      JSON.stringify(round.question),
+      JSON.stringify(roundState),
+    ),
+    bindings.DB.prepare(
+      "INSERT INTO players (id,tournament_id,name,joined_at,session_hash) VALUES (?,?,?,?,?)",
+    ).bind(
+      player.id,
+      legacyGame.id,
+      player.name,
+      player.joinedAt,
+      "legacy-session",
+    ),
+    bindings.DB.prepare(
+      "INSERT INTO participations (tournament_id,round_id,player_id,status) VALUES (?,?,?,?)",
+    ).bind(legacyGame.id, round.id, player.id, "eligible"),
+    bindings.DB.prepare(
+      "INSERT INTO answers (tournament_id,round_id,player_id,choice,received_at) VALUES (?,?,?,?,?)",
+    ).bind(legacyGame.id, round.id, player.id, "B", 150),
+  ]);
+  await bindings.DB.batch(
+    sessionMigration
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -1035,4 +1098,193 @@ it("終了した大会のコードは共通セッションにその大会の参�
   expect((await joinRequest(a.game.id, a.cookie)).status).toBe(200);
   expect((await joinRequest(a.game.id, b.cookie)).ok).toBe(false);
   expect((await loadGame(bindings.DB, a.game.id))!.players).toHaveLength(1);
+});
+
+it("旧スキーマの大会・参加者・参加資格・回答は認証移行後も保持し、新クライアントへ自動で紐づけない", async () => {
+  const restored = (await loadGame(bindings.DB, legacyGame.id))!;
+  expect(restored).toEqual(legacyGame);
+  expect(tournamentReport(restored)).toEqual(tournamentReport(legacyGame));
+  expect(
+    await bindings.DB.prepare(
+      "SELECT * FROM client_players WHERE tournament_id = ?",
+    )
+      .bind(legacyGame.id)
+      .all(),
+  ).toMatchObject({ results: [] });
+  const { results } = await bindings.DB.prepare(
+    "PRAGMA table_info(players)",
+  ).all<{ name: string }>();
+  expect(results.map((row) => row.name)).not.toContain("session_hash");
+});
+it("参加者への紐づけの保存失敗では参加者を作らず、再試行できる", async () => {
+  const game = fixture();
+  await saveGame(bindings.DB, null, game, "hash");
+  const issued = await createSession(bindings.DB);
+  const cookie = `se_session=${issued.token}`;
+  await bindings.DB.exec(
+    "CREATE TRIGGER fail_registration BEFORE INSERT ON client_players BEGIN SELECT RAISE(ABORT, 'injected registration failure'); END;",
+  );
+  try {
+    const response = await joinRequest(game.id, cookie);
+    expect(response.status).toBe(503);
+    expect(await loadGame(bindings.DB, game.id)).toEqual(game);
+    expect(
+      await bindings.DB.prepare(
+        "SELECT * FROM client_players WHERE client_id = ?",
+      )
+        .bind(issued.session.clientId)
+        .first(),
+    ).toBeNull();
+  } finally {
+    await bindings.DB.exec("DROP TRIGGER fail_registration;");
+  }
+  const response = await joinRequest(game.id, cookie);
+  expect(response.status).toBe(201);
+  expect((await loadGame(bindings.DB, game.id))!.players).toHaveLength(2);
+  expect(
+    (await request(`/api/e/${game.id}/session?role=player`, cookie)).status,
+  ).toBe(200);
+});
+it("セッション発行の保存失敗でクライアントだけ残さない", async () => {
+  const before = await bindings.DB.prepare(
+    "SELECT COUNT(*) AS n FROM clients",
+  ).first();
+  await bindings.DB.exec(
+    "CREATE TRIGGER fail_session BEFORE INSERT ON client_sessions BEGIN SELECT RAISE(ABORT, 'injected session failure'); END;",
+  );
+  try {
+    await expect(createSession(bindings.DB)).rejects.toThrow();
+    expect(
+      await bindings.DB.prepare("SELECT COUNT(*) AS n FROM clients").first(),
+    ).toEqual(before);
+  } finally {
+    await bindings.DB.exec("DROP TRIGGER fail_session;");
+  }
+});
+async function connectTestSocket(
+  eventId: string,
+  cookie: string,
+  role: string,
+) {
+  const response = await exports.default.fetch(
+    new Request(`http://test/api/e/${eventId}/ws?role=${role}`, {
+      headers: { Origin: "http://test", Cookie: cookie, Upgrade: "websocket" },
+    }),
+  );
+  expect(response.status).toBe(101);
+  const ws = response.webSocket!;
+  const state = new Promise<void>((resolve) =>
+    ws.addEventListener("message", () => resolve(), { once: true }),
+  );
+  ws.accept();
+  await state;
+  return ws;
+}
+it.each(["session", "admin", "display", "player", "expiry"] as const)(
+  "接続中の%s失効をalarmで検出し、対象WebSocketを閉じて再接続を拒否する",
+  async (kind) => {
+    const a = await participantFixture();
+    const role =
+      kind === "admin" ? "control" : kind === "display" ? "display" : "player";
+    if (kind === "admin")
+      await bindings.DB.prepare("UPDATE clients SET is_admin = 1 WHERE id = ?")
+        .bind(a.session.clientId)
+        .run();
+    if (kind === "display")
+      await bindings.DB.prepare(
+        "INSERT INTO client_displays (client_id,tournament_id) VALUES (?,?)",
+      )
+        .bind(a.session.clientId, a.game.id)
+        .run();
+    const ws = await connectTestSocket(a.game.id, a.cookie, role);
+    const closed = new Promise<number>((resolve) =>
+      ws.addEventListener("close", (event) => resolve(event.code), {
+        once: true,
+      }),
+    );
+    const stub = bindings.ROOMS.get(bindings.ROOMS.idFromName(a.game.id));
+    if (kind === "session")
+      await bindings.DB.prepare(
+        "DELETE FROM client_sessions WHERE client_id = ?",
+      )
+        .bind(a.session.clientId)
+        .run();
+    if (kind === "expiry")
+      await bindings.DB.prepare(
+        "UPDATE client_sessions SET expires_at = ? WHERE client_id = ?",
+      )
+        .bind(Date.now() - 1, a.session.clientId)
+        .run();
+    if (kind === "admin")
+      await bindings.DB.prepare("UPDATE clients SET is_admin = 0 WHERE id = ?")
+        .bind(a.session.clientId)
+        .run();
+    if (kind === "display")
+      await bindings.DB.prepare(
+        "DELETE FROM client_displays WHERE client_id = ?",
+      )
+        .bind(a.session.clientId)
+        .run();
+    if (kind === "player")
+      await bindings.DB.prepare(
+        "DELETE FROM client_players WHERE client_id = ?",
+      )
+        .bind(a.session.clientId)
+        .run();
+    expect(await runDurableObjectAlarm(stub)).toBe(true);
+    expect(await closed).toBe(4001);
+    expect(
+      (await request(`/api/e/${a.game.id}/session?role=${role}`, a.cookie))
+        .status,
+    ).toBe(401);
+    const reconnect = await exports.default.fetch(
+      new Request(`http://test/api/e/${a.game.id}/ws?role=${role}`, {
+        headers: {
+          Origin: "http://test",
+          Cookie: a.cookie,
+          Upgrade: "websocket",
+        },
+      }),
+    );
+    expect(reconnect.status).toBe(401);
+    // 管理者・Display権限だけを削除しても参加情報は失わない。
+    if (kind === "admin" || kind === "display")
+      expect(
+        (await request(`/api/e/${a.game.id}/session?role=player`, a.cookie))
+          .status,
+      ).toBe(200);
+  },
+);
+it("pingで失効確認を先送りせず、接続中の期限切れではメッセージを処理しない", async () => {
+  const a = await participantFixture();
+  const expires = a.session.expires;
+  const ws = await connectTestSocket(a.game.id, a.cookie, "player");
+  const stub = bindings.ROOMS.get(bindings.ROOMS.idFromName(a.game.id));
+  const initialAlarm = await runInDurableObject(stub, (_, state) =>
+    state.storage.getAlarm(),
+  );
+  expect(initialAlarm).toBeLessThanOrEqual(Date.now() + 15000);
+  const now = Date.now();
+  const time = vi.spyOn(Date, "now").mockReturnValue(now + 1000);
+  try {
+    const reply = new Promise<void>((resolve) =>
+      ws.addEventListener("message", () => resolve(), { once: true }),
+    );
+    ws.send(JSON.stringify({ type: "ping" }));
+    await reply;
+    expect(
+      await runInDurableObject(stub, (_, state) => state.storage.getAlarm()),
+    ).toBe(initialAlarm);
+    time.mockReturnValue(expires + 1);
+    const closed = new Promise<number>((resolve) =>
+      ws.addEventListener("close", (event) => resolve(event.code), {
+        once: true,
+      }),
+    );
+    ws.send(JSON.stringify({ type: "ping" }));
+    expect(await closed).toBe(4001);
+  } finally {
+    time.mockRestore();
+    ws.close();
+  }
 });

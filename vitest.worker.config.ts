@@ -7,7 +7,6 @@ export default defineConfig({
       miniflare: {
         bindings: {
           ADMIN_PASSWORD: "test-admin",
-
           PUBLIC_ORIGIN: "http://test",
         },
       },

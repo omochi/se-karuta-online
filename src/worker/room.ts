@@ -36,6 +36,7 @@ export class TournamentRoom extends DurableObject<Env> {
   private eventId: string | null = null;
   private readonly epoch = crypto.randomUUID();
   private connections = new Map<string, Connection>();
+  private nextAuthCheckAt: number | null = null;
   private tail: Promise<unknown> = Promise.resolve();
   // D1 の await を跨いでも同じ大会の変更を直列に処理する。受信時刻はこの列に入る前に採る。
   private enqueue<T>(work: () => Promise<T>): Promise<T> {
@@ -116,7 +117,17 @@ export class TournamentRoom extends DurableObject<Env> {
   }
   private async schedule() {
     const g = await this.getGame();
-    const heartbeat = this.connections.size ? Date.now() + 15000 : null;
+    // pingや回答のたびに再認証の期限を先送りしない。
+    this.nextAuthCheckAt = this.connections.size
+      ? (this.nextAuthCheckAt ?? Date.now() + 15000)
+      : null;
+    const heartbeat =
+      this.nextAuthCheckAt === null
+        ? null
+        : Math.min(
+            this.nextAuthCheckAt,
+            ...[...this.connections.values()].map((c) => c.expires),
+          );
     const deadline = g.phaseEndsAt;
     const next =
       deadline === null
@@ -346,6 +357,7 @@ export class TournamentRoom extends DurableObject<Env> {
         console.error("Session validation failed", error);
         authorizations = new Map();
       }
+      this.nextAuthCheckAt = Date.now() + 15000;
       for (const c of this.connections.values()) {
         const auth = authorizations.get(c.tokenHash);
         if (

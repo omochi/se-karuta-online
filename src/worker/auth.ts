@@ -76,11 +76,12 @@ export async function readSession(
     .find((value) => value.startsWith(`${SESSION_COOKIE}=`))
     ?.slice(SESSION_COOKIE.length + 1);
   if (!token || !/^[0-9a-f]{64}$/.test(token)) return null;
+  const tokenHash = await digest(token);
   const row = await db
     .prepare(
       "SELECT s.client_id, s.expires_at, c.is_admin FROM client_sessions s JOIN clients c ON c.id = s.client_id WHERE s.token_hash = ? AND s.expires_at > ?",
     )
-    .bind(await digest(token), Date.now())
+    .bind(tokenHash, Date.now())
     .first<{
       client_id: string;
       expires_at: number;
@@ -89,7 +90,7 @@ export async function readSession(
   // DB障害を無効セッションとして扱わない。呼び出し側でエラーとして返す。
   return row
     ? {
-        tokenHash: await digest(token),
+        tokenHash,
         clientId: row.client_id,
         expires: row.expires_at,
         isAdmin: row.is_admin === 1,
