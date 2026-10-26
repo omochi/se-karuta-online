@@ -1,5 +1,8 @@
 import type { Difficulty, TimingSettings } from "./types";
 
+export const ANSWER_EXTENSION_SECONDS = 15;
+export const ANSWER_EXTENSION_NOTICE_MS = 5000;
+
 export const DEFAULT_TIMING: Readonly<TimingSettings> = {
   countdownSeconds: 5,
   readingSeconds: 20,

@@ -268,6 +268,28 @@ it("回答保存が失敗したら同じbatchの状態更新もロールバッ�
   await expect(saveGame(bindings.DB, g, broken)).rejects.toThrow();
   expect(await loadGame(bindings.DB, g.id)).toEqual(g);
 });
+it("延長後の締切・通知時刻・回答をD1から復元し、古い大会は通知なしで復元する", async () => {
+  const g = fixture();
+  applyCommand(g, { command: "start", revision: g.revision }, 100);
+  beginCountdownIfReady(g, new Set(g.players.map((p) => p.id)), 100);
+  advanceTimer(g, 5100);
+  advanceTimer(g, 25100);
+  receiveAnswer(g, g.players[0].id, g.rounds[0].id, "B", 26000);
+  await saveGame(bindings.DB, null, g, "hash");
+  const legacy = (await loadGame(bindings.DB, g.id))!;
+  expect(legacy.rounds[0].answerExtendedAt).toBeUndefined();
+  const extended = structuredClone(legacy);
+  applyCommand(
+    extended,
+    { command: "extendAnswers", revision: extended.revision },
+    70099,
+  );
+  await saveGame(bindings.DB, legacy, extended);
+  expect(await loadGame(bindings.DB, g.id)).toEqual(extended);
+  expect(extended.phaseEndsAt).toBe(85100);
+  expect(extended.rounds[0].answerExtendedAt).toBe(70099);
+  expect(extended.rounds[0].answers).toEqual(legacy.rounds[0].answers);
+});
 it("Durable Objectを破棄してもD1から進行状態を復元する", async () => {
   const g = fixture();
   applyCommand(g, { command: "start", revision: 0 }, 0);

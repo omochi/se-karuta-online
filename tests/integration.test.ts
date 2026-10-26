@@ -381,7 +381,53 @@ test(
     const first = answers[0];
     assert.equal(first.type, "ack");
     if (first.type !== "ack") throw new Error("missing ack");
-    await control.wait((v) => v.phase === "answersClosed", 33000);
+    const originalDeadline = control.state!.phaseEndsAt!;
+    // 保存できない延長は成功扱いせず、期限も通知も更新しない。
+    await db.exec(
+      "CREATE TRIGGER fail_test_extension BEFORE UPDATE ON tournaments BEGIN SELECT RAISE(ABORT, 'injected extension failure'); END;",
+    );
+    const failedExtension = crypto.randomUUID();
+    control.send({
+      type: "command",
+      requestId: failedExtension,
+      revision: control.state!.revision,
+      command: "extendAnswers",
+    });
+    assert.equal((await control.reply(failedExtension)).type, "error");
+    await db.exec("DROP TRIGGER fail_test_extension;");
+    assert.equal(control.state!.phaseEndsAt, originalDeadline);
+    assert.equal(control.state!.answerExtendedAt, undefined);
+    const extended = await control.command("extendAnswers");
+    assert.equal(extended.phaseEndsAt, originalDeadline + 15000);
+    assert.equal(extended.phaseDurationMs, 45000);
+    assert.equal(typeof extended.answerExtendedAt, "number");
+    for (const peer of [display, monitor, satellite, ...players]) {
+      const view = await peer.wait(
+        (v) => v.phaseEndsAt === extended.phaseEndsAt,
+      );
+      assert.equal(view.answerExtendedAt, extended.answerExtendedAt);
+    }
+    // 再接続しても延長した期限と確定済みの回答を維持する。
+    const extensionReconnect = await connect("player", cookies[0]);
+    assert.equal(extensionReconnect.state!.phaseEndsAt, extended.phaseEndsAt);
+    assert.deepEqual(extensionReconnect.state!.me!.answer, first.answer);
+    extensionReconnect.close();
+    // 古いアラームの期限では締め切らず、新しい期限で自動締切する。
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.max(0, originalDeadline - Date.now() + 100)),
+    );
+    control.send({ type: "ping" });
+    await control.wait((v) => v.serverNow >= originalDeadline);
+    assert.equal(control.state!.phase, "acceptingAnswers");
+    await control.wait((v) => v.phase === "answersClosed", 18000);
+    const expiredExtension = crypto.randomUUID();
+    control.send({
+      type: "command",
+      requestId: expiredExtension,
+      revision: control.state!.revision,
+      command: "extendAnswers",
+    });
+    assert.equal((await control.reply(expiredExtension)).type, "error");
     await display.wait((v) => v.phase === "answersClosed");
     const closedQuestion = display.state!.question;
     display.close();

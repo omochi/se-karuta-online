@@ -46,6 +46,7 @@ export interface Round {
   readingStartedAt: number | null;
   countdownStartedAt: number | null;
   openedAt: number | null;
+  answerExtendedAt?: number;
   closedAt: number | null;
   isVoided: boolean;
   voidReason: string | null;
@@ -120,6 +121,7 @@ export interface RoomView {
   serverNow: number;
   phaseEndsAt: number | null;
   phaseDurationMs: number;
+  answerExtendedAt?: number;
   timing: TimingSettings;
   questionNumber: number;
   totalQuestions: number;
@@ -163,6 +165,7 @@ export interface RoomView {
 export type Command =
   | "start"
   | "close"
+  | "extendAnswers"
   | "reveal"
   | "ranking"
   | "finish"
