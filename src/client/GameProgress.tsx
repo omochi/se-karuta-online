@@ -31,7 +31,9 @@ export function GameProgress({
             </p>
           </div>
         )}
-        {progress.playerCount && <p>{progress.playerCount}</p>}
+        {progress.playerCount && (
+          <p className="progress-player-count">{progress.playerCount}</p>
+        )}
         {progress.answerCount && (
           <p className="progress-answer-count">{progress.answerCount}</p>
         )}
