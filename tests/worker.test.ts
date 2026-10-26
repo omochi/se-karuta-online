@@ -13,7 +13,7 @@ import {
   receiveAnswer,
 } from "../src/worker/game";
 import { loadGame, saveGame } from "../src/worker/repository";
-import { signSession } from "../src/worker/auth";
+import { digest, signSession } from "../src/worker/auth";
 import type { Env } from "../src/worker/env";
 import type { Game, Question, RoomView } from "../src/shared/types";
 import type { EventPage } from "../src/shared/events";
@@ -711,4 +711,109 @@ it("参加コードから認証なしで参加URLだけを取得でき、終了�
       )
     ).status,
   ).toBe(401);
+});
+
+async function participantFixture() {
+  const game = fixture();
+  const { token, session } = await signSession(bindings.SESSION_SECRET, {
+    role: "player",
+    eventId: game.id,
+    playerId: game.players[0].id,
+  });
+  game.players[0].sessionHash = await digest(session.nonce);
+  await saveGame(bindings.DB, null, game, "hash");
+  return { game, cookie: `se_player_${game.id}=${token}` };
+}
+function joinRequest(id: string, cookie: string, name = "再参加") {
+  return exports.default.fetch(
+    new Request(`http://test/api/e/${id}/join`, {
+      method: "POST",
+      headers: {
+        Origin: "http://test",
+        Cookie: cookie,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name }),
+    }),
+  );
+}
+it("別大会のCookieが共存してもそれぞれの参加者に復帰し、名前を上書きしない", async () => {
+  const a = await participantFixture();
+  const b = await participantFixture();
+  const cookies = `${a.cookie}; ${b.cookie}`;
+  for (const { game } of [a, b]) {
+    const response = await joinRequest(game.id, cookies, "別の名前");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      playerId: game.players[0].id,
+    });
+    expect((await loadGame(bindings.DB, game.id))!.players).toEqual(
+      game.players,
+    );
+  }
+});
+it.each(["参加者不在", "ハッシュ不一致"])(
+  "古いCookieの%sでは新しい参加者として登録し直せる",
+  async (reason) => {
+    const { game } = await participantFixture();
+    const { token } = await signSession(bindings.SESSION_SECRET, {
+      role: "player",
+      eventId: game.id,
+      playerId:
+        reason === "参加者不在" ? crypto.randomUUID() : game.players[0].id,
+    });
+    const response = await joinRequest(
+      game.id,
+      `se_player_${game.id}=${token}`,
+    );
+    expect(response.status).toBe(201);
+    expect(response.headers.get("Set-Cookie")).toContain(
+      `se_player_${game.id}=`,
+    );
+    const { playerId } = (await response.json()) as { playerId: string };
+    expect(playerId).not.toBe(game.players[0].id);
+    expect((await loadGame(bindings.DB, game.id))!.players).toHaveLength(2);
+    const cookie = response.headers.get("Set-Cookie")!.split(";")[0];
+    const session = await exports.default.fetch(
+      new Request(`http://test/api/e/${game.id}/session?role=player`, {
+        headers: { Cookie: cookie },
+      }),
+    );
+    expect(session.status).toBe(200);
+    expect(await session.json()).toMatchObject({ playerId });
+  },
+);
+it("終了した大会のコードはその大会の既存参加者だけが利用できる", async () => {
+  const a = await participantFixture();
+  const b = await participantFixture();
+  const finished = structuredClone(a.game);
+  finished.phase = "finished";
+  await saveGame(bindings.DB, a.game, finished);
+  const lookup = (cookie = "") =>
+    exports.default.fetch(
+      new Request(`http://test/api/join-code?code=${a.game.joinCode}`, {
+        headers: { Cookie: cookie },
+      }),
+    );
+  expect((await lookup()).status).toBe(410);
+  expect((await lookup(b.cookie)).status).toBe(410);
+  const { token } = await signSession(bindings.SESSION_SECRET, {
+    role: "player",
+    eventId: a.game.id,
+    playerId: crypto.randomUUID(),
+  });
+  expect((await lookup(`se_player_${a.game.id}=${token}`)).status).toBe(410);
+  // 別大会のトークンを対象大会のCookie名に付け替えても復帰できない。
+  expect(
+    (await lookup(`se_player_${a.game.id}=${b.cookie.split("=")[1]}`)).status,
+  ).toBe(410);
+  const response = await lookup(`${a.cookie}; ${b.cookie}`);
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  expect(await response.json()).toMatchObject({
+    id: a.game.id,
+    playUrl: `http://test/e/${a.game.id}/play`,
+  });
+  expect((await joinRequest(a.game.id, a.cookie)).status).toBe(200);
+  expect((await loadGame(bindings.DB, a.game.id))!.players).toHaveLength(1);
 });
