@@ -41,6 +41,7 @@ export function newGame(
     phaseEndsAt: null,
     timing: { ...DEFAULT_TIMING },
     players: [],
+    readyExemptPlayerIds: [],
     rounds: questions.map((question) => ({
       id: crypto.randomUUID(),
       question,
@@ -74,6 +75,7 @@ export function applyCommand(
     command: Command;
     revision: number;
     playerId?: string;
+    waitForReady?: boolean;
     reason?: string;
     timing?: TimingSettings;
   },
@@ -107,6 +109,31 @@ export function applyCommand(
     g.revision += 1;
     return;
   }
+  if (input.command === "setReadyWait") {
+    requireCondition(
+      g.phase !== "finished",
+      "終了した大会の設定は変更できません。",
+    );
+    requireCondition(
+      input.playerId && g.players.some((p) => p.id === input.playerId),
+      "参加者が見つかりません。",
+    );
+    requireCondition(
+      typeof input.waitForReady === "boolean",
+      "待ち合わせ設定が不正です。",
+    );
+    const exempt = new Set(g.readyExemptPlayerIds);
+    if (input.waitForReady) exempt.delete(input.playerId);
+    else exempt.add(input.playerId);
+    g.readyExemptPlayerIds = [...exempt];
+    // 待ち合わせ中の免除だけは直ちに反映。待つ設定への復帰は次問から。
+    if (!input.waitForReady && r && g.phase === "choicesPreparing")
+      r.readyWaitPlayerIds = readyWaitPlayers(r).filter(
+        (id) => id !== input.playerId,
+      );
+    g.revision += 1;
+    return;
+  }
   switch (input.command) {
     case "start": {
       requireCondition(
@@ -126,27 +153,12 @@ export function applyCommand(
       next.participants = Object.fromEntries(
         g.players.map((p) => [p.id, "eligible"]),
       );
+      next.readyWaitPlayerIds = Object.keys(next.participants).filter(
+        (id) => !g.readyExemptPlayerIds.includes(id),
+      );
       g.phase = "choicesPreparing";
       break;
     }
-    case "rest":
-      requireCondition(
-        r &&
-          ["choicesPreparing", "choicesReading", "countdown"].includes(g.phase),
-        "お休みの指定は出題前だけできます。",
-      );
-      requireCondition(
-        input.playerId && r.participants[input.playerId] === "eligible",
-        "この問題の参加対象者ではありません。",
-      );
-      r.participants[input.playerId] = "resting";
-      if (!Object.values(r.participants).includes("eligible")) {
-        g.phase = "choicesPreparing";
-        g.phaseEndsAt = null;
-        r.readingStartedAt = null;
-        r.countdownStartedAt = null;
-      }
-      break;
     case "close":
       requireCondition(
         r && g.phase === "acceptingAnswers",
@@ -198,6 +210,12 @@ export function applyCommand(
   if (!["choicesReading", "countdown"].includes(g.phase)) g.phaseEndsAt = null;
   g.revision += 1;
 }
+// 回答資格とは独立した、その問題の待ち合わせ対象。
+function readyWaitPlayers(r: Round): string[] {
+  return (r.readyWaitPlayerIds ?? Object.keys(r.participants)).filter(
+    (id) => r.participants[id] === "eligible",
+  );
+}
 export function beginCountdownIfReady(
   g: Game,
   ready: Set<string>,
@@ -209,7 +227,10 @@ export function beginCountdownIfReady(
   const eligible = Object.keys(r.participants).filter(
     (id) => r.participants[id] === "eligible",
   );
-  if (eligible.length === 0 || !eligible.every((id) => ready.has(id)))
+  if (
+    eligible.length === 0 ||
+    !readyWaitPlayers(r).every((id) => ready.has(id))
+  )
     return false;
   r.countdownStartedAt = now;
   g.phase = "countdown";
@@ -411,7 +432,10 @@ export function viewFor(
     totalQuestions: g.rounds.length,
     playerCount: g.players.length,
     eligibleCount: eligible.length,
-    readyCount: eligible.filter((id) => presence.readyPlayers.has(id)).length,
+    readyCount: r
+      ? readyWaitPlayers(r).filter((id) => presence.readyPlayers.has(id)).length
+      : 0,
+    readyWaitCount: r ? readyWaitPlayers(r).length : 0,
     answerCount: r ? Object.keys(r.answers).length : 0,
     question: r
       ? {
@@ -484,6 +508,7 @@ export function viewFor(
       ready: presence.readyPlayers.has(p.id),
       participation: r?.participants[p.id] ?? "waiting",
       answered: !!r?.answers[p.id],
+      waitForReady: !g.readyExemptPlayerIds.includes(p.id),
     }));
     view.displays = presence.displays;
     view.preview = ["waiting", "rankingShown", "questionVoided"].includes(

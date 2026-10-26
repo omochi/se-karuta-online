@@ -44,17 +44,15 @@ export function tournamentReport(g: Game): TournamentReport {
         status:
           status === "unasked"
             ? "unasked"
-            : participation === "resting"
-              ? "resting"
-              : participation !== "eligible"
-                ? "ineligible"
-                : r.openedAt === null
-                  ? "notOpened"
-                  : !answer
-                    ? "unanswered"
-                    : answer.choice === r.question.correctChoice
-                      ? "correct"
-                      : "incorrect",
+            : participation !== "eligible"
+              ? "ineligible"
+              : r.openedAt === null
+                ? "notOpened"
+                : !answer
+                  ? "unanswered"
+                  : answer.choice === r.question.correctChoice
+                    ? "correct"
+                    : "incorrect",
         choice: answer?.choice ?? null,
         elapsed:
           answer && r.openedAt !== null ? answer.receivedAt - r.openedAt : null,
@@ -77,7 +75,6 @@ export function tournamentReport(g: Game): TournamentReport {
       answered,
       correct,
       unanswered: answers.filter((a) => a.status === "unanswered").length,
-      resting: answers.filter((a) => a.status === "resting").length,
       ineligible: answers.filter((a) => a.status === "ineligible").length,
       correctRate: scored ? ratio(correct, eligible) : null,
       difficult: isDifficultRound(r),
@@ -108,7 +105,6 @@ export function tournamentReport(g: Game): TournamentReport {
       answered: answers.filter((a) => a.choice !== null).length,
       incorrect: answers.filter((a) => a.status === "incorrect").length,
       unanswered: answers.filter((a) => a.status === "unanswered").length,
-      resting: answers.filter((a) => a.status === "resting").length,
       ineligible: answers.filter((a) => a.status === "ineligible").length,
       correctRate: ratio(correct, eligible),
       averageElapsed: average(times(answers)),

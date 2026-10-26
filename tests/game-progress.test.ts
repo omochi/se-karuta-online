@@ -48,6 +48,7 @@ function fixture(phase: Phase): RoomConnection {
     playerCount: 3,
     eligibleCount: 3,
     readyCount: 2,
+    readyWaitCount: 3,
     answerCount: 1,
     question: {
       id: "q1",
@@ -356,32 +357,22 @@ describe("3画面の進行案内", () => {
       if (state === "pending") expect(html).not.toContain("回答なし");
     },
   );
-  it.each(["resting", "waiting"] as const)(
-    "%sの参加者にも共通案内を出し、選択肢と回答操作を出さない",
-    (participation) => {
-      vi.spyOn(performance, "now").mockReturnValue(1000);
-      const room = fixture("acceptingAnswers");
-      room.view!.me!.participation = participation;
-      const html = render(Player, room);
-      expect(html).toContain("回答受付中");
-      expect(html).toContain(
-        participation === "resting"
-          ? "この問題はお休みです"
-          : "次の問題から参加します",
-      );
-      expect(html).not.toContain("Choice A");
-    },
-  );
-  it("無効問題を個人のお休みと区別する", () => {
+  it("途中参加者にも共通案内を出し、選択肢と回答操作を出さない", () => {
     vi.spyOn(performance, "now").mockReturnValue(1000);
-    for (const screen of screens) {
-      const room = fixture("questionVoided");
-      room.view!.me!.participation = "resting";
-      const html = render(screen, room);
-      expect(html).toContain("この問題は無効です");
-      expect(html).toContain("問題文の誤り");
-      expect(html).not.toContain("この問題はお休み");
-    }
+    const room = fixture("acceptingAnswers");
+    room.view!.me!.participation = "waiting";
+    const html = render(Player, room);
+    expect(html).toContain("回答受付中");
+    expect(html).toContain("次の問題から参加します");
+    expect(html).not.toContain("Choice A");
+  });
+  it("未回答者にお休みという別の回答結果を表示しない", () => {
+    vi.spyOn(performance, "now").mockReturnValue(1000);
+    const room = fixture("answersClosed");
+    room.view!.me!.answer = null;
+    const html = render(Player, room);
+    expect(html).toContain("回答なし");
+    expect(html).not.toContain("お休み");
   });
   it("正解公開時にも進行案内と本人の順位・所要時間を保持する", () => {
     vi.spyOn(performance, "now").mockReturnValue(1000);
@@ -399,4 +390,26 @@ describe("3画面の進行案内", () => {
     expect(html).toContain("1.234");
     expect(html).toContain('aria-pressed="true"');
   });
+});
+
+it("管理画面は待ち合わせ人数と回答人数を分け、参加者ごとのトグルを表示する", () => {
+  const room = fixture("choicesPreparing");
+  room.view!.eligibleCount = 2;
+  room.view!.readyWaitCount = 1;
+  room.view!.readyCount = 0;
+  room.view!.players = [true, false].map((waitForReady, i) => ({
+    id: `p${i}`,
+    name: `参加者${i}`,
+    online: false,
+    ready: false,
+    participation: "eligible",
+    answered: false,
+    waitForReady,
+  }));
+  const html = render(Control, room);
+  expect(html).toContain("0 / 1");
+  expect(html).toContain('role="switch" aria-checked="true"');
+  expect(html).toContain('role="switch" aria-checked="false"');
+  expect(html).toContain("開始を待たない");
+  expect(html).toContain("次の問題から反映");
 });

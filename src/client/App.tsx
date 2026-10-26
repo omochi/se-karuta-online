@@ -365,11 +365,6 @@ export function Control({ room }: { room: RoomConnection }) {
   const [reason, setReason] = useState("");
   const [voidOpen, setVoidOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
-  const preparatory = [
-    "choicesPreparing",
-    "choicesReading",
-    "countdown",
-  ].includes(v.phase);
   const readyForNext = ["waiting", "rankingShown", "questionVoided"].includes(
     v.phase,
   );
@@ -596,6 +591,9 @@ export function Control({ room }: { room: RoomConnection }) {
                 <h2>参加者</h2>
                 <span className="pill">{v.playerCount} 人</span>
               </div>
+              <p className="muted">
+                開始を待たない設定は、切り替えるまで維持します。回答・未回答の扱いは全員同じです。待つ設定に戻すと、次の問題から反映します。
+              </p>
               <div className="roster">
                 {v.players?.map((p) => (
                   <div className="person" key={p.id}>
@@ -604,24 +602,32 @@ export function Control({ room }: { room: RoomConnection }) {
                       <strong>{p.name}</strong>
                       <small>
                         {p.id.slice(0, 4)} ·{" "}
-                        {p.participation === "resting"
-                          ? "お休み"
-                          : p.answered
-                            ? "回答済み"
-                            : p.ready
-                              ? "準備完了"
-                              : p.online
-                                ? "接続中"
-                                : "未接続"}
+                        {p.answered
+                          ? "回答済み"
+                          : p.ready
+                            ? "準備完了"
+                            : p.online
+                              ? "接続中"
+                              : "未接続"}
+                        {" · "}
+                        {p.waitForReady ? "開始を待つ" : "開始を待たない"}
                       </small>
                     </div>
-                    {preparatory && p.participation === "eligible" && (
+                    {v.phase !== "finished" && (
                       <button
-                        className="rest-button"
+                        className="ready-wait-toggle"
+                        role="switch"
+                        aria-checked={p.waitForReady}
+                        aria-label={`${p.name}（${p.id.slice(0, 4)}）の準備完了を待つ`}
                         disabled={disabled}
-                        onClick={() => room.command("rest", { playerId: p.id })}
+                        onClick={() =>
+                          room.command("setReadyWait", {
+                            playerId: p.id,
+                            waitForReady: !p.waitForReady,
+                          })
+                        }
                       >
-                        この問題はお休み
+                        {p.waitForReady ? "開始を待つ" : "開始を待たない"}
                       </button>
                     )}
                   </div>

@@ -33,6 +33,7 @@ const view: RoomView = {
   playerCount: 24,
   eligibleCount: 0,
   readyCount: 0,
+  readyWaitCount: 0,
   answerCount: 0,
   question: null,
 };

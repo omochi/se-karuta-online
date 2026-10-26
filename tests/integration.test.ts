@@ -80,7 +80,10 @@ class Peer {
       this.listeners.add(listener);
     });
   }
-  async command(command: Command, extra: Record<string, string> = {}) {
+  async command(
+    command: Command,
+    extra: { playerId?: string; reason?: string; waitForReady?: boolean } = {},
+  ) {
     const revision = this.state!.revision;
     const requestId = crypto.randomUUID();
     this.send({ type: "command", requestId, revision, command, ...extra });
@@ -270,9 +273,13 @@ test(
     assert.equal(players[0].state!.question!.choices, undefined);
     assert.equal(display.state!.question!.choices, undefined);
     // 3画面から準備完了が届かなくても、参加者が揃えば開始する。
-    const countdown = await control.command("rest", { playerId: restedId });
+    const countdown = await control.command("setReadyWait", {
+      playerId: restedId,
+      waitForReady: false,
+    });
     assert.equal(countdown.phase, "countdown");
-    assert.equal(countdown.eligibleCount, 39);
+    assert.equal(countdown.eligibleCount, 40);
+    assert.equal(countdown.readyWaitCount, 39);
     assert.equal(countdown.phaseEndsAt! - countdown.serverNow <= 5000, true);
     await display.wait((v) => v.phase === "countdown");
     assert.equal(display.state!.question!.difficulty, 1);
@@ -304,7 +311,7 @@ test(
     await display.wait((v) => v.phase === "acceptingAnswers");
     assert.deepEqual(display.state!.answerDistribution, {
       counts: { A: 0, B: 0, C: 0, D: 0 },
-      unanswered: 39,
+      unanswered: 40,
     });
     await Promise.all(
       players.map((p) => p.wait((v) => v.phase === "acceptingAnswers")),
@@ -327,13 +334,13 @@ test(
     assert.deepEqual(lateDisplay.state!.question, display.state!.question);
     assert.equal(lateDisplay.state!.phaseEndsAt, display.state!.phaseEndsAt);
     const invalidId = crypto.randomUUID();
-    players[39].send({
+    late.send({
       type: "answer",
       requestId: invalidId,
       roundId,
       choice: firstCorrectChoice,
     });
-    assert.equal((await players[39].reply(invalidId)).type, "error");
+    assert.equal((await late.reply(invalidId)).type, "error");
     const hostileId = crypto.randomUUID();
     players[0].send({
       type: "command",
@@ -356,7 +363,7 @@ test(
     assert.equal((await players[0].reply(failedId)).type, "error");
     assert.deepEqual(display.state!.answerDistribution, {
       counts: { A: 0, B: 0, C: 0, D: 0 },
-      unanswered: 39,
+      unanswered: 40,
     });
     assert.equal(
       (
@@ -369,8 +376,10 @@ test(
     );
     await db.exec("DROP TRIGGER fail_test_answer;");
     const started = performance.now();
-    const ids = players.slice(0, 38).map(() => crypto.randomUUID());
-    players.slice(0, 38).forEach((p, i) =>
+    // readyを待たなかった人も通常どおり回答できる。
+    const answeringPlayers = [...players.slice(0, 37), players[39]];
+    const ids = answeringPlayers.map(() => crypto.randomUUID());
+    answeringPlayers.forEach((p, i) =>
       p.send({
         type: "answer",
         requestId: ids[i],
@@ -379,13 +388,13 @@ test(
       }),
     );
     const answers = await Promise.all(
-      players.slice(0, 38).map((p, i) => p.reply(ids[i])),
+      answeringPlayers.map((p, i) => p.reply(ids[i])),
     );
     assert(answers.every((a) => a.type === "ack"));
     await control.wait((v) => v.answerCount === 38);
     const counts = { A: 0, B: 0, C: 0, D: 0 };
     counts[firstCorrectChoice] = 38;
-    const distribution = { counts, unanswered: 1 };
+    const distribution = { counts, unanswered: 2 };
     for (const screen of [display, monitor, satellite, lateDisplay]) {
       await screen.wait((v) => v.answerCount === 38);
       assert.equal(screen.state!.phase, "acceptingAnswers");
@@ -495,14 +504,14 @@ test(
     await display.wait((v) => v.phase === "answerRevealed");
     assert.deepEqual(display.state!.answerDistribution, {
       counts,
-      unanswered: 1,
+      unanswered: 2,
     });
     for (const screen of [monitor, satellite, liveDisplay]) {
       await screen.wait((v) => v.phase === "answerRevealed");
       assert.deepEqual(screen.state!.question, display.state!.question);
       assert.deepEqual(screen.state!.answerDistribution, {
         counts,
-        unanswered: 1,
+        unanswered: 2,
       });
     }
     await reconnected.wait((v) => v.phase === "answerRevealed");
@@ -514,7 +523,7 @@ test(
     assert.equal(display.state!.rankings!.length, 38);
     assert.deepEqual(display.state!.answerDistribution, {
       counts,
-      unanswered: 1,
+      unanswered: 2,
     });
     assert.equal(
       (
@@ -535,7 +544,7 @@ test(
       screen.close();
     await control.wait((v) => v.displays?.length === 0);
     const nextRoundId = control.state!.question!.id;
-    for (const player of [...players.slice(1), reconnected, late]) {
+    for (const player of [...players.slice(1, 39), reconnected, late]) {
       await player.wait((v) => v.questionNumber === 2);
       player.send({
         type: "ready",
@@ -544,7 +553,8 @@ test(
       });
     }
     await control.wait((v) => v.phase === "countdown");
-    assert.equal(control.state!.readyCount, 41);
+    assert.equal(control.state!.readyCount, 40);
+    assert.equal(control.state!.readyWaitCount, 40);
     assert.equal(control.state!.displays!.length, 0);
     const deadline = control.state!.phaseEndsAt;
     // 開始後に追加・全切断しても進行と期限を変えない。

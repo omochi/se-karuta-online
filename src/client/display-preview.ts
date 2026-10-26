@@ -58,6 +58,7 @@ export function createDisplayPreviewView(
     playerCount: showDistribution ? 20 : 0,
     eligibleCount: showDistribution ? 20 : 0,
     readyCount: 0,
+    readyWaitCount: 0,
     answerCount: showDistribution ? 18 : 0,
     ...(showDistribution && {
       answerDistribution: {

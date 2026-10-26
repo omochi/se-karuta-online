@@ -41,7 +41,8 @@ export interface Answer {
 export interface Round {
   id: string;
   question: Question;
-  participants: Record<string, "eligible" | "resting">;
+  participants: Record<string, "eligible">;
+  readyWaitPlayerIds?: string[];
   answers: Record<string, Answer>;
   readingStartedAt: number | null;
   countdownStartedAt: number | null;
@@ -62,6 +63,7 @@ export interface Game {
   phaseEndsAt: number | null;
   timing: TimingSettings;
   players: Player[];
+  readyExemptPlayerIds: string[];
   rounds: Round[];
 }
 export interface TimingSettings {
@@ -127,6 +129,7 @@ export interface RoomView {
   playerCount: number;
   eligibleCount: number;
   readyCount: number;
+  readyWaitCount: number;
   answerCount: number;
   question: null | {
     id: string;
@@ -142,7 +145,7 @@ export interface RoomView {
   me?: {
     id: string;
     name: string;
-    participation: "eligible" | "resting" | "waiting";
+    participation: "eligible" | "waiting";
     answer: Answer | null;
     elapsed: number | null;
     correct?: boolean;
@@ -154,8 +157,9 @@ export interface RoomView {
     name: string;
     online: boolean;
     ready: boolean;
-    participation: "eligible" | "resting" | "waiting";
+    participation: "eligible" | "waiting";
     answered: boolean;
+    waitForReady: boolean;
   }>;
   displays?: Presence["displays"];
   preview?: Question;
@@ -168,7 +172,7 @@ export type Command =
   | "reveal"
   | "ranking"
   | "finish"
-  | "rest"
+  | "setReadyWait"
   | "void"
   | "updateTiming";
 export type ClientMessage =
@@ -182,6 +186,7 @@ export type ClientMessage =
       revision: number;
       command: Command;
       playerId?: string;
+      waitForReady?: boolean;
       reason?: string;
       timing?: TimingSettings;
     };

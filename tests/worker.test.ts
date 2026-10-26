@@ -3,6 +3,8 @@ import { beforeAll, expect, it } from "vitest";
 import { env, exports } from "cloudflare:workers";
 import { evictDurableObject } from "cloudflare:test";
 import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
+import readyWaitMigration from "../migrations/0003_unify_resting_with_unanswered.sql?raw";
+import { tournamentReport } from "../src/worker/report";
 import migration from "../migrations/0001_initial.sql?raw";
 import {
   newGame,
@@ -155,7 +157,7 @@ it("HostやForwardedヘッダーではなく公開URLを使用する", async () 
 });
 beforeAll(async () => {
   await bindings.DB.batch(
-    (migration + joinCodeMigration)
+    (migration + joinCodeMigration + readyWaitMigration)
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -292,7 +294,23 @@ it("延長後の締切・通知時刻・回答をD1から復元し、古い大�
 });
 it("Durable Objectを破棄してもD1から進行状態を復元する", async () => {
   const g = fixture();
-  applyCommand(g, { command: "start", revision: 0 }, 0);
+  addPlayer(g, {
+    id: crypto.randomUUID(),
+    name: "待ち合わせ対象",
+    joinedAt: Date.now(),
+    sessionHash: "hash",
+  });
+  applyCommand(
+    g,
+    {
+      command: "setReadyWait",
+      revision: g.revision,
+      playerId: g.players[0].id,
+      waitForReady: false,
+    },
+    0,
+  );
+  applyCommand(g, { command: "start", revision: g.revision }, 0);
   await saveGame(bindings.DB, null, g, "hash");
   const { token } = await signSession(bindings.SESSION_SECRET, {
     role: "admin",
@@ -329,6 +347,10 @@ it("Durable Objectを破棄してもD1から進行状態を復元する", async 
   await evictDurableObject(stub, { webSockets: "close" });
   const second = await connect();
   expect(second.view.phase).toBe("choicesPreparing");
+  expect(second.view.readyWaitCount).toBe(1);
+  expect(
+    second.view.players?.find((p) => p.id === g.players[0].id)?.waitForReady,
+  ).toBe(false);
   expect(second.view.question?.id).toBe(first.view.question?.id);
   expect(second.view.epoch).not.toBe(first.view.epoch);
   second.ws.close();
@@ -664,6 +686,68 @@ it("コードのない既存大会を同時に開いても一つの固定コー�
   expect(games[1]).toEqual(games[0]);
   expect(await loadGame(bindings.DB, game.id)).toEqual(games[0]);
   expect(games[0]).toEqual({ ...game, joinCode: games[0]!.joinCode });
+});
+
+it("旧お休み記録の移行で回答を維持し、回答なしを通常の未回答と分母に含める", async () => {
+  const game = fixture();
+  const player = game.players[0];
+  const answered = {
+    id: crypto.randomUUID(),
+    name: "回答済み",
+    joinedAt: player.joinedAt + 1,
+    sessionHash: "hash",
+  };
+  addPlayer(game, answered);
+  game.phase = "finished";
+  game.currentIndex = 0;
+  const round = game.rounds[0];
+  round.openedAt = 100;
+  round.closedAt = 200;
+  round.participants[player.id] = "eligible";
+  round.participants[answered.id] = "eligible";
+  round.answers[answered.id] = { choice: "B", receivedAt: 150 };
+  await saveGame(bindings.DB, null, game, "hash");
+  await bindings.DB.prepare(
+    "UPDATE participations SET status = 'resting' WHERE tournament_id = ? AND player_id = ?",
+  )
+    .bind(game.id, player.id)
+    .run();
+  await bindings.DB.prepare(readyWaitMigration).run();
+  await bindings.DB.prepare(readyWaitMigration).run();
+  const restored = (await loadGame(bindings.DB, game.id))!;
+  expect(restored.rounds[0].participants[player.id]).toBe("eligible");
+  expect(restored.players).toEqual(game.players);
+  expect(restored.rounds[0].answers).toEqual(round.answers);
+  expect(tournamentReport(restored).players[0]).toMatchObject({
+    eligible: 1,
+    unanswered: 1,
+    correctRate: 0,
+  });
+  expect(tournamentReport(restored).rounds[0]).not.toHaveProperty("resting");
+});
+it("待ち合わせ免除をD1から復元し、次問でも維持する", async () => {
+  const game = fixture();
+  const playerId = game.players[0].id;
+  applyCommand(
+    game,
+    {
+      command: "setReadyWait",
+      revision: game.revision,
+      playerId,
+      waitForReady: false,
+    },
+    0,
+  );
+  await saveGame(bindings.DB, null, game, "hash");
+  const restored = (await loadGame(bindings.DB, game.id))!;
+  expect(restored.readyExemptPlayerIds).toEqual([playerId]);
+  applyCommand(restored, { command: "start", revision: restored.revision }, 1);
+  expect(beginCountdownIfReady(restored, new Set(), 2)).toBe(true);
+  expect(restored.rounds[0].participants[playerId]).toBe("eligible");
+  await saveGame(bindings.DB, game, restored);
+  const loaded = (await loadGame(bindings.DB, game.id))!;
+  expect(loaded.rounds[0].readyWaitPlayerIds).toEqual([]);
+  expect(loaded.readyExemptPlayerIds).toEqual([playerId]);
 });
 
 it("参加コードから認証なしで参加URLだけを取得でき、終了・不明・不正コードを区別する", async () => {

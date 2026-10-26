@@ -28,13 +28,6 @@ export function PlayerAnswerStatus({
         <p>画面は自動で切り替わります。</p>
       </div>
     );
-  if (me?.participation === "resting")
-    return (
-      <div className="player-answer-status">
-        <h2>この問題はお休みです</h2>
-        <p>次の問題から、また参加できます。</p>
-      </div>
-    );
   const revealed = ["answerRevealed", "rankingShown"].includes(v.phase);
   const answered = !!me?.answer;
   if (!revealed && !answered && !room.pending && !progress.closed)

@@ -59,6 +59,7 @@ const view: RoomView = {
   playerCount: names.length,
   eligibleCount: names.length,
   readyCount: names.length,
+  readyWaitCount: names.length,
   answerCount: names.length,
   question: {
     id: "ranking-fixture",
