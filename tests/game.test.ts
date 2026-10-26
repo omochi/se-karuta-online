@@ -211,10 +211,39 @@ describe("権限と公開段階", () => {
     expect(view("display", 20001).question?.difficulty).toBe(3);
     expect(view("player", 20001).question?.difficulty).toBeUndefined();
     command(g, "close", 21000);
-    expect(view("display", 21000).question?.difficulty).toBeUndefined();
+    expect(view("display", 21000).question?.difficulty).toBe(3);
     command(g, "reveal", 22000);
     expect(view("display", 22000).question?.difficulty).toBe(3);
   });
+  it.each(["自動締切", "手動締切"])(
+    "%s後もDisplayへ本文を送り、正解・解説・回答分布は正解発表まで送らない",
+    (closing) => {
+      const g = fixture();
+      open(g);
+      if (closing === "自動締切") advanceTimer(g, 50000);
+      else command(g, "close", 21000);
+      const display = viewFor(
+        g,
+        "display",
+        undefined,
+        presence,
+        "e",
+        60000,
+        "http://test",
+      );
+      expect(display.phase).toBe("answersClosed");
+      expect(display.question?.bodyMarkdown).toBe(question.bodyMarkdown);
+      expect(display.question?.difficulty).toBe(question.difficulty);
+      expect(display.question?.choices).toEqual(question.choices);
+      expect(display.question?.correctChoice).toBeUndefined();
+      expect(display.question?.explanationMarkdown).toBeUndefined();
+      expect(display.answerDistribution).toBeUndefined();
+      expect(
+        viewFor(g, "player", "p0", presence, "e", 60000, "http://test").question
+          ?.bodyMarkdown,
+      ).toBeUndefined();
+    },
+  );
   it("出題前に問題文・正解・解説・次問・セッションを公開しない", () => {
     const g = fixture();
     command(g, "start");
@@ -399,7 +428,7 @@ describe("時間設定と期限", () => {
     expect(
       viewFor(g, "display", undefined, presence, "e", 50000, "http://test")
         .question?.bodyMarkdown,
-    ).toBeUndefined();
+    ).toBe(question.bodyMarkdown);
     advanceTimer(g, 60000);
     expect(r.closedAt).toBe(50000);
     expect(r.answers.p1).toBeUndefined();

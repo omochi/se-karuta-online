@@ -22,14 +22,17 @@ function draw(
   bodyMarkdown: string,
   elapsed = 0,
   id = "fixture",
-  phase: "acceptingAnswers" | "answerRevealed" = "acceptingAnswers",
+  phase:
+    | "acceptingAnswers"
+    | "answersClosed"
+    | "answerRevealed" = "acceptingAnswers",
 ) {
   const view = createDisplayPreviewView(
     {
       name: "表示テスト",
       questionNumber: 1,
       totalQuestions: 1,
-      phase,
+      phase: phase === "answersClosed" ? "acceptingAnswers" : phase,
       question: {
         id,
         difficulty: 2 as const,
@@ -46,6 +49,10 @@ function draw(
     },
     location.origin,
   );
+  if (phase === "answersClosed") {
+    view.phase = phase;
+    view.phaseEndsAt = null;
+  }
   flushSync(() =>
     root.render(
       <MemoryRouter>
@@ -131,6 +138,33 @@ button.onclick = async () => {
     }
     assert(measurements === previousMeasurements, "タイマーの更新で再計測した");
     results.push("PASS タイマー更新では再計測しない");
+    for (const phase of ["acceptingAnswers", "answersClosed"] as const) {
+      draw(cases[1][1], 30000, "closing-question", phase);
+      await frame();
+      readFrame();
+      assert(
+        document
+          .querySelector(".game-progress")!
+          .textContent!.includes("回答を締め切りました"),
+        "締切案内が表示されない",
+      );
+      assert(
+        document.querySelectorAll(".choice").length === 4,
+        "選択肢が消えた",
+      );
+      assert(
+        !document.querySelector(".choice.correct"),
+        "正解が先に公開された",
+      );
+      assert(
+        !document.querySelector(".display-explanation"),
+        "解説が先に公開された",
+      );
+      sampledFrames++;
+      results.push(
+        `PASS ${phase === "acceptingAnswers" ? "期限到達直後" : "締切確定後"}も本文と選択肢が収まる`,
+      );
+    }
     draw(cases[1][1], 0, "another-question");
     await frame();
     readFrame();
@@ -155,6 +189,10 @@ button.onclick = async () => {
       "未回答人数が表示されない",
     );
     results.push("PASS 正解発表の本文・回答分布・選択肢・解説が収まる");
+    sampledFrames++;
+    draw(cases[0][1], 0, "closed-question", "answersClosed");
+    await frame();
+    readFrame();
     sampledFrames++;
     output.dataset.status = "passed";
     results.push(`${innerWidth} × ${innerHeight}, ${sampledFrames} frames`);

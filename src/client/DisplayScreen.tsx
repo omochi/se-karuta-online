@@ -38,9 +38,11 @@ export function DisplayScreen({
         correctChoice={q.correctChoice}
       />
     ) : null;
-  const fitQuestion = ["acceptingAnswers", "answerRevealed"].includes(
-    progress.phase,
-  );
+  const fitQuestion = [
+    "acceptingAnswers",
+    "answersClosed",
+    "answerRevealed",
+  ].includes(progress.phase);
   return (
     <div
       className={`display-page ${fitQuestion ? "display-page-question" : v.phase === "waiting" ? "display-page-waiting" : ""}`}
@@ -80,8 +82,7 @@ export function DisplayScreen({
           </div>
         ) : v.phase !== "questionVoided" && v.phase !== "finished" ? (
           <>
-            {!progress.closed &&
-              q?.bodyMarkdown !== undefined &&
+            {q?.bodyMarkdown !== undefined &&
               (fitQuestion ? (
                 <FittedQuestion
                   key={q.id}
