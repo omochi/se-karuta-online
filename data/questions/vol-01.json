@@ -201,39 +201,6 @@
       "explanationMarkdown": "正解は **SE-0413 · Typed throws**。関数が投げるエラーの型を関数型の一部として表せるため、operation が投げる型をジェネリックパラメーター E と結び付けられます。\n\nこの do 内の投げうる処理は `try operation()` だけなので、catch の error も E 型です。そのまま `.failure(error)` に渡せます。単なる throws ではエラーの型が any Error になり、任意の E として格納することはできません。\n\nさらに、投げないクロージャーでは E が Never と推論され、戻り値は `Result<Int, Never>` になります。成功の型だけでなく、失敗の型も汎用関数を通して維持されるのが決め手です。\n\nSE-0235 は Result 自体の導入ですが、クロージャーが投げる具体的な型を E に対応させる仕組みではありません。SE-0276 は複数パターンをまとめた catch、SE-0102 は値を持たない Never 型の導入です。Never という型があるだけでは、クロージャーが投げないことから E を Never と推論し、投げる場合の具体的なエラー型も保持する仕組みにはなりません。rethrows も、投げたエラーの型をこの戻り値の E に結び付ける指定ではありません。"
     },
     {
-      "id": "builder-opaque-branches",
-      "difficulty": 3,
-      "bodyMarkdown": "`pair` の2つの引数は、同じ型でなければならない。`Image` と `Text` を直接渡すとエラーになるが、異なる分岐を通る `badge(true)` と `badge(false)` は渡せる。このように、分岐で異なる型の値を使いながら、1つの型の戻り値に組み立てる仕組みを導入した提案は？\n\n```swift\nimport SwiftUI\n@ViewBuilder\nfunc badge(_ ready: Bool) -> some View {\n    if ready { Image(systemName: \"checkmark\") }\n    else { Text(\"Waiting\") }\n}\n\nfunc pair<V: View>(_ first: V, _ second: V) {}\n\npair(badge(true), badge(false))  // OK\n// pair(Image(systemName: \"checkmark\"), Text(\"Waiting\")) // NG\n```",
-      "choices": {
-        "A": {
-          "number": "SE-0328",
-          "title": "Structural opaque result types",
-          "titleJa": "構造的opaque result types",
-          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0328.html"
-        },
-        "B": {
-          "number": "SE-0289",
-          "title": "Result builders",
-          "titleJa": null,
-          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0289.html"
-        },
-        "C": {
-          "number": "SE-0244",
-          "title": "Opaque Result Types",
-          "titleJa": null,
-          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0244.html"
-        },
-        "D": {
-          "number": "SE-0380",
-          "title": "if and switch expressions",
-          "titleJa": "ifとswitch式",
-          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0380.html"
-        }
-      },
-      "correctChoice": "B",
-      "explanationMarkdown": "正解は **SE-0289 · Result builders**。ViewBuilder はこの仕組みを使い、if / else の分岐を buildEither(first:)・buildEither(second:) などの呼び出しへ変換します。\n\nこの例では Image と Text をそのまま別々の戻り値の型にするのではなく、両方の可能性を表す1つの具体型に組み立てます。条件によって変わるのはその中身であり、badge の戻り値の具体型ではありません。そのため badge(true) と badge(false) は同じ型として pair に渡せます。一方、Image と Text を直接 pair に渡すと、同じ V という条件を満たせません。\n\nSE-0244 の some View は「関数が決めた1つの具体型を呼び出し側から隠す」機能で、実行時の条件ごとに異なる型をそのまま返せる指定ではありません。@ViewBuilder を外し、それぞれの枝から return Image(...) / return Text(...) と書くと、基になる型が一致せずエラーになります。\n\nSE-0380 の通常の if 式には、このように異なる型の View を組み立てるビルダーの変換はありません。SE-0328 は `(some View)?` など、より大きな型の一部に opaque result type を置けるようにする拡張です。some View で型を隠すことと、分岐を1つの型に組み立てることを分けて考えるのが決め手です。"
-    },
-    {
       "id": "region-isolation",
       "difficulty": 2,
       "bodyMarkdown": "`Draft` は `Sendable` に適合していないクラス。`submit` で作った `draft` は他の処理と共有されておらず、`Inbox` actor に渡した後に `submit` で使うこともない。このように、値の使われ方から引き渡しの安全性を判断し、`MainActor` から別の actor へ渡せるようにした提案は？\n\n```swift\nfinal class Draft { var text = \"\" }\nactor Inbox {\n    var drafts: [Draft] = []\n    func add(_ draft: Draft) { drafts.append(draft) }\n}\n\n@MainActor\nfunc submit(to inbox: Inbox) async {\n    let draft = Draft()\n    draft.text = \"Hello\"\n    await inbox.add(draft)\n}\n```\n\nSwift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
@@ -265,6 +232,39 @@
       },
       "correctChoice": "D",
       "explanationMarkdown": "正解は **SE-0414 · Region based Isolation**。値と、その値を参照しうる別の値との関係を解析し、隔離境界を越えて渡してもデータ競合が起こらないと確認できれば、非 Sendable な値も引き渡せます。\n\nこの例では新しく作った draft が他と共有されておらず、渡した後に呼び出し元で使われません。`await inbox.add(draft)` の後に `draft.text = \"Changed\"` を追加すると、競合しうるアクセスとして拒否されます。\n\nSE-0302 は Sendable による安全性の基礎、SE-0461 は nonisolated な async 関数を呼び出し元の actor 上で実行する仕組みです。SE-0461 は隔離をまたがずに済む呼び出しを扱いますが、このコードは MainActor から別の Inbox actor へ実際に値を渡しています。SE-0430 はこの解析を土台に sending を引数・戻り値の契約として明示する提案です。この例の引き渡しには sending の指定は不要です。"
+    },
+    {
+      "id": "builder-opaque-branches",
+      "difficulty": 3,
+      "bodyMarkdown": "`pair` の2つの引数は、同じ型でなければならない。`Image` と `Text` を直接渡すとエラーになるが、異なる分岐を通る `badge(true)` と `badge(false)` は渡せる。このように、分岐で異なる型の値を使いながら、1つの型の戻り値に組み立てる仕組みを導入した提案は？\n\n```swift\nimport SwiftUI\n@ViewBuilder\nfunc badge(_ ready: Bool) -> some View {\n    if ready { Image(systemName: \"checkmark\") }\n    else { Text(\"Waiting\") }\n}\n\nfunc pair<V: View>(_ first: V, _ second: V) {}\n\npair(badge(true), badge(false))  // OK\n// pair(Image(systemName: \"checkmark\"), Text(\"Waiting\")) // NG\n```",
+      "choices": {
+        "A": {
+          "number": "SE-0328",
+          "title": "Structural opaque result types",
+          "titleJa": "構造的opaque result types",
+          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0328.html"
+        },
+        "B": {
+          "number": "SE-0289",
+          "title": "Result builders",
+          "titleJa": null,
+          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0289.html"
+        },
+        "C": {
+          "number": "SE-0244",
+          "title": "Opaque Result Types",
+          "titleJa": null,
+          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0244.html"
+        },
+        "D": {
+          "number": "SE-0380",
+          "title": "if and switch expressions",
+          "titleJa": "ifとswitch式",
+          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0380.html"
+        }
+      },
+      "correctChoice": "B",
+      "explanationMarkdown": "正解は **SE-0289 · Result builders**。ViewBuilder はこの仕組みを使い、if / else の分岐を buildEither(first:)・buildEither(second:) などの呼び出しへ変換します。\n\nこの例では Image と Text をそのまま別々の戻り値の型にするのではなく、両方の可能性を表す1つの具体型に組み立てます。条件によって変わるのはその中身であり、badge の戻り値の具体型ではありません。そのため badge(true) と badge(false) は同じ型として pair に渡せます。一方、Image と Text を直接 pair に渡すと、同じ V という条件を満たせません。\n\nSE-0244 の some View は「関数が決めた1つの具体型を呼び出し側から隠す」機能で、実行時の条件ごとに異なる型をそのまま返せる指定ではありません。@ViewBuilder を外し、それぞれの枝から return Image(...) / return Text(...) と書くと、基になる型が一致せずエラーになります。\n\nSE-0380 の通常の if 式には、このように異なる型の View を組み立てるビルダーの変換はありません。SE-0328 は `(some View)?` など、より大きな型の一部に opaque result type を置けるようにする拡張です。some View で型を隠すことと、分岐を1つの型に組み立てることを分けて考えるのが決め手です。"
     }
   ],
   "choiceTitleSource": {
