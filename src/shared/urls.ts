@@ -4,6 +4,17 @@ export interface EventUrls {
   display: string;
   play: string;
 }
+export function personalResultPath(eventId: string, playerId: string): string {
+  return `/e/${encodeURIComponent(eventId)}/result/${encodeURIComponent(playerId)}`;
+}
+export function personalResultShareUrl(
+  origin: string,
+  eventId: string,
+  playerId: string,
+  token: string,
+): string {
+  return `${normalizePublicOrigin(origin)}${personalResultPath(eventId, playerId)}?share=${encodeURIComponent(token)}`;
+}
 export function normalizePublicOrigin(value: string): string {
   if (!value) throw new Error("PUBLIC_ORIGIN を設定してください。");
   let url: URL;

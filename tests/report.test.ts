@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { newGame, finalResults } from "../src/worker/game";
 import { tournamentReport } from "../src/worker/report";
+import { personalResult } from "../src/worker/personal-result";
 import type { Game, Question } from "../src/shared/types";
 
 function fixture(): Game {
@@ -87,25 +88,49 @@ function fixture(): Game {
   beforeOpening.participants = { p0: "eligible" };
   return g;
 }
-it("未回答を分母に含め、途中参加前・無効・未出題を正しく分離する", () => {
+it("個人成績は管理側と同じ集計を使い、他の参加者や全員の順位表を含めない", () => {
+  const game = fixture();
+  const player = game.players[2];
+  const report = tournamentReport(game);
+  const result = personalResult(game, player.id);
+  const { fastestCorrect: _, ...expectedPlayer } = report.players[2];
+  expect(result.player).toEqual(expectedPlayer);
+  expect(result.player).not.toHaveProperty("fastestCorrect");
+  expect(result.rounds).toHaveLength(report.rounds.length);
+  result.rounds.forEach((round, i) => {
+    const { playerId: _, ...answer } = report.rounds[i].answers[2];
+    expect(round.answer).toEqual(answer);
+  });
+  const json = JSON.stringify(result);
+  expect(json).not.toContain('"players"');
+  expect(json).not.toContain('"results"');
+  for (const other of game.players.filter((p) => p.id !== player.id)) {
+    expect(json).not.toContain(`"${other.id}"`);
+    expect(json).not.toContain(`"${other.name}"`);
+  }
+  expect(() => personalResult(game, "missing")).toThrow(
+    "参加者が見つかりません",
+  );
+});
+it("途中参加前も未回答として分母に含め、無効・未出題は除外する", () => {
   const report = tournamentReport(fixture());
   expect(report.summary).toMatchObject({
     scored: 2,
     voided: 2,
     unasked: 1,
-    eligible: 11,
+    eligible: 12,
     answered: 4,
     correct: 3,
-    correctRate: 3 / 11,
+    correctRate: 3 / 12,
     averageElapsed: 2750,
   });
   expect(report.rounds[0]).toMatchObject({
-    eligible: 5,
+    eligible: 6,
     answered: 3,
     correct: 2,
-    correctRate: 0.4,
-    unanswered: 2,
-    ineligible: 1,
+    correctRate: 2 / 6,
+    unanswered: 3,
+    ineligible: 0,
     distribution: { A: 1, B: 2, C: 0, D: 0 },
     averageElapsed: 2000,
     medianElapsed: 1000,
@@ -134,9 +159,8 @@ it("未回答を分母に含め、途中参加前・無効・未出題を正し�
   expect(report.rounds[4].answers[0].status).toBe("notOpened");
   expect(report.rounds[4].unanswered).toBe(0);
   expect(report.players.find((p) => p.id === "p5")).toMatchObject({
-    eligible: 1,
-    ineligible: 1,
-    unanswered: 1,
+    eligible: 2,
+    unanswered: 2,
     correctRate: 0,
   });
   expect(report.players.find((p) => p.id === "p4")).toMatchObject({
@@ -145,6 +169,54 @@ it("未回答を分母に含め、途中参加前・無効・未出題を正し�
     correctRate: 0,
     averageElapsed: null,
   });
+});
+it("最後の1問だけ正解しても1/8とし、参加前の7問を未回答として共有する", () => {
+  const game = fixture();
+  const template = game.rounds[1];
+  game.rounds = Array.from({ length: 8 }, (_, i) => {
+    const round = structuredClone(template);
+    round.id = `late-${i}`;
+    if (i < 7) delete round.participants.p5;
+    else
+      round.answers.p5 = { choice: "B", receivedAt: template.openedAt! + 300 };
+    return round;
+  });
+  game.players.push({
+    id: "after",
+    name: "全問終了後に参加",
+    joinedAt: 999999,
+  });
+  const report = tournamentReport(game);
+  const result = personalResult(game, "p5");
+  expect(result.player).toMatchObject({
+    eligible: 8,
+    correct: 1,
+    answered: 1,
+    unanswered: 7,
+    incorrect: 0,
+    correctRate: 0.125,
+  });
+  expect(result.player).toEqual(
+    (({ fastestCorrect: _, ...p }) => p)(
+      report.players.find((p) => p.id === "p5")!,
+    ),
+  );
+  for (const round of result.rounds.slice(0, 7)) {
+    expect(round.answer).toEqual({
+      status: "unanswered",
+      choice: null,
+      elapsed: null,
+      rank: null,
+    });
+  }
+  expect(personalResult(game, "after").player).toMatchObject({
+    eligible: 8,
+    correct: 0,
+    unanswered: 8,
+    correctRate: 0,
+    averageElapsed: null,
+  });
+  expect(report.summary.eligible).toBe(8 * game.players.length);
 });
 it("同着順位と表彰の集計を一致させ、誤答の速さを最速正解に使わない", () => {
   const g = fixture();

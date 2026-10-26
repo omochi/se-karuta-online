@@ -115,20 +115,6 @@
   font-size: 12px;
   font-weight: normal;
 }
-.report-status {
-  border-radius: 5px;
-  background: #eeece6;
-  padding: 3px 7px;
-  font-size: 12px;
-}
-.report-status-correct {
-  color: #245b35;
-  background: #e2efdc;
-}
-.report-status-incorrect {
-  color: #922d21;
-  background: #ffe6df;
-}
 .report-notice {
   padding: 16px;
   border-left: 3px solid var(--accent);

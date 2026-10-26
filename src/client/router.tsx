@@ -11,6 +11,7 @@ import QuestionViewer from "./QuestionViewer";
 import QuestionDisplayPreview from "./QuestionDisplayPreview";
 import TournamentReport from "./TournamentReport";
 import TournamentReview from "./TournamentReview";
+import PersonalResult from "./PersonalResult";
 import EventsPage from "./EventsPage";
 import { Header } from "./components";
 import { createRouteLoaders } from "./route-loaders";
@@ -70,6 +71,11 @@ export function createAppRoutes(
       children: [
         { index: true, loader: loaders.home, Component: Home },
         { path: "events", loader: loaders.events, Component: EventsPage },
+        {
+          path: "e/:id/result/:playerId",
+          loader: loaders.result,
+          Component: PersonalResult,
+        },
         {
           path: "e/:id/review",
           loader: loaders.review,

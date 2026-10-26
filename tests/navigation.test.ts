@@ -19,6 +19,7 @@ import { eventUrls } from "../src/shared/urls";
 import { newGame } from "../src/worker/game";
 import { tournamentReport } from "../src/worker/report";
 import { tournamentReview } from "../src/worker/review";
+import { personalResult } from "../src/worker/personal-result";
 import type { EventPage } from "../src/shared/events";
 
 class Socket {
@@ -170,6 +171,19 @@ beforeEach(() => {
         const game = newGame("game", "公開の復習資料", [], 0);
         game.phase = "finished";
         return finished ? json(tournamentReview(game)) : json({}, 409);
+      }
+      if (path.includes("/result/")) {
+        const shared = path.includes("?share=");
+        if (!shared && !authorized) return json({}, 401);
+        if (!finished) return json({}, 409);
+        const game = newGame("game", "個人成績テスト", [], 0);
+        game.phase = "finished";
+        game.players = [{ id: "p", name: "本人の名前", joinedAt: 0 }];
+        return json({
+          result: personalResult(game, "p"),
+          owner: !shared,
+          shareUrl: null,
+        });
       }
       if (path.includes("/session?"))
         return socketResponse
@@ -643,6 +657,41 @@ it("終了済み大会のQRで新規登録を案内せず、既存セッショ�
   expect(html().replace(/<[^>]*>/g, "")).toContain(
     "正答王（2位）、友情王（3位）",
   );
+  expect(html()).toContain('href="/e/game/result/p"');
+});
+it("個人成績の直リンクは本人セッションを要求し、共有URLでは操作を表示しない", async () => {
+  authorized = false;
+  finished = true;
+  await start("/e/game/result/p");
+  expect(html()).toContain("参加したブラウザーで開いてください");
+  authorized = true;
+  await router.revalidate();
+  expect(html()).toContain("本人の名前");
+  expect(html()).toContain('aria-label="成績を共有"');
+  expect(html()).not.toContain("共有URLを発行");
+  expect(html()).not.toContain("共有URLを知っている人は");
+  expect(html()).toContain("全問の回答履歴");
+  authorized = false;
+  await router.navigate("/e/game/result/p?share=test-token");
+  expect(html()).toContain("本人の名前");
+  expect(html()).not.toContain('aria-label="成績を共有"');
+  expect(Socket.all).toHaveLength(0);
+  expect(vi.mocked(fetch).mock.calls.map(([path]) => path)).toContain(
+    "/api/e/game/result/p?share=test-token",
+  );
+});
+it("未終了の個人成績と無効な共有URLをそれぞれ案内する", async () => {
+  await start("/e/game/result/p");
+  expect(html()).toContain("大会終了後に成績を確認できます");
+  const original = fetch;
+  vi.stubGlobal("fetch", (path: string, options: RequestInit) =>
+    path.includes("/result/")
+      ? Promise.resolve(json({}, 404))
+      : original(path, options),
+  );
+  await router.navigate("/e/game/result/p?share=");
+  expect(html()).toContain("共有が停止されています");
+  expect(Socket.all).toHaveLength(0);
 });
 it("復習資料の直リンクは終了前に案内を表示し、終了後は未ログインでもWebSocketなしで開ける", async () => {
   authorized = false;

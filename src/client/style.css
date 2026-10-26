@@ -1023,7 +1023,10 @@ button.choice:not(:disabled):active {
 .player-titles {
   margin-bottom: 20px;
 }
-.player-review-link {
+.player-result-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 20px;
 }
 .player-titles h3 {

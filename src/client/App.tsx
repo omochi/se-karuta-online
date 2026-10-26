@@ -3,6 +3,7 @@ import { Link, useLoaderData, useNavigate, useRevalidator } from "react-router";
 import type { HomeData, GameData } from "./route-loaders";
 import type { RoomSession } from "./RoomSession";
 import type { EventUrls } from "../shared/urls";
+import { personalResultPath } from "../shared/urls";
 import type { TimingSettings } from "../shared/types";
 import { playerTitles } from "../shared/awards";
 import { useRoom, type RoomConnection } from "./useRoom";
@@ -755,12 +756,19 @@ export function Player({ room }: { room: RoomConnection }) {
           <PlayerAnswerStatus room={room} progress={progress} />
         )}
         {v.phase === "finished" && (
-          <Link
-            className="button primary player-review-link"
-            to={`/e/${v.id}/review`}
-          >
-            復習資料を見る →
-          </Link>
+          <nav className="player-result-links" aria-label="大会終了後の確認">
+            {me && (
+              <Link
+                className="button primary"
+                to={personalResultPath(v.id, me.id)}
+              >
+                自分の成績を見る →
+              </Link>
+            )}
+            <Link className="button secondary" to={`/e/${v.id}/review`}>
+              復習資料を見る →
+            </Link>
+          </nav>
         )}
         {v.phase === "finished" && v.results && (
           <>
