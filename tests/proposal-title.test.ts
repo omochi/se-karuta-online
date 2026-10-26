@@ -13,11 +13,12 @@ import type { Phase, Role } from "../src/shared/types";
 import { newGame, viewFor } from "../src/worker/game";
 import { tournamentReport } from "../src/worker/report";
 import volume from "../data/questions/vol-01.json";
+import bonus from "../data/questions/vol-01-bonus.json";
 import tutorial from "../data/questions/tutorial.json";
 
 const question = validateQuestions(volume.questions)[0];
 it("全収録問題の選択肢にSE番号・原題・邦題をまとめ、編集・保存・再読み込みで保持する", () => {
-  for (const source of [volume, tutorial]) {
+  for (const source of [volume, bonus, tutorial]) {
     const doc = readQuestionDocument(JSON.stringify(source));
     expect(doc.questions).toEqual(source.questions);
     for (const q of doc.questions)
@@ -75,7 +76,7 @@ it("titleJa の null を保存し、邦題のない選択肢では原題だけ�
   expect(html).not.toContain("proposal-japanese");
 });
 it("原題と同じ邦題は英字の大小違いも含め、収録データで null にする", () => {
-  for (const source of [volume, tutorial])
+  for (const source of [volume, bonus, tutorial])
     for (const q of source.questions)
       for (const choice of Object.values(q.choices)) {
         if (choice.titleJa !== null)

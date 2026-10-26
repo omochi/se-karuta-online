@@ -20,7 +20,10 @@ import "../../src/client/style.css";
 const params = new URLSearchParams(location.search);
 const mode = (params.get("mode") ?? "display") as Role;
 const phase = (params.get("phase") ?? "acceptingAnswers") as Phase;
-const index = Math.max(0, Math.min(11, Number(params.get("q") ?? 1) - 1));
+const index = Math.max(
+  0,
+  Math.min(volume.questions.length - 1, Number(params.get("q") ?? 1) - 1),
+);
 const width = Number(params.get("width")) || (mode === "player" ? 390 : 1280);
 const height = Number(params.get("height")) || (mode === "player" ? 844 : 720);
 
