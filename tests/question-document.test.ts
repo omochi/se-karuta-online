@@ -7,7 +7,12 @@ const question = {
   id: "q1",
   difficulty: 2 as const,
   bodyMarkdown: "問題\n```swift\nlet x = 1\n```",
-  choices: { A: "a", B: "b", C: "c", D: "d" },
+  choices: {
+    A: { number: "SE-0001", title: "a", titleJa: null },
+    B: { number: "SE-0002", title: "b", titleJa: null },
+    C: { number: "SE-0003", title: "c", titleJa: null },
+    D: { number: "SE-0004", title: "d", titleJa: null },
+  },
   correctChoice: "B",
   explanationMarkdown: "[解説](https://example.com)",
 };
@@ -27,11 +32,17 @@ it("オブジェクト形式の大会名や付随情報を保持し、BOM付きJ
     questions: [question],
   };
   const doc = readQuestionDocument("\uFEFF" + JSON.stringify(input));
-  doc.questions[0].choices.A = "新しい選択肢";
+  doc.questions[0].choices.A.title = "新しい選択肢";
   expect(JSON.parse(writeQuestionDocument(doc))).toEqual({
     ...input,
     questions: [
-      { ...question, choices: { ...question.choices, A: "新しい選択肢" } },
+      {
+        ...question,
+        choices: {
+          ...question.choices,
+          A: { number: "SE-0001", title: "新しい選択肢", titleJa: null },
+        },
+      },
     ],
   });
 });

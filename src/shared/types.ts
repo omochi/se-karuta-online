@@ -14,11 +14,16 @@ export type Phase =
   | "rankingShown"
   | "questionVoided"
   | "finished";
+export interface ProposalChoice {
+  number: string;
+  title: string;
+  titleJa: string | null;
+}
 export interface Question {
   id: string;
   difficulty: Difficulty;
   bodyMarkdown: string;
-  choices: Record<Choice, string>;
+  choices: Record<Choice, ProposalChoice>;
   correctChoice: Choice;
   explanationMarkdown: string;
 }
@@ -122,7 +127,7 @@ export interface RoomView {
   question: null | {
     id: string;
     difficulty?: Difficulty;
-    choices?: Record<Choice, string>;
+    choices?: Record<Choice, ProposalChoice>;
     bodyMarkdown?: string;
     correctChoice?: Choice;
     explanationMarkdown?: string;

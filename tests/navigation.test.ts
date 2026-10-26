@@ -110,7 +110,12 @@ beforeEach(() => {
             {
               id: "q1",
               bodyMarkdown: "LOADED QUESTION",
-              choices: { A: "a", B: "b", C: "c", D: "d" },
+              choices: {
+                A: { number: "SE-0001", title: "a", titleJa: null },
+                B: { number: "SE-0002", title: "b", titleJa: null },
+                C: { number: "SE-0003", title: "c", titleJa: null },
+                D: { number: "SE-0004", title: "d", titleJa: null },
+              },
               correctChoice: "A",
               explanationMarkdown: "explanation",
             },

@@ -280,6 +280,13 @@ test(
       players[0].state!.question!.choices,
       questionSet.questions[0].choices,
     );
+    for (const peer of [control, display, players[0]]) {
+      assert.deepEqual(
+        peer.state!.question!.choices,
+        questionSet.questions[0].choices,
+      );
+      assert.equal(peer.state!.question!.choices!.B.titleJa, null);
+    }
     await control.wait((v) => v.phase === "acceptingAnswers", 18000);
     assert.equal(control.state!.phaseDurationMs, 30000);
     await display.wait((v) => v.phase === "acceptingAnswers");

@@ -40,23 +40,54 @@ export function validateQuestions(input: unknown): Question[] {
       Object.keys(q.choices).length !== 4
     )
       throw new Error(prefix + "選択肢は A〜D の 4 件にしてください。");
-    const choices = q.choices as Record<string, unknown>;
-    for (const key of CHOICES)
+    const rawChoices = q.choices as Record<string, unknown>;
+    const choices = {} as Question["choices"];
+    for (const key of CHOICES) {
+      const rawChoice = rawChoices[key];
+      const error = prefix + `選択肢 ${key}: `;
       if (
-        typeof choices[key] !== "string" ||
-        !(choices[key] as string).trim() ||
-        (choices[key] as string).length > 300
+        !rawChoice ||
+        typeof rawChoice !== "object" ||
+        Array.isArray(rawChoice)
       )
-        throw new Error(prefix + `選択肢 ${key} を確認してください。`);
+        throw new Error(
+          error + "SE番号・原題・邦題を持つオブジェクトで指定してください。",
+        );
+      const choice = rawChoice as Record<string, unknown>;
+      if (
+        typeof choice.number !== "string" ||
+        !/^SE-\d{4}$/.test(choice.number)
+      )
+        throw new Error(error + "number は SE-0380 の形式で指定してください。");
+      if (
+        typeof choice.title !== "string" ||
+        !choice.title.trim() ||
+        choice.title.length > 300
+      )
+        throw new Error(error + "title は1〜300文字で指定してください。");
+      if (
+        choice.titleJa !== null &&
+        (typeof choice.titleJa !== "string" ||
+          !choice.titleJa.trim() ||
+          choice.titleJa.length > 300)
+      )
+        throw new Error(
+          error +
+            "titleJa は1〜300文字、または邦題なしの null で指定してください。",
+        );
+      choices[key] = {
+        number: choice.number,
+        title: choice.title,
+        titleJa: choice.titleJa,
+      };
+    }
     if (!CHOICES.includes(q.correctChoice as never))
       throw new Error(prefix + "正解は A〜D のいずれかです。");
     return {
       id,
       difficulty,
       bodyMarkdown: q.bodyMarkdown as string,
-      choices: Object.fromEntries(
-        CHOICES.map((c) => [c, choices[c]]),
-      ) as Question["choices"],
+      choices,
       correctChoice: q.correctChoice as Question["correctChoice"],
       explanationMarkdown: q.explanationMarkdown as string,
     };

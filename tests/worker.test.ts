@@ -171,7 +171,12 @@ function fixture(): Game {
         id: crypto.randomUUID(),
         difficulty: 2 as const,
         bodyMarkdown: "body",
-        choices: { A: "a", B: "b", C: "c", D: "d" },
+        choices: {
+          A: { number: "SE-0001", title: "a", titleJa: null },
+          B: { number: "SE-0002", title: "b", titleJa: null },
+          C: { number: "SE-0003", title: "c", titleJa: null },
+          D: { number: "SE-0004", title: "d", titleJa: null },
+        },
         correctChoice: "B",
         explanationMarkdown: "explanation",
       },
@@ -188,6 +193,8 @@ function fixture(): Game {
 }
 it("D1に問題のスナップショット・参加資格・回答を保存して復元する", async () => {
   const g = fixture();
+  g.rounds[0].question.choices.B.titleJa = "邦題";
+  g.rounds[0].question.choices.D.titleJa = "別の邦題";
   await saveGame(bindings.DB, null, g, "display-hash");
   const next = structuredClone(g);
   applyCommand(next, { command: "start", revision: 0 }, 100);
@@ -284,7 +291,12 @@ it("問題ビューワは管理者だけが大会作成時の問題を出題順�
         id: crypto.randomUUID(),
         difficulty: 2 as const,
         bodyMarkdown: "first secret",
-        choices: { A: "a", B: "b", C: "c", D: "d" },
+        choices: {
+          A: { number: "SE-0001", title: "a", titleJa: null },
+          B: { number: "SE-0002", title: "b", titleJa: null },
+          C: { number: "SE-0003", title: "c", titleJa: null },
+          D: { number: "SE-0004", title: "d", titleJa: null },
+        },
         correctChoice: "C",
         explanationMarkdown: "first explanation",
       },
@@ -292,7 +304,12 @@ it("問題ビューワは管理者だけが大会作成時の問題を出題順�
         id: crypto.randomUUID(),
         difficulty: 2 as const,
         bodyMarkdown: "second secret",
-        choices: { A: "a", B: "b", C: "c", D: "d" },
+        choices: {
+          A: { number: "SE-0001", title: "a", titleJa: null },
+          B: { number: "SE-0002", title: "b", titleJa: null },
+          C: { number: "SE-0003", title: "c", titleJa: null },
+          D: { number: "SE-0004", title: "d", titleJa: null },
+        },
         correctChoice: "A",
         explanationMarkdown: "second explanation",
       },

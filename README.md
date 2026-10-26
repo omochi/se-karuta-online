@@ -162,6 +162,25 @@ npm run seed:report
 
 [`data/questions/vol-01.json`](data/questions/vol-01.json) を参考にします。`id`、`difficulty`（1: 入門、2: 標準、3: 難問）、`bodyMarkdown`、A〜D の `choices`、`correctChoice`、`explanationMarkdown` を持つ配列です。CLI は `questions` プロパティで包んだ形式も読み込みます。問題数は1〜100問、各文字数・ID重複・選択肢数・難易度を検証します。統合問題集は入門・標準・難問を4問ずつ、計12問収録しています。旧JSONで難易度がない場合は2として読み込みます。
 
+選択肢の `choices.A`〜`choices.D` は、SE番号・原題・邦題をまとめたオブジェクトです。3つのプロパティは必須で、邦題が原題と同じ表記の場合は `titleJa: null` で邦題なしを明記します。
+
+```json
+"choices": {
+  "A": {
+    "number": "SE-0380",
+    "title": "if and switch expressions",
+    "titleJa": "ifとswitch式"
+  },
+  "B": {
+    "number": "SE-0289",
+    "title": "Result builders",
+    "titleJa": null
+  }
+}
+```
+
+上は2択分の抜粋です。実際の問題にはA〜Dの4択を定義します。邦題は [Swift Digest](https://swiftdigest.koherent.org/proposals/) から事前に取得してJSONへ保存し、実行時には外部取得しません。第1集とチュートリアルには2026-10-26時点の邦題を収録しています。文字列形式の選択肢は読み込めません。更新したJSONから新しい大会を作成すると反映されます。
+
 ```sh
 npm run questions:check
 npm run questions:check -- path/to/questions.json
@@ -202,6 +221,8 @@ npm run check
 表示の自動調整は、開発サーバーの `/tests/fixtures/display-fit.html` でも確認できます。「描画フレームを検証」で、短文・日本語の折り返し・長いコード・問題の切り替えを最初の描画フレームから検査し、タイマー更新で再計測しないことも確認します。テスト専用の問題だけを使い、大会には接続しません。この検証ページは本番ビルドには含まれません。
 
 出題前の難易度表示は `/tests/fixtures/display-difficulty.html?phase=countdown&difficulty=3` で確認できます。`phase` は `choicesPreparing`・`countdown`・`choicesReading`・`acceptingAnswers`、`difficulty` は1〜3を指定できます。公開チュートリアルを使い、実際のゲームロジックがDisplay向けに返すデータを描画します。
+
+邦題のレイアウトは `/tests/fixtures/proposal-titles.html` で確認できます。第1集の全問を、運営・Display・回答の各モード、選択肢公開・回答受付・締切・正解発表・ランキングの各段階で表示できます。解像度はPC・Display／スマホ・タブレットのプリセットから選べます。モード・問題・進行・解像度は選択すると即座に反映され、現在の設定はURLにも保持されます。回答モードへの切り替え時は390×844、回答から他モードへ戻ると1280×720になります。幅・高さは iframe の表示領域に適用され、実際のメディアクエリーと本文の自動調整が動きます。大会の作成・接続は行いません。
 
 純粋なゲームロジック・認証・URL検証、ローカル workerd による D1 の保存失敗時のロールバックと DO 再生成、Miniflare で40参加者の WebSocket 接続・同時回答・再接続・結果集計を確認します。統合テストは独立した一時DBを使い、回答受付30秒を含む実タイマーを含みます。開発サーバーは不要です。
 

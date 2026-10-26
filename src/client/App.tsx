@@ -423,10 +423,7 @@ export function Control({ room }: { room: RoomConnection }) {
                     disabled={disabled || v.playerCount === 0}
                     onClick={() => room.command("start")}
                   >
-                    {v.questionNumber
-                      ? "次の問題を開始"
-                      : "最初の問題を開始"}{" "}
-                    →
+                    {v.questionNumber ? "次の問題を開始" : "最初の問題を開始"} →
                   </button>
                 )}
                 {progress.answering && (
@@ -690,7 +687,9 @@ export function Player({ room }: { room: RoomConnection }) {
       <Header>
         <ConnectionBadge connected={room.connected} />
       </Header>
-      <main className="player-page">
+      <main
+        className={`player-page ${showChoices && q?.choices ? "player-page-question" : ""}`}
+      >
         <div className="player-heading">
           <p className="eyebrow">{v.name}</p>
           <span className="player-name">{me?.name}</span>
