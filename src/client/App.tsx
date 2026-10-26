@@ -419,7 +419,7 @@ export function Control({ room }: { room: RoomConnection }) {
                 {readyForNext && v.hasNext && (
                   <button
                     className="primary"
-                    disabled={disabled || v.playerCount === 0}
+                    disabled={disabled}
                     onClick={() => room.command("start")}
                   >
                     {v.questionNumber ? "次の問題を開始" : "最初の問題を開始"} →

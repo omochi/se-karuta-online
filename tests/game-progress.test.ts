@@ -392,6 +392,19 @@ describe("3画面の進行案内", () => {
   });
 });
 
+it("参加者0人でも管理画面の開始ボタンを有効にする", () => {
+  const room = fixture("waiting");
+  room.view!.playerCount = 0;
+  room.view!.players = [];
+  expect(render(Control, room)).toMatch(
+    /<button class="primary">最初の問題を開始/,
+  );
+  room.connected = false;
+  expect(render(Control, room)).toMatch(
+    /<button class="primary" disabled="">最初の問題を開始/,
+  );
+});
+
 it("管理画面は待ち合わせ人数と回答人数を分け、参加者ごとのトグルを表示する", () => {
   const room = fixture("choicesPreparing");
   room.view!.eligibleCount = 2;
