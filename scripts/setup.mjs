@@ -1,10 +1,9 @@
 import { existsSync, writeFileSync } from "node:fs";
-import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 if (!existsSync(".dev.vars")) {
   writeFileSync(
     ".dev.vars",
-    `PUBLIC_ORIGIN=http://localhost:5218\nADMIN_PASSWORD=local-karuta\nSESSION_SECRET=${randomBytes(32).toString("hex")}\n`,
+    `PUBLIC_ORIGIN=http://localhost:5218\nADMIN_PASSWORD=local-karuta\n`,
     { mode: 0o600 },
   );
   console.log("ローカル設定を作成しました。管理用パスワード: local-karuta");

@@ -64,7 +64,6 @@ game.players = names.map((name, i) => ({
     i >= 14
       ? game.createdAt + (i === 14 ? 180_000 : 700_000)
       : game.createdAt + 1000,
-  sessionHash: crypto.randomUUID(),
 }));
 for (let n = 0; n < 10; n++) {
   const r = game.rounds[n];
@@ -144,8 +143,8 @@ insert(
 for (const p of players)
   insert(
     "players",
-    ["id", "tournament_id", "name", "joined_at", "session_hash"],
-    [p.id, id, p.name, p.joinedAt, p.sessionHash],
+    ["id", "tournament_id", "name", "joined_at"],
+    [p.id, id, p.name, p.joinedAt],
   );
 for (const [position, r] of rounds.entries()) {
   const { question, participants, answers, ...roundState } = r;

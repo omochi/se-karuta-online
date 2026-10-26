@@ -22,7 +22,7 @@ const game = newGame(
 game.phase = "finished";
 game.currentIndex = 5;
 game.players = ["あおい", "はる", "ゆう", "さくら", "りん", "みなと"].map(
-  (name, i) => ({ id: `p${i}`, name, joinedAt: 0, sessionHash: "fixture" }),
+  (name, i) => ({ id: `p${i}`, name, joinedAt: 0 }),
 );
 const correctPlayers = [
   [0, 1, 2],

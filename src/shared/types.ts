@@ -32,7 +32,6 @@ export interface Player {
   id: string;
   name: string;
   joinedAt: number;
-  sessionHash: string;
 }
 export interface Answer {
   choice: Choice;

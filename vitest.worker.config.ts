@@ -7,7 +7,6 @@ export default defineConfig({
       miniflare: {
         bindings: {
           ADMIN_PASSWORD: "test-admin",
-          SESSION_SECRET: "test-only-session-secret",
           PUBLIC_ORIGIN: "http://test",
         },
       },

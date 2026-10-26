@@ -48,7 +48,6 @@ function fixture(): Game {
     id: `p${i}`,
     name: i < 2 ? "同名" : `参加者${i}`,
     joinedAt: i,
-    sessionHash: "PRIVATE_HASH",
   }));
   const [first, second, voided, unasked, beforeOpening] = g.rounds;
   first.openedAt = 1000;

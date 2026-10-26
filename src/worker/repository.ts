@@ -46,7 +46,7 @@ export async function loadGame(
       .bind(id),
     db
       .prepare(
-        "SELECT id, name, joined_at, session_hash FROM players WHERE tournament_id = ? ORDER BY joined_at, id",
+        "SELECT id, name, joined_at FROM players WHERE tournament_id = ? ORDER BY joined_at, id",
       )
       .bind(id),
     db
@@ -85,7 +85,6 @@ export async function loadGame(
         id: row.id,
         name: row.name,
         joinedAt: row.joined_at,
-        sessionHash: row.session_hash,
       }) as Player,
   );
   const rounds = new Map(game.rounds.map((r) => [r.id, r]));
@@ -114,6 +113,7 @@ async function persistGame(
   before: Game | null,
   after: Game,
   displayPasswordHash?: string,
+  registration?: { clientId: string; playerId: string },
 ) {
   const statements: D1PreparedStatement[] = [];
   if (!before) {
@@ -143,17 +143,19 @@ async function persistGame(
       statements.push(
         db
           .prepare(
-            "INSERT INTO players (id,tournament_id,name,joined_at,session_hash) VALUES (?,?,?,?,?)",
+            "INSERT INTO players (id,tournament_id,name,joined_at) VALUES (?,?,?,?)",
           )
-          .bind(
-            player.id,
-            after.id,
-            player.name,
-            player.joinedAt,
-            player.sessionHash,
-          ),
+          .bind(player.id, after.id, player.name, player.joinedAt),
       );
   }
+  if (registration)
+    statements.push(
+      db
+        .prepare(
+          "INSERT INTO client_players (client_id,tournament_id,player_id) VALUES (?,?,?)",
+        )
+        .bind(registration.clientId, after.id, registration.playerId),
+    );
   for (const [index, r] of after.rounds.entries()) {
     const old = before?.rounds[index];
     if (!old) {
@@ -217,10 +219,11 @@ export async function saveGame(
   before: Game | null,
   after: Game,
   displayPasswordHash?: string,
+  registration?: { clientId: string; playerId: string },
 ) {
   for (let attempt = 0; ; attempt++) {
     try {
-      await persistGame(db, before, after, displayPasswordHash);
+      await persistGame(db, before, after, displayPasswordHash, registration);
       return;
     } catch (error) {
       // 作成batchは衝突時に全体がロールバックされる。コードの衝突だけを再試行する。
