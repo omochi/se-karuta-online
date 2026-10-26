@@ -18,6 +18,7 @@ export interface ProposalChoice {
   number: string;
   title: string;
   titleJa: string | null;
+  explanationUrl: string;
 }
 export interface Question {
   id: string;

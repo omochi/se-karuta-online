@@ -64,11 +64,11 @@ Swift Evolution Karuta Online の問題を作成・レビューするときの�
 
 ## 選択肢の原題と邦題
 
-- `choices.A`〜`choices.D` はオブジェクトで定義し、`number` にSE番号（例: `SE-0380`）、`title` に原題、`titleJa` に邦題をまとめる。3つのプロパティはすべて必須。
+- `choices.A`〜`choices.D` はオブジェクトで定義し、`number` にSE番号（例: `SE-0380`）、`title` に原題、`titleJa` に邦題、`explanationUrl` に解説URLをまとめる。4つのプロパティはすべて必須。
 - 各選択肢の `titleJa` に、[Swift Digest](https://swiftdigest.koherent.org/proposals/) の該当番号の邦題を事前に取得して記載する。番号で対応付け、原題も確認する。新しい問題には誤答を含めた4択すべてを定義する。
 - サイトの表記に揃え、独自に意訳しない。サイトの邦題が原題と同じ場合（英字の大小だけの違いも含む）は、その選択肢の `titleJa` を `null` として「邦題なし」を明記する。原題と重ねて表示しない。HTMLのインラインコード等は装飾を外したテキストで保存する。
 - `choiceTitleSource` に取得元・URL・取得日を問題集の付随情報として記録する。邦題は実行時に取得せず、大会作成時のJSONの値で固定する。
-- 問題ビューワで邦題を検索・調整でき、JSON保存にも反映される。原題のProposalを差し替えた場合は、邦題も同じProposalに合わせる。
+- 問題ビューワで邦題を検索・調整でき、解説URLの編集もJSON保存に反映される。原題のProposalを差し替えた場合は、邦題と解説URLも同じProposalに合わせる。
 - `/tests/fixtures/proposal-titles.html` でDisplayと回答画面の長い原題・邦題の折り返しを確認する。タイトルは省略せず、邦題のある選択肢では原題の下に表示する。
 
 ## 誤答の選択肢
@@ -83,17 +83,17 @@ Swift Evolution Karuta Online の問題を作成・レビューするときの�
 
 ## 解説のリンク先（確定ルール）
 
-- `explanationMarkdown` に載せる Proposal の解説リンクは、**koher さんの [Swift Digest](https://swiftdigest.koherent.org/) の該当記事を使う**。日本語で要約を読めることを優先する。
+- 正解・誤答を含む4択すべての `explanationUrl` に、**koher さんの [Swift Digest](https://swiftdigest.koherent.org/) の該当記事を保存する**。日本語で要約を読めることを優先する。Display の正解発表では各選択肢の右端のアイコンから別タブで開く。
 - GitHub の Proposal 原文リンクを参加者向け解説の標準にしない。draft・本番用の問題とも同じルールを適用する。
-- リンクの表示名は `Swift Digest：SE-XXXXの日本語要約` とし、対象の Proposal が分かるようにする。
-- URL は `https://swiftdigest.koherent.org/proposals/se-XXXX.html`（番号は4桁）。リンク先を開き、番号と記事タイトルが合っていることを確認する。
+- HTTPS の絶対URLを明記する。実行時にSE番号からURLを組み立てたり、`explanationMarkdown` からリンクを抽出したりしない。解説本文へのリンクの追記は不要。
+- Swift Digest の一覧から該当記事のリンクを取得し、リンク先を開いて番号と記事タイトルが合っていることを確認する。
 - 問題・解説の厳密な根拠や原文との整合性は、出題者が後のレビューで精査する。生成時に原文の根拠リンクを解説へ付けることを必須にしない。
 - 該当する Swift Digest の記事が見つからない場合は、リンクを推測で掲載せず、レビュー時の確認事項として伝える。
 
 例：
 
-```markdown
-[Swift Digest：SE-0143の日本語要約](https://swiftdigest.koherent.org/proposals/se-0143.html)
+```json
+"explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0143.html"
 ```
 
 ## 試作とレビュー

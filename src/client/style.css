@@ -752,12 +752,12 @@ input::placeholder {
 }
 /* タッチ端末の hover が次の問題まで残り、選択済みに見えるのを防ぐ。 */
 @media (hover: hover) and (pointer: fine) {
-  .choice:not(:disabled):hover {
+  button.choice:not(:disabled):hover {
     background: #fff0e9;
     border-color: #f05138;
   }
 }
-.choice:not(:disabled):active {
+button.choice:not(:disabled):active {
   transform: scale(0.985);
 }
 .choice.selected {

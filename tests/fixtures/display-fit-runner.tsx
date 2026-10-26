@@ -38,10 +38,34 @@ function draw(
         difficulty: 2 as const,
         bodyMarkdown,
         choices: {
-          A: { number: "SE-0001", title: "Proposal A", titleJa: null },
-          B: { number: "SE-0002", title: "Proposal B", titleJa: null },
-          C: { number: "SE-0003", title: "Proposal C", titleJa: null },
-          D: { number: "SE-0004", title: "Proposal D", titleJa: null },
+          A: {
+            number: "SE-0001",
+            title: "Proposal A",
+            titleJa: null,
+            explanationUrl:
+              "https://swiftdigest.koherent.org/proposals/se-0001.html",
+          },
+          B: {
+            number: "SE-0002",
+            title: "Proposal B",
+            titleJa: null,
+            explanationUrl:
+              "https://swiftdigest.koherent.org/proposals/se-0002.html",
+          },
+          C: {
+            number: "SE-0003",
+            title: "Proposal C",
+            titleJa: null,
+            explanationUrl:
+              "https://swiftdigest.koherent.org/proposals/se-0003.html",
+          },
+          D: {
+            number: "SE-0004",
+            title: "Proposal D",
+            titleJa: null,
+            explanationUrl:
+              "https://swiftdigest.koherent.org/proposals/se-0004.html",
+          },
         },
         correctChoice: "A",
         explanationMarkdown: "Test explanation",

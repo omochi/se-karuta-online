@@ -600,6 +600,24 @@ function ViewerEditor({ initial }: { initial: ViewerData }) {
                                   }
                                 />
                               </label>
+                              <label>
+                                選択肢 {c} の解説URL（Swift Digest）
+                                <input
+                                  type="url"
+                                  value={q.choices[c].explanationUrl}
+                                  onChange={(e) =>
+                                    patchQuestion({
+                                      choices: {
+                                        ...q.choices,
+                                        [c]: {
+                                          ...q.choices[c],
+                                          explanationUrl: e.target.value,
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
                             </div>
                           ))}
                         </div>

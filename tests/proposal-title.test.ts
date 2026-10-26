@@ -22,11 +22,17 @@ it("全収録問題の選択肢にSE番号・原題・邦題をまとめ、編�
     expect(doc.questions).toEqual(source.questions);
     for (const q of doc.questions)
       for (const choice of Object.values(q.choices))
-        expect(Object.keys(choice)).toEqual(["number", "title", "titleJa"]);
+        expect(Object.keys(choice)).toEqual([
+          "number",
+          "title",
+          "titleJa",
+          "explanationUrl",
+        ]);
     doc.questions[0].choices.A = {
       number: "SE-1234",
       title: "Edited title",
       titleJa: "調整した邦題",
+      explanationUrl: "https://swiftdigest.koherent.org/edited-article.html",
     };
     expect(readQuestionDocument(writeQuestionDocument(doc))).toEqual(doc);
   }
