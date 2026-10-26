@@ -120,7 +120,7 @@ test(
         durableObjectsPersist: join(folder, "do"),
         bindings: {
           ADMIN_PASSWORD: "test-admin",
-          SESSION_SECRET: "integration-only-secret",
+
           PUBLIC_ORIGIN: origin,
         },
       }),

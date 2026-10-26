@@ -17,12 +17,15 @@ import {
   receiveAnswer,
   viewFor,
 } from "./game";
+import { readAuthorizations } from "./auth";
 import { loadGame, saveGame } from "./repository";
 interface Connection {
   id: string;
   ws: WebSocket;
   role: Role;
   playerId?: string;
+  tokenHash: string;
+  expires: number;
   readyRound?: string;
   lastSeen: number;
 }
@@ -99,9 +102,12 @@ export class TournamentRoom extends DurableObject<Env> {
   private broadcast() {
     for (const c of this.connections.values()) this.sendState(c);
   }
-  private async commit(next: Game) {
+  private async commit(
+    next: Game,
+    registration?: { clientId: string; playerId: string },
+  ) {
     try {
-      await saveGame(this.env.DB, this.game, next);
+      await saveGame(this.env.DB, this.game, next, undefined, registration);
       this.game = next;
     } catch (error) {
       this.game = null;
@@ -137,26 +143,46 @@ export class TournamentRoom extends DurableObject<Env> {
         );
         const path = new URL(request.url).pathname;
         if (path === "/join" && request.method === "POST") {
-          const player = await request.json<Player>();
+          const clientId = request.headers.get("x-client-id");
+          if (!clientId)
+            return response({ error: "参加情報を確認できません。" }, 401);
+          // DO内の直列処理とDBの一意制約で、同じクライアントの重複登録を防ぐ。
+          const previous = await this.env.DB.prepare(
+            "SELECT player_id FROM client_players WHERE client_id = ? AND tournament_id = ?",
+          )
+            .bind(clientId, g.id)
+            .first<{ player_id: string }>();
+          if (previous)
+            return response({ ok: true, playerId: previous.player_id });
+          const input = await request.json<{ name: string }>();
+          const player: Player = {
+            id: crypto.randomUUID(),
+            name: input.name,
+            joinedAt: Date.now(),
+          };
           const next = structuredClone(g);
           addPlayer(next, player);
-          await this.commit(next);
+          await this.commit(next, { clientId, playerId: player.id });
           this.broadcast();
-          return response({ ok: true, playerId: player.id });
+          return response({ ok: true, playerId: player.id }, 201);
         }
         const role = request.headers.get("x-role") as Role;
         const playerId = request.headers.get("x-player-id") ?? undefined;
         if (!["player", "control", "display"].includes(role))
           return response({ error: "権限がありません。" }, 403);
+        const tokenHash = request.headers.get("x-session-hash") ?? "";
+        const auth = (
+          await readAuthorizations(this.env.DB, g.id, [tokenHash])
+        ).get(tokenHash);
         if (
-          role === "player" &&
-          !g.players.some(
-            (p) =>
-              p.id === playerId &&
-              p.sessionHash === request.headers.get("x-session-hash"),
-          )
+          !auth ||
+          (role === "control" && !auth.isAdmin) ||
+          (role === "display" && !auth.canDisplay) ||
+          (role === "player" &&
+            (auth.playerId !== playerId ||
+              !g.players.some((p) => p.id === playerId)))
         )
-          return response({ error: "参加情報を確認できません。" }, 401);
+          return response({ error: "参加情報・権限を確認できません。" }, 401);
         if (path === "/session") return response({ ok: true, playerId });
         if (
           path !== "/ws" ||
@@ -172,6 +198,8 @@ export class TournamentRoom extends DurableObject<Env> {
           ws: server,
           role,
           playerId,
+          tokenHash,
+          expires: auth.expires,
           lastSeen: Date.now(),
         };
         this.connections.set(c.id, c);
@@ -217,6 +245,11 @@ export class TournamentRoom extends DurableObject<Env> {
     receivedAt: number,
   ) {
     if (!this.connections.has(c.id)) return;
+    if (Date.now() >= c.expires) {
+      this.closeUnauthorized(c);
+      await this.schedule();
+      return;
+    }
     let requestId: string | undefined;
     try {
       await this.getGame();
@@ -291,16 +324,46 @@ export class TournamentRoom extends DurableObject<Env> {
       }
     }
   }
+  private closeUnauthorized(c: Connection) {
+    this.connections.delete(c.id);
+    try {
+      c.ws.close(4001, "認証の有効期限が切れたか、権限が変更されました");
+    } catch {}
+  }
   async alarm() {
     await this.enqueue(async () => {
       const g = await this.getGame();
-      for (const c of this.connections.values())
+      // アイドル中も約15秒ごとに期限・失効・大会別権限をまとめて確認する。
+      // DB障害時は安全側に閉じ、再接続時に改めて認証する。
+      let authorizations: Awaited<ReturnType<typeof readAuthorizations>>;
+      try {
+        authorizations = await readAuthorizations(
+          this.env.DB,
+          g.id,
+          [...this.connections.values()].map((c) => c.tokenHash),
+        );
+      } catch (error) {
+        console.error("Session validation failed", error);
+        authorizations = new Map();
+      }
+      for (const c of this.connections.values()) {
+        const auth = authorizations.get(c.tokenHash);
+        if (
+          !auth ||
+          (c.role === "control" && !auth.isAdmin) ||
+          (c.role === "display" && !auth.canDisplay) ||
+          (c.role === "player" && auth.playerId !== c.playerId)
+        ) {
+          this.closeUnauthorized(c);
+          continue;
+        }
         if (Date.now() - c.lastSeen >= 45000) {
           this.connections.delete(c.id);
           try {
             c.ws.close(4000, "再接続してください");
           } catch {}
         }
+      }
       const next = structuredClone(g);
       if (advanceTimer(next, Date.now())) await this.commit(next);
       await this.maybeBegin();

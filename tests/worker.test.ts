@@ -3,6 +3,7 @@ import { beforeAll, expect, it } from "vitest";
 import { env, exports } from "cloudflare:workers";
 import { evictDurableObject } from "cloudflare:test";
 import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
+import sessionMigration from "../migrations/0004_client_sessions.sql?raw";
 import readyWaitMigration from "../migrations/0003_unify_resting_with_unanswered.sql?raw";
 import { tournamentReport } from "../src/worker/report";
 import migration from "../migrations/0001_initial.sql?raw";
@@ -15,28 +16,34 @@ import {
   receiveAnswer,
 } from "../src/worker/game";
 import { loadGame, saveGame } from "../src/worker/repository";
-import { digest, signSession } from "../src/worker/auth";
+import {
+  createSession,
+  readSession,
+  digest,
+  cookie as sessionCookie,
+  readAuthorizations,
+} from "../src/worker/auth";
 import type { Env } from "../src/worker/env";
 import type { Game, Question, RoomView } from "../src/shared/types";
 import type { EventPage } from "../src/shared/events";
 const bindings = env as unknown as Env;
 it("大会一覧は管理者だけが取得でき、件数制限・安定した並び順・状態を返す", async () => {
-  const { token } = await signSession(bindings.SESSION_SECRET, {
+  const { token } = await sessionFixture({
     role: "admin",
   });
-  const request = (query = "", cookie = `se_admin=${token}`) =>
+  const request = (query = "", cookie = `se_session=${token}`) =>
     exports.default.fetch(
       new Request(`http://test/api/events${query}`, {
         headers: { Cookie: cookie },
       }),
     );
   expect((await request("?page=1", "")).status).toBe(401);
-  const { token: playerToken } = await signSession(bindings.SESSION_SECRET, {
+  const { token: playerToken } = await sessionFixture({
     role: "player",
     eventId: "test",
     playerId: "player",
   });
-  expect((await request("?page=1", `se_admin=${playerToken}`)).status).toBe(
+  expect((await request("?page=1", `se_session=${playerToken}`)).status).toBe(
     401,
   );
   const before = (await (await request()).json()) as EventPage;
@@ -157,7 +164,7 @@ it("HostやForwardedヘッダーではなく公開URLを使用する", async () 
 });
 beforeAll(async () => {
   await bindings.DB.batch(
-    (migration + joinCodeMigration + readyWaitMigration)
+    (migration + joinCodeMigration + readyWaitMigration + sessionMigration)
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -213,7 +220,6 @@ function fixture(): Game {
     id: crypto.randomUUID(),
     name: "Alice",
     joinedAt: Date.now(),
-    sessionHash: "test-hash",
   });
   return game;
 }
@@ -298,7 +304,6 @@ it("Durable Objectを破棄してもD1から進行状態を復元する", async 
     id: crypto.randomUUID(),
     name: "待ち合わせ対象",
     joinedAt: Date.now(),
-    sessionHash: "hash",
   });
   applyCommand(
     g,
@@ -312,7 +317,7 @@ it("Durable Objectを破棄してもD1から進行状態を復元する", async 
   );
   applyCommand(g, { command: "start", revision: g.revision }, 0);
   await saveGame(bindings.DB, null, g, "hash");
-  const { token } = await signSession(bindings.SESSION_SECRET, {
+  const { token } = await sessionFixture({
     role: "admin",
   });
   async function connect() {
@@ -321,7 +326,7 @@ it("Durable Objectを破棄してもD1から進行状態を復元する", async 
         headers: {
           Origin: "http://test",
           Upgrade: "websocket",
-          Cookie: `se_admin=${token}`,
+          Cookie: `se_session=${token}`,
         },
       }),
     );
@@ -444,14 +449,14 @@ it("問題ビューワは管理者だけが大会作成時の問題を出題順�
   expect(anonymous.status).toBe(401);
   expect(await anonymous.text()).not.toContain("secret");
   for (const role of ["display", "player"] as const) {
-    const { token } = await signSession(bindings.SESSION_SECRET, {
+    const { token } = await sessionFixture({
       role,
       eventId: game.id,
     });
     const denied = await exports.default.fetch(
       new Request(url, {
         headers: {
-          Cookie: `se_${role}_${game.id}=${token}; se_admin=${token}`,
+          Cookie: `se_session=${token}`,
         },
       }),
     );
@@ -468,11 +473,11 @@ it("問題ビューワは管理者だけが大会作成時の問題を出題順�
       game.rounds[0].question.id,
     )
     .run();
-  const { token } = await signSession(bindings.SESSION_SECRET, {
+  const { token } = await sessionFixture({
     role: "admin",
   });
   const response = await exports.default.fetch(
-    new Request(url, { headers: { Cookie: `se_admin=${token}` } }),
+    new Request(url, { headers: { Cookie: `se_session=${token}` } }),
   );
   expect(response.status).toBe(200);
   expect(response.headers.get("Cache-Control")).toBe("no-store");
@@ -575,12 +580,12 @@ it("難易度のない保存済み問題を標準の2として復元する", asy
   expect(
     (await loadGame(bindings.DB, game.id))?.rounds[0].question.difficulty,
   ).toBe(2);
-  const { token } = await signSession(bindings.SESSION_SECRET, {
+  const { token } = await sessionFixture({
     role: "admin",
   });
   const response = await exports.default.fetch(
     new Request(`http://test/api/e/${game.id}/questions`, {
-      headers: { Cookie: `se_admin=${token}` },
+      headers: { Cookie: `se_session=${token}` },
     }),
   );
   expect(response.status).toBe(200);
@@ -592,12 +597,12 @@ it("詳細結果は終了後に管理者だけが取得でき、認証情報を�
   const game = fixture();
   await saveGame(bindings.DB, null, game, "PRIVATE_DISPLAY_HASH");
   const url = `http://test/api/e/${game.id}/report`;
-  const { token } = await signSession(bindings.SESSION_SECRET, {
+  const { token } = await sessionFixture({
     role: "admin",
   });
   const request = () =>
     exports.default.fetch(
-      new Request(url, { headers: { Cookie: `se_admin=${token}` } }),
+      new Request(url, { headers: { Cookie: `se_session=${token}` } }),
     );
   expect((await request()).status).toBe(409);
   const finished = structuredClone(game);
@@ -621,7 +626,7 @@ it("詳細結果は終了後に管理者だけが取得でき、認証情報を�
   await saveGame(bindings.DB, game, finished);
   expect((await exports.default.fetch(new Request(url))).status).toBe(401);
   for (const role of ["display", "player"] as const) {
-    const session = await signSession(bindings.SESSION_SECRET, {
+    const session = await sessionFixture({
       role,
       eventId: game.id,
       playerId: game.players[0].id,
@@ -629,7 +634,7 @@ it("詳細結果は終了後に管理者だけが取得でき、認証情報を�
     const response = await exports.default.fetch(
       new Request(url, {
         headers: {
-          Cookie: `se_${role}_${game.id}=${session.token}; se_admin=${session.token}`,
+          Cookie: `se_session=${session.token}`,
         },
       }),
     );
@@ -695,7 +700,6 @@ it("旧お休み記録の移行で回答を維持し、回答なしを通常の�
     id: crypto.randomUUID(),
     name: "回答済み",
     joinedAt: player.joinedAt + 1,
-    sessionHash: "hash",
   };
   addPlayer(game, answered);
   game.phase = "finished";
@@ -797,107 +801,238 @@ it("参加コードから認証なしで参加URLだけを取得でき、終了�
   ).toBe(401);
 });
 
+async function sessionFixture(values: {
+  role: "admin" | "display" | "player";
+  eventId?: string;
+  playerId?: string;
+}) {
+  const issued = await createSession(bindings.DB);
+  if (values.role === "admin")
+    await bindings.DB.prepare("UPDATE clients SET is_admin = 1 WHERE id = ?")
+      .bind(issued.session.clientId)
+      .run();
+  if (values.role === "display")
+    await bindings.DB.prepare(
+      "INSERT INTO client_displays (client_id,tournament_id) VALUES (?,?)",
+    )
+      .bind(issued.session.clientId, values.eventId)
+      .run();
+  if (
+    values.role === "player" &&
+    values.playerId &&
+    (await bindings.DB.prepare("SELECT id FROM players WHERE id = ?")
+      .bind(values.playerId)
+      .first())
+  ) {
+    await bindings.DB.prepare(
+      "INSERT INTO client_players (client_id,tournament_id,player_id) VALUES (?,?,?)",
+    )
+      .bind(issued.session.clientId, values.eventId, values.playerId)
+      .run();
+  }
+  return issued;
+}
 async function participantFixture() {
   const game = fixture();
-  const { token, session } = await signSession(bindings.SESSION_SECRET, {
+  await saveGame(bindings.DB, null, game, "hash");
+  const issued = await sessionFixture({
     role: "player",
     eventId: game.id,
     playerId: game.players[0].id,
   });
-  game.players[0].sessionHash = await digest(session.nonce);
-  await saveGame(bindings.DB, null, game, "hash");
-  return { game, cookie: `se_player_${game.id}=${token}` };
+  return { game, ...issued, cookie: `se_session=${issued.token}` };
 }
-function joinRequest(id: string, cookie: string, name = "再参加") {
+function request(path: string, cookie = "", data?: unknown) {
   return exports.default.fetch(
-    new Request(`http://test/api/e/${id}/join`, {
-      method: "POST",
+    new Request(`http://test${path}`, {
+      method: data === undefined ? "GET" : "POST",
       headers: {
         Origin: "http://test",
         Cookie: cookie,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name }),
+      ...(data === undefined ? {} : { body: JSON.stringify(data) }),
     }),
   );
 }
-it("別大会のCookieが共存してもそれぞれの参加者に復帰し、名前を上書きしない", async () => {
+function joinRequest(id: string, cookie: string, name = "再参加") {
+  return request(`/api/e/${id}/join`, cookie, { name });
+}
+it("共通Cookie一つで大会ごとに別名で参加し、元の名前・参加者IDへ復帰する", async () => {
   const a = await participantFixture();
-  const b = await participantFixture();
-  const cookies = `${a.cookie}; ${b.cookie}`;
-  for (const { game } of [a, b]) {
-    const response = await joinRequest(game.id, cookies, "別の名前");
+  const b = fixture();
+  await saveGame(bindings.DB, null, b, "hash");
+  expect(
+    (await request(`/api/e/${b.id}/session?role=player`, a.cookie)).status,
+  ).toBe(401);
+  const joined = await joinRequest(b.id, a.cookie, "大会Bの名前");
+  expect(joined.status).toBe(201);
+  expect(joined.headers.get("Set-Cookie")).toBeNull();
+  const { playerId } = (await joined.json()) as { playerId: string };
+  expect(playerId).not.toBe(a.game.players[0].id);
+  for (const [id, expected] of [
+    [a.game.id, a.game.players[0].id],
+    [b.id, playerId],
+  ]) {
+    const response = await joinRequest(id, a.cookie, "上書きしない");
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      playerId: game.players[0].id,
-    });
-    expect((await loadGame(bindings.DB, game.id))!.players).toEqual(
-      game.players,
-    );
+    expect(await response.json()).toMatchObject({ playerId: expected });
   }
+  expect((await loadGame(bindings.DB, a.game.id))!.players).toEqual(
+    a.game.players,
+  );
+  expect((await loadGame(bindings.DB, b.id))!.players[1].name).toBe(
+    "大会Bの名前",
+  );
 });
-it.each(["参加者不在", "ハッシュ不一致"])(
-  "古いCookieの%sでは新しい参加者として登録し直せる",
-  async (reason) => {
-    const { game } = await participantFixture();
-    const { token } = await signSession(bindings.SESSION_SECRET, {
-      role: "player",
-      eventId: game.id,
-      playerId:
-        reason === "参加者不在" ? crypto.randomUUID() : game.players[0].id,
-    });
-    const response = await joinRequest(
-      game.id,
-      `se_player_${game.id}=${token}`,
+it("同一クライアントから同時参加しても参加者は一人で、DO再生成後も同じ参加者を使う", async () => {
+  const game = fixture();
+  await saveGame(bindings.DB, null, game, "hash");
+  const issued = await createSession(bindings.DB);
+  const cookie = `se_session=${issued.token}`;
+  const responses = await Promise.all(
+    Array.from({ length: 8 }, (_, i) =>
+      joinRequest(game.id, cookie, `名前${i}`),
+    ),
+  );
+  const ids = await Promise.all(
+    responses.map(async (r) => {
+      expect([200, 201]).toContain(r.status);
+      return ((await r.json()) as { playerId: string }).playerId;
+    }),
+  );
+  expect(new Set(ids).size).toBe(1);
+  expect((await loadGame(bindings.DB, game.id))!.players).toHaveLength(2);
+  await expect(
+    bindings.DB.prepare(
+      "INSERT INTO client_players (client_id,tournament_id,player_id) VALUES (?,?,?)",
+    )
+      .bind(issued.session.clientId, game.id, game.players[0].id)
+      .run(),
+  ).rejects.toThrow();
+  await evictDurableObject(
+    bindings.ROOMS.get(bindings.ROOMS.idFromName(game.id)),
+  );
+  expect(await (await joinRequest(game.id, cookie)).json()).toMatchObject({
+    playerId: ids[0],
+  });
+});
+it("管理者・DisplayログインでCookieと参加者の紐づけを維持し、大会別権限を分離する", async () => {
+  const a = await participantFixture();
+  const b = fixture();
+  await saveGame(bindings.DB, null, b, "hash");
+  const { hashPassword } = await import("../src/worker/auth");
+  await bindings.DB.prepare(
+    "UPDATE tournaments SET display_password_hash = ? WHERE id = ?",
+  )
+    .bind(await hashPassword("display-test"), a.game.id)
+    .run();
+  const display = await request(`/api/e/${a.game.id}/display/login`, a.cookie, {
+    password: "display-test",
+  });
+  expect(display.status).toBe(200);
+  expect(display.headers.get("Set-Cookie")).toBeNull();
+  expect(
+    (await request(`/api/e/${a.game.id}/session?role=display`, a.cookie))
+      .status,
+  ).toBe(200);
+  expect(
+    (await request(`/api/e/${b.id}/session?role=display`, a.cookie)).status,
+  ).toBe(401);
+  expect((await request("/api/events", a.cookie)).status).toBe(401);
+  const admin = await request("/api/admin/login", a.cookie, {
+    password: "test-admin",
+  });
+  expect(admin.status).toBe(200);
+  expect(admin.headers.get("Set-Cookie")).toBeNull();
+  expect((await request("/api/events", a.cookie)).status).toBe(200);
+  expect(
+    (await request(`/api/e/${b.id}/session?role=control`, a.cookie)).status,
+  ).toBe(200);
+  expect(
+    (await request(`/api/e/${b.id}/session?role=display`, a.cookie)).status,
+  ).toBe(401);
+  expect(await (await joinRequest(a.game.id, a.cookie)).json()).toMatchObject({
+    playerId: a.game.players[0].id,
+  });
+  expect((await loadGame(bindings.DB, a.game.id))!.players).toEqual(
+    a.game.players,
+  );
+});
+it("Cookieはランダムなトークンだけを持ち、DBのハッシュ・期限・失効を検証する", async () => {
+  const a = await participantFixture();
+  expect(a.token).toMatch(/^[0-9a-f]{64}$/);
+  const row = await bindings.DB.prepare(
+    "SELECT * FROM client_sessions WHERE client_id = ?",
+  )
+    .bind(a.session.clientId)
+    .first();
+  expect(row!.token_hash).toBe(await digest(a.token));
+  expect(JSON.stringify(row)).not.toContain(a.token);
+  const read = (cookie: string) =>
+    readSession(
+      new Request("http://test", { headers: { Cookie: cookie } }),
+      bindings.DB,
     );
+  expect(await read(a.cookie)).toMatchObject({ clientId: a.session.clientId });
+  expect(
+    await read(
+      `se_session=${a.token.slice(0, -1)}${a.token.endsWith("0") ? "1" : "0"}`,
+    ),
+  ).toBeNull();
+  expect(await read("se_session=invalid")).toBeNull();
+  await bindings.DB.prepare(
+    "UPDATE client_sessions SET expires_at = ? WHERE client_id = ?",
+  )
+    .bind(Date.now() - 1, a.session.clientId)
+    .run();
+  expect(await read(a.cookie)).toBeNull();
+  expect(
+    (await request(`/api/e/${a.game.id}/session?role=player`, a.cookie)).status,
+  ).toBe(401);
+  await bindings.DB.prepare(
+    "UPDATE client_sessions SET expires_at = ? WHERE client_id = ?",
+  )
+    .bind(Date.now() + 10000, a.session.clientId)
+    .run();
+  await bindings.DB.prepare("DELETE FROM client_sessions WHERE client_id = ?")
+    .bind(a.session.clientId)
+    .run();
+  expect(await read(a.cookie)).toBeNull();
+});
+it("旧CookieやDBに存在しないトークンは引き継がず再登録し、過去参加者を残す", async () => {
+  const a = await participantFixture();
+  for (const cookie of [
+    `se_player_${a.game.id}=old; se_admin=old; se_display_${a.game.id}=old`,
+    `se_session=${"0".repeat(64)}`,
+  ]) {
+    expect(
+      (await request(`/api/e/${a.game.id}/session?role=player`, cookie)).status,
+    ).toBe(401);
+    const response = await joinRequest(a.game.id, cookie);
     expect(response.status).toBe(201);
-    expect(response.headers.get("Set-Cookie")).toContain(
-      `se_player_${game.id}=`,
-    );
+    expect(response.headers.get("Set-Cookie")).toContain("se_session=");
     const { playerId } = (await response.json()) as { playerId: string };
-    expect(playerId).not.toBe(game.players[0].id);
-    expect((await loadGame(bindings.DB, game.id))!.players).toHaveLength(2);
-    const cookie = response.headers.get("Set-Cookie")!.split(";")[0];
-    const session = await exports.default.fetch(
-      new Request(`http://test/api/e/${game.id}/session?role=player`, {
-        headers: { Cookie: cookie },
-      }),
-    );
-    expect(session.status).toBe(200);
-    expect(await session.json()).toMatchObject({ playerId });
-  },
-);
-it("終了した大会のコードはその大会の既存参加者だけが利用できる", async () => {
+    expect(playerId).not.toBe(a.game.players[0].id);
+    const newCookie = response.headers.get("Set-Cookie")!.split(";")[0];
+    expect(
+      (await request(`/api/e/${a.game.id}/session?role=player`, newCookie))
+        .status,
+    ).toBe(200);
+  }
+  expect((await loadGame(bindings.DB, a.game.id))!.players).toHaveLength(3);
+});
+it("終了した大会のコードは共通セッションにその大会の参加情報がある場合だけ利用できる", async () => {
   const a = await participantFixture();
   const b = await participantFixture();
   const finished = structuredClone(a.game);
   finished.phase = "finished";
   await saveGame(bindings.DB, a.game, finished);
-  const lookup = (cookie = "") =>
-    exports.default.fetch(
-      new Request(`http://test/api/join-code?code=${a.game.joinCode}`, {
-        headers: { Cookie: cookie },
-      }),
-    );
-  expect((await lookup()).status).toBe(410);
-  expect((await lookup(b.cookie)).status).toBe(410);
-  const { token } = await signSession(bindings.SESSION_SECRET, {
-    role: "player",
-    eventId: a.game.id,
-    playerId: crypto.randomUUID(),
-  });
-  expect((await lookup(`se_player_${a.game.id}=${token}`)).status).toBe(410);
-  // 別大会のトークンを対象大会のCookie名に付け替えても復帰できない。
-  expect(
-    (await lookup(`se_player_${a.game.id}=${b.cookie.split("=")[1]}`)).status,
-  ).toBe(410);
-  const response = await lookup(`${a.cookie}; ${b.cookie}`);
-  expect(response.status).toBe(200);
-  expect(response.headers.get("Cache-Control")).toBe("no-store");
-  expect(await response.json()).toMatchObject({
-    id: a.game.id,
-    playUrl: `http://test/e/${a.game.id}/play`,
-  });
+  const path = `/api/join-code?code=${a.game.joinCode}`;
+  expect((await request(path)).status).toBe(410);
+  expect((await request(path, b.cookie)).status).toBe(410);
+  expect((await request(path, a.cookie)).status).toBe(200);
   expect((await joinRequest(a.game.id, a.cookie)).status).toBe(200);
+  expect((await joinRequest(a.game.id, b.cookie)).ok).toBe(false);
   expect((await loadGame(bindings.DB, a.game.id))!.players).toHaveLength(1);
 });

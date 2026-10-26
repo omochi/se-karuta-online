@@ -133,9 +133,7 @@ it("表示プレビュー・レポートにも邦題を残す", () => {
   );
   expect(view.question!.choices).toEqual(question.choices);
   const game = newGame("test", "確認", [question], 0);
-  game.players = [
-    { id: "p", name: "参加者", sessionHash: "test", joinedAt: 0 },
-  ];
+  game.players = [{ id: "p", name: "参加者", joinedAt: 0 }];
   game.phase = "finished";
   const round = game.rounds[0];
   round.openedAt = 1000;

@@ -25,7 +25,6 @@ addPlayer(game, {
   id: "dummy-player",
   name: "練習用の参加者",
   joinedAt: 0,
-  sessionHash: "dummy",
 });
 applyCommand(game, { command: "start", revision: game.revision }, 0);
 const phase = params.get("phase");

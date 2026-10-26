@@ -34,7 +34,6 @@ function makeGame() {
       id: `p${i}`,
       name: `参加者${i}`,
       joinedAt: 0,
-      sessionHash: "fixture",
     });
   applyCommand(game, { command: "start", revision: game.revision }, 0);
   beginCountdownIfReady(game, new Set(game.players.map((p) => p.id)), 0);

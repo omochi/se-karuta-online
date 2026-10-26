@@ -6,7 +6,9 @@ import {
   digest,
   hashPassword,
   readSession,
-  signSession,
+  createSession,
+  readAuthorizations,
+  type Session,
   verifyPassword,
 } from "./auth";
 import { newGame } from "./game";
@@ -32,26 +34,26 @@ async function body(request: Request): Promise<Record<string, unknown>> {
     throw new Error("送信形式が不正です。");
   return value;
 }
-// Cookieの署名だけでなく、大会の参加者とセッションハッシュまで確認する。
+// セッションのクライアントから対象大会の参加者を解決する。
 async function existingPlayerSession(
-  request: Request,
+  session: Session | null,
   env: Env,
   id: string,
 ): Promise<Response | null> {
-  const session = await readSession(
-    request,
-    `se_player_${id}`,
-    env.SESSION_SECRET,
-  );
-  if (session?.role !== "player" || session.eventId !== id || !session.playerId)
-    return null;
+  if (!session) return null;
+  const player = await env.DB.prepare(
+    "SELECT player_id FROM client_players WHERE client_id = ? AND tournament_id = ?",
+  )
+    .bind(session.clientId, id)
+    .first<{ player_id: string }>();
+  if (!player) return null;
   return env.ROOMS.get(env.ROOMS.idFromName(id)).fetch(
     new Request("https://room/session", {
       headers: {
         "x-event-id": id,
         "x-role": "player",
-        "x-player-id": session.playerId,
-        "x-session-hash": await digest(session.nonce),
+        "x-player-id": player.player_id,
+        "x-session-hash": session.tokenHash,
       },
     }),
   );
@@ -71,6 +73,8 @@ export default {
         if (request.headers.get("Origin") !== publicOrigin)
           return json({ error: "同じサイトから操作してください。" }, 403);
       }
+      const session = await readSession(request, env.DB);
+      const isAdmin = session?.isAdmin === true;
       if (url.pathname === "/api/join-code" && request.method === "GET") {
         const code = normalizeJoinCode(url.searchParams.get("code") ?? "");
         if (!code)
@@ -90,7 +94,7 @@ export default {
           );
         if (tournament.phase === "finished") {
           const previous = await existingPlayerSession(
-            request,
+            session,
             env,
             tournament.id,
           );
@@ -105,8 +109,6 @@ export default {
           playUrl: eventUrls(publicOrigin, tournament.id).play,
         });
       }
-      const admin = await readSession(request, "se_admin", env.SESSION_SECRET);
-      const isAdmin = admin?.role === "admin";
       if (url.pathname === "/api/admin/login" && request.method === "POST") {
         const b = await body(request);
         if (
@@ -115,12 +117,21 @@ export default {
           (await digest(b.password)) !== (await digest(env.ADMIN_PASSWORD))
         )
           return json({ error: "パスワードが違います。" }, 401);
-        const { token } = await signSession(env.SESSION_SECRET, {
-          role: "admin",
-        });
-        return json({ ok: true }, 200, {
-          "Set-Cookie": cookie("se_admin", token, publicOrigin),
-        });
+        const current = session
+          ? { session, token: null }
+          : await createSession(env.DB);
+        await env.DB.prepare("UPDATE clients SET is_admin = 1 WHERE id = ?")
+          .bind(current.session.clientId)
+          .run();
+        return json(
+          { ok: true },
+          200,
+          current.token
+            ? {
+                "Set-Cookie": cookie(current.token, publicOrigin),
+              }
+            : {},
+        );
       }
       if (url.pathname === "/api/events") {
         if (!isAdmin)
@@ -254,18 +265,26 @@ export default {
           !(await verifyPassword(b.password, tournament.display_password_hash))
         )
           return json({ error: "表示用パスワードが違います。" }, 401);
-        const { token } = await signSession(env.SESSION_SECRET, {
-          role: "display",
-          eventId: id,
-        });
-        return json({ ok: true }, 200, {
-          "Set-Cookie": cookie(`se_display_${id}`, token, publicOrigin),
-        });
+        const current = session
+          ? { session, token: null }
+          : await createSession(env.DB);
+        await env.DB.prepare(
+          "INSERT INTO client_displays (client_id,tournament_id) VALUES (?,?) ON CONFLICT DO NOTHING",
+        )
+          .bind(current.session.clientId, id)
+          .run();
+        return json(
+          { ok: true },
+          200,
+          current.token
+            ? {
+                "Set-Cookie": cookie(current.token, publicOrigin),
+              }
+            : {},
+        );
       }
       if (action === "join" && request.method === "POST") {
-        const previous = await existingPlayerSession(request, env, id);
-        // DB復元などで古いCookieだけ残っても、名前を入力して参加し直せる。
-        // 通信・保存障害は再登録と区別し、既存の参加者を増やさない。
+        const previous = await existingPlayerSession(session, env, id);
         if (previous && previous.status !== 401) return previous;
         const b = await body(request);
         if (
@@ -274,58 +293,41 @@ export default {
           [...b.name.trim()].length > 20
         )
           return json({ error: "名前を 1〜20 文字で入力してください。" }, 400);
-        const playerId = crypto.randomUUID();
-        const { token, session } = await signSession(env.SESSION_SECRET, {
-          role: "player",
-          eventId: id,
-          playerId,
-        });
+        const current = session
+          ? { session, token: null }
+          : await createSession(env.DB);
         const response = await invoke(
           "join",
-          {},
           {
-            id: playerId,
-            name: b.name.trim(),
-            joinedAt: Date.now(),
-            sessionHash: await digest(session.nonce),
+            "x-client-id": current.session.clientId,
           },
+          { name: b.name.trim() },
         );
-        if (!response.ok) return response;
-        return json({ ok: true, playerId }, 201, {
-          "Set-Cookie": cookie(`se_player_${id}`, token, publicOrigin),
+        if (!response.ok || !current.token) return response;
+        return json(await response.json(), response.status, {
+          "Set-Cookie": cookie(current.token, publicOrigin),
         });
       }
       const role = url.searchParams.get("role");
       if (role !== "control" && role !== "display" && role !== "player")
         return json({ error: "画面の種類が不正です。" }, 400);
-      const headers: Record<string, string> = { "x-role": role };
-      if (role === "control") {
-        if (!isAdmin)
-          return json({ error: "管理用パスワードを入力してください。" }, 401);
-      }
-      if (role === "display") {
-        const session = await readSession(
-          request,
-          `se_display_${id}`,
-          env.SESSION_SECRET,
-        );
-        if (session?.role !== "display" || session.eventId !== id)
-          return json({ error: "表示用パスワードを入力してください。" }, 401);
-      }
+      const authorization = session
+        ? (await readAuthorizations(env.DB, id, [session.tokenHash])).get(
+            session.tokenHash,
+          )
+        : undefined;
+      const headers: Record<string, string> = {
+        "x-role": role,
+        "x-session-hash": session?.tokenHash ?? "",
+      };
+      if (role === "control" && !authorization?.isAdmin)
+        return json({ error: "管理用パスワードを入力してください。" }, 401);
+      if (role === "display" && !authorization?.canDisplay)
+        return json({ error: "表示用パスワードを入力してください。" }, 401);
       if (role === "player") {
-        const session = await readSession(
-          request,
-          `se_player_${id}`,
-          env.SESSION_SECRET,
-        );
-        if (
-          session?.role !== "player" ||
-          session.eventId !== id ||
-          !session.playerId
-        )
+        if (!authorization?.playerId)
           return json({ error: "名前を入力して参加してください。" }, 401);
-        headers["x-player-id"] = session.playerId;
-        headers["x-session-hash"] = await digest(session.nonce);
+        headers["x-player-id"] = authorization.playerId;
       }
       if (action === "session" && request.method === "GET")
         return invoke("session", headers);

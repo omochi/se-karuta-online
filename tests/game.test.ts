@@ -65,7 +65,6 @@ function fixture(count = 3): Game {
       id: `p${i}`,
       name: `Player ${i}`,
       joinedAt: i,
-      sessionHash: "hash",
     });
   return g;
 }
@@ -140,7 +139,6 @@ describe("全員の準備確認と時間進行", () => {
       id: "late",
       name: "late",
       joinedAt: 1,
-      sessionHash: "hash",
     });
     expect(currentRound(g)?.participants.late).toBeUndefined();
     expect(beginCountdownIfReady(g, new Set(["p0"]), 0)).toBe(true);
@@ -945,7 +943,6 @@ describe("会場の回答分布", () => {
       id: "late",
       name: "途中参加",
       joinedAt: 20500,
-      sessionHash: "hash",
     });
     const expected = { counts: { A: 1, B: 2, C: 0, D: 1 }, unanswered: 2 };
     expect(view().answerDistribution).toEqual(expected);

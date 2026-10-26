@@ -3,6 +3,5 @@ export interface Env {
   ROOMS: DurableObjectNamespace;
   ASSETS: Fetcher;
   ADMIN_PASSWORD: string;
-  SESSION_SECRET: string;
   PUBLIC_ORIGIN: string;
 }

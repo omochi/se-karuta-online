@@ -35,7 +35,6 @@ function makeGame() {
     id: "p",
     name: "サンプル参加者",
     joinedAt: now,
-    sessionHash: "fixture",
   });
   // 回答開始を25秒前に置き、残り5秒から延長を確認する。
   applyCommand(

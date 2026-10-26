@@ -53,7 +53,6 @@ function Screen() {
       id: "preview-player",
       name: "プレビュー参加者",
       joinedAt: 0,
-      sessionHash: "fixture",
     },
   ];
   const round = game.rounds[index];
