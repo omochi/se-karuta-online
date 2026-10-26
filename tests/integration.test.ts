@@ -355,7 +355,17 @@ test(
     if (first.type !== "ack") throw new Error("missing ack");
     await control.wait((v) => v.phase === "answersClosed", 33000);
     await display.wait((v) => v.phase === "answersClosed");
-    assert.equal(display.state!.question!.bodyMarkdown, undefined);
+    const closedQuestion = display.state!.question;
+    display.close();
+    display = await connect("display", displayCookie);
+    assert.equal(display.state!.phase, "answersClosed");
+    assert.deepEqual(display.state!.question, closedQuestion);
+    assert.equal(
+      display.state!.question!.bodyMarkdown,
+      questionSet.questions[0].bodyMarkdown,
+    );
+    assert.equal(display.state!.question!.correctChoice, undefined);
+    assert.equal(display.state!.question!.explanationMarkdown, undefined);
     await players[38].wait((v) => v.phase === "answersClosed");
     assert.equal(players[38].state!.me!.answer, null);
     const tooLate = crypto.randomUUID();

@@ -190,6 +190,10 @@ button.onclick = async () => {
     );
     results.push("PASS 正解発表の本文・回答分布・選択肢・解説が収まる");
     sampledFrames++;
+    draw(cases[0][1], 0, "closed-question", "answersClosed");
+    await frame();
+    readFrame();
+    sampledFrames++;
     output.dataset.status = "passed";
     results.push(`${innerWidth} × ${innerHeight}, ${sampledFrames} frames`);
   } catch (error) {
