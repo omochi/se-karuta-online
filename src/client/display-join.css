@@ -1,0 +1,217 @@
+.display-join-guide {
+  width: 100%;
+  max-width: 1440px;
+  margin: auto;
+}
+.display-join-heading {
+  text-align: center;
+  margin-bottom: 22px;
+}
+.display-join-heading h2 {
+  font-size: 30px;
+  margin-bottom: 7px;
+}
+.display-join-heading p {
+  color: #c5b3a8;
+  font-size: 15px;
+  margin: 0;
+}
+.display-join-methods {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 66px minmax(0, 1fr);
+}
+.display-join-methods.qr-only {
+  grid-template-columns: minmax(0, 650px);
+  justify-content: center;
+}
+.display-join-method {
+  min-width: 0;
+  padding: 24px 30px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #786156;
+  border-radius: 14px;
+  background: #342d2d;
+}
+.display-join-method h3 {
+  font-size: 25px;
+  line-height: 1.4;
+  font-weight: 600;
+  margin: 0 0 24px;
+  text-align: center;
+}
+.display-join-qr-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  justify-content: center;
+}
+.display-join-qr {
+  padding: 10px;
+  border-radius: 8px;
+  background: white;
+  line-height: 0;
+}
+.display-join-qr svg {
+  width: clamp(170px, 15vw, 230px);
+  height: auto;
+}
+.display-join-qr-body > p {
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0;
+  color: #d0bfb3;
+  text-align: center;
+}
+.display-join-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d0bfb3;
+  font-size: 14px;
+}
+.display-join-manual {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 26px;
+  flex: 1;
+  min-width: 0;
+}
+.display-join-label {
+  font-size: 14px;
+  color: #d0bfb3;
+  margin: 0 0 8px;
+  line-height: 1.5;
+}
+.display-join-manual a {
+  display: block;
+  font-size: clamp(17px, 1.55vw, 26px);
+  color: #ffb49c;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.display-join-code-field {
+  border-top: 1px solid #605048;
+  padding-top: 23px;
+}
+.display-join-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(40px, 4.1vw, 74px);
+  letter-spacing: 0.1em;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.display-join-next {
+  text-align: center;
+  font-size: 17px;
+  margin: 22px 0 0;
+}
+.display-join-next > span {
+  color: #ffb49c;
+  padding-right: 10px;
+}
+/* 開始前の案内と参加人数を横に置き、2枚のカードの高さを確保する。 */
+.phase-waiting .game-progress-message {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 100%;
+}
+.phase-waiting .game-progress-message > :not(.progress-player-count) {
+  grid-column: 1;
+}
+.phase-waiting .game-progress-display h1 {
+  font-size: 32px;
+  margin-bottom: 9px;
+}
+.phase-waiting .game-progress-description {
+  font-size: 14px;
+  margin: 0;
+}
+.phase-waiting .game-progress-display .progress-player-count {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  padding-left: 24px;
+  margin: 0;
+  font-size: 26px;
+}
+@media (max-height: 780px) and (min-width: 761px) {
+  .display-page-waiting .display-header {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  .display-content.phase-waiting {
+    padding-top: 20px;
+    padding-bottom: 14px;
+  }
+  .phase-waiting .display-welcome {
+    padding: 0;
+  }
+  .display-join-heading {
+    margin-bottom: 16px;
+  }
+  .display-join-heading h2 {
+    font-size: 26px;
+  }
+  .display-join-method {
+    padding: 20px 26px;
+  }
+  .display-join-method h3 {
+    margin-bottom: 18px;
+    font-size: 23px;
+  }
+  .display-join-qr svg {
+    width: 140px;
+  }
+  .display-join-qr-body {
+    gap: 10px;
+  }
+  .display-join-qr-body > p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .display-join-manual {
+    gap: 18px;
+  }
+  .display-join-code-field {
+    padding-top: 18px;
+  }
+  .display-join-next {
+    margin-top: 16px;
+  }
+  .phase-waiting .game-progress-display h1 {
+    font-size: 28px;
+  }
+}
+@media (max-width: 760px) {
+  .display-join-methods {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .display-join-divider {
+    padding: 16px 0;
+  }
+  .display-join-method {
+    padding: 24px;
+  }
+  .display-join-heading h2 {
+    font-size: 26px;
+  }
+  .display-join-method h3 {
+    font-size: 22px;
+  }
+  .phase-waiting .game-progress-message {
+    display: block;
+  }
+  .phase-waiting .game-progress-display h1 {
+    font-size: 28px;
+  }
+  .phase-waiting .game-progress-display .progress-player-count {
+    padding: 0;
+    margin-top: 12px;
+    font-size: 18px;
+  }
+}

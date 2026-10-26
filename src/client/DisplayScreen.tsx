@@ -5,7 +5,6 @@ import {
   Brand,
   Choices,
   FinalResults,
-  JoinCode,
   MarkdownBody,
   Ranking,
 } from "./components";
@@ -15,6 +14,7 @@ import { QuestionBody } from "./QuestionBody";
 import type { QuestionFit } from "./fit-question";
 import "./display-question.css";
 import { AnswerDistribution } from "./AnswerDistribution";
+import { DisplayJoinGuide } from "./DisplayJoinGuide";
 
 // 本番と問題ビューワの別窓で、DOM構造・CSS・進行表示を一致させる。
 // 通信と時計の更新は呼び出し元が担当する。
@@ -56,7 +56,7 @@ export function DisplayScreen({
         <GameProgress progress={progress} layout="display" />
         {v.phase === "waiting" ? (
           <div className="display-welcome">
-            <JoinCode
+            <DisplayJoinGuide
               url={v.urls.play}
               homeUrl={v.urls.home}
               code={v.joinCode}
