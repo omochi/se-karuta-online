@@ -1,0 +1,109 @@
+.player-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+.player-shell .player-page {
+  flex: 1 0 auto;
+  width: 100%;
+  margin: 0 auto;
+  padding-top: 16px;
+  padding-bottom: 24px;
+}
+/* 人数・タイマー・締切表示が変わっても、選択肢より上の高さは一定にする。 */
+.player-page-question .game-progress.game-progress-player {
+  height: 144px;
+  margin: 0 0 8px;
+  overflow: auto;
+}
+.player-event-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  overflow: auto;
+  border-radius: 8px;
+  background: #eeeae2;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.player-event-slot p,
+.player-event-slot .error {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+.player-event-slot .error {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+/* 選択・正解の強調で枠線を太くしても、折り返しと行の高さを変えない。 */
+.player-page .choices .choice {
+  border-width: 2px;
+}
+.player-answer-event {
+  display: grid;
+  gap: 2px;
+}
+.player-answer-event > strong {
+  font-size: 14px;
+}
+.player-answer-event.success > strong {
+  color: var(--accent);
+}
+.player-answer-event-hint {
+  color: var(--muted);
+}
+.player-page-question > .player-answer-status {
+  margin: 24px 0 0;
+}
+/* 短いページでは下端へ、長いページでは内容の後に続く通常のフッター。 */
+.player-footer {
+  flex-shrink: 0;
+  height: calc(60px + env(safe-area-inset-bottom));
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+.player-footer-inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  max-width: 516px;
+  margin: auto;
+}
+.player-footer .brand.small {
+  font-size: 16px;
+}
+.player-footer .brand small {
+  display: none;
+}
+.player-footer-identity {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.player-footer .player-event-name,
+.player-footer .player-name {
+  display: block;
+  max-width: none;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-size: 10px;
+  line-height: 1.3;
+}
+.player-footer .player-event-name {
+  color: var(--muted);
+}
+.player-footer .connection {
+  font-size: 10px;
+  white-space: nowrap;
+}

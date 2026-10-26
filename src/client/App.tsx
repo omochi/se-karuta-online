@@ -7,6 +7,7 @@ import type { TimingSettings } from "../shared/types";
 import { useRoom, type RoomConnection } from "./useRoom";
 import { api } from "./api";
 import {
+  Brand,
   Choices,
   ConnectionBadge,
   ErrorBox,
@@ -22,6 +23,7 @@ import { DisplayScreen } from "./DisplayScreen";
 import { QuestionBody } from "./QuestionBody";
 import { useGameProgress } from "./useGameProgress";
 import { PlayerAnswerStatus } from "./PlayerAnswerStatus";
+import "./player-layout.css";
 import { JoinTournamentForm } from "./JoinTournamentForm";
 import { EventList } from "./EventList";
 export function Home() {
@@ -682,26 +684,44 @@ export function Player({ room }: { room: RoomConnection }) {
     !room.pending;
   const showChoices =
     eligible && !["waiting", "questionVoided", "finished"].includes(v.phase);
+  const hasChoices = showChoices && !!q?.choices;
   return (
-    <>
-      <Header>
-        <ConnectionBadge connected={room.connected} />
-      </Header>
+    <div className="player-shell">
       <main
-        className={`player-page ${showChoices && q?.choices ? "player-page-question" : ""}`}
+        className={`player-page ${hasChoices ? "player-page-question" : ""}`}
       >
-        <div className="player-heading">
-          <p className="eyebrow">{v.name}</p>
-          <span className="player-name">{me?.name}</span>
-        </div>
-        <ErrorBox message={room.error} />
-        {!room.connected && (
-          <p className="connection-notice" role="status">
-            接続を取り戻しています。画面を開いたままお待ちください。
-          </p>
+        {!hasChoices && (
+          <>
+            <ErrorBox message={room.error} />
+            {!room.connected && (
+              <p className="connection-notice" role="status">
+                接続を取り戻しています。画面を開いたままお待ちください。
+              </p>
+            )}
+          </>
         )}
         <GameProgress progress={progress} layout="player" />
-        <PlayerAnswerStatus room={room} progress={progress} />
+        {hasChoices ? (
+          <div
+            className="player-event-slot"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-label="回答と接続のお知らせ"
+          >
+            {room.error ? (
+              <ErrorBox message={room.error} />
+            ) : !room.connected ? (
+              <p className="player-connection-event">
+                接続を取り戻しています。画面を開いたままお待ちください。
+              </p>
+            ) : (
+              <PlayerAnswerStatus room={room} progress={progress} compact />
+            )}
+          </div>
+        ) : (
+          <PlayerAnswerStatus room={room} progress={progress} />
+        )}
         {v.phase === "finished" && v.results && (
           <FinalResults results={v.results} />
         )}
@@ -715,12 +735,24 @@ export function Player({ room }: { room: RoomConnection }) {
             showCorrect={revealed}
           />
         )}
-        {active && (
-          <p className="answer-hint">
-            回答は一度だけ。押したら変更できません。
-          </p>
+        {hasChoices && revealed && (
+          <PlayerAnswerStatus room={room} progress={progress} />
         )}
       </main>
-    </>
+      <footer className="player-footer">
+        <div className="player-footer-inner">
+          <Brand small />
+          <div className="player-footer-identity">
+            <span className="player-event-name" title={v.name}>
+              {v.name}
+            </span>
+            <span className="player-name" title={me?.name}>
+              {me?.name}
+            </span>
+          </div>
+          <ConnectionBadge connected={room.connected} />
+        </div>
+      </footer>
+    </div>
   );
 }

@@ -7,7 +7,12 @@ import { DisplayScreen } from "../../src/client/DisplayScreen";
 import { getGameProgress } from "../../src/client/phase-presentation";
 import type { RoomConnection } from "../../src/client/useRoom";
 import { validateQuestions } from "../../src/shared/questions";
-import type { Choice, Phase, Role } from "../../src/shared/types";
+import {
+  CHOICES,
+  type Choice,
+  type Phase,
+  type Role,
+} from "../../src/shared/types";
 import { newGame, viewFor } from "../../src/worker/game";
 import volume from "../../data/questions/vol-01.json";
 import "../../src/client/style.css";
@@ -20,12 +25,23 @@ const width = Number(params.get("width")) || (mode === "player" ? 390 : 1280);
 const height = Number(params.get("height")) || (mode === "player" ? 844 : 720);
 
 function Screen() {
-  const [selected, setSelected] = useState<Choice>();
-  const game = newGame(
-    "title-preview",
-    volume.name,
-    validateQuestions(volume.questions),
-    0,
+  const initialAnswer = CHOICES.find(
+    (choice) => choice === params.get("answer"),
+  );
+  const answerState = params.get("answerState") ?? "accepted";
+  const [selected, setSelected] = useState<Choice | undefined>(
+    answerState === "accepted" ? initialAnswer : undefined,
+  );
+  const [pending, setPending] = useState<Choice | undefined>(
+    answerState === "pending" ? initialAnswer : undefined,
+  );
+  const [game] = useState(() =>
+    newGame(
+      "title-preview",
+      volume.name,
+      validateQuestions(volume.questions),
+      0,
+    ),
   );
   game.currentIndex = index;
   game.phase = phase;
@@ -64,11 +80,28 @@ function Screen() {
   );
   const room: RoomConnection = {
     view,
-    connected: true,
-    error: "",
+    connected: answerState !== "offline",
+    error:
+      answerState === "error"
+        ? "回答を送信できませんでした。接続を確認してもう一度お試しください。"
+        : "",
     busy: false,
-    pending: null,
-    answer: setSelected,
+    pending: pending
+      ? {
+          type: "answer",
+          requestId: "preview-answer",
+          roundId: round.id,
+          choice: pending,
+        }
+      : null,
+    answer: (choice) => {
+      setPending(choice);
+      // 送信中と受付済みの両方の表示を実操作で確認できるようにする。
+      setTimeout(() => {
+        setSelected(choice);
+        setPending(undefined);
+      }, 300);
+    },
     command: () => {},
     receivedAt: {
       get current() {
@@ -169,6 +202,10 @@ function Preview() {
       q: String(preview.q),
       width: String(preview.width),
       height: String(preview.height),
+      ...(params.get("answer") && { answer: params.get("answer")! }),
+      ...(params.get("answerState") && {
+        answerState: params.get("answerState")!,
+      }),
     });
     history.replaceState(null, "", `?${query}`);
   }, [preview]);
@@ -185,6 +222,7 @@ function Preview() {
       q: number;
       passed: boolean;
       fontSize?: string;
+      selectionStable?: boolean;
     }> = [];
     const target = frame.current!;
     const original = {
@@ -227,7 +265,55 @@ function Preview() {
             const doc = win.document;
             const choices = [...doc.querySelectorAll<HTMLElement>(".choice")];
             const fitted = doc.querySelector<HTMLElement>(".fitted-question");
+            let selectionStable: boolean | undefined;
+            if (role === "player" && stage === "acceptingAnswers") {
+              const measure = () =>
+                JSON.stringify({
+                  choices: [...doc.querySelectorAll(".choice")].map(
+                    (c) => c.getBoundingClientRect().top,
+                  ),
+                  progress: doc
+                    .querySelector(".game-progress")!
+                    .getBoundingClientRect().height,
+                  event: doc
+                    .querySelector(".player-event-slot")!
+                    .getBoundingClientRect().height,
+                  footer: doc
+                    .querySelector(".player-footer")!
+                    .getBoundingClientRect().top,
+                  scroll: win.scrollY,
+                });
+              const before = measure();
+              choices[0].click();
+              await new Promise<void>((resolve) =>
+                win.requestAnimationFrame(() =>
+                  win.requestAnimationFrame(() => resolve()),
+                ),
+              );
+              const during = measure();
+              const sending = doc
+                .querySelector(".player-event-slot")!
+                .textContent!.includes("回答を送信中");
+              await new Promise<void>((resolve, reject) => {
+                const started = performance.now();
+                const check = () => {
+                  if (
+                    doc
+                      .querySelector(".player-event-slot")!
+                      .textContent!.includes("回答しました！")
+                  )
+                    resolve();
+                  else if (performance.now() - started > 3000)
+                    reject(new Error("回答の受付確認がタイムアウトしました"));
+                  else win.setTimeout(check, 30);
+                };
+                check();
+              });
+              selectionStable =
+                sending && before === during && before === measure();
+            }
             const passed =
+              selectionStable !== false &&
               choices.length === 4 &&
               doc.querySelectorAll(".proposal-japanese").length ===
                 Object.values(volume.questions[q - 1].choices).filter(
@@ -248,11 +334,14 @@ function Preview() {
               q,
               passed,
               fontSize: fitted?.dataset.fitFontSize,
+              selectionStable,
             });
             setResults(
               JSON.stringify(
                 {
                   checked: rows.length,
+                  stableSelections: rows.filter((r) => r.selectionStable)
+                    .length,
                   failed: rows.filter((r) => !r.passed),
                   smallestBodyCases: rows
                     .filter((r) => r.fontSize)
@@ -396,7 +485,7 @@ function Preview() {
       <iframe
         ref={frame}
         title="画面プレビュー"
-        src={`?${new URLSearchParams({ mode: preview.mode, phase: preview.phase, q: String(preview.q), embed: "1" })}`}
+        src={`?${new URLSearchParams({ mode: preview.mode, phase: preview.phase, q: String(preview.q), embed: "1", ...(params.get("answer") && { answer: params.get("answer")! }), ...(params.get("answerState") && { answerState: params.get("answerState")! }) })}`}
         width={preview.width}
         height={preview.height}
         style={{ border: "1px solid #bbb", display: "block" }}
