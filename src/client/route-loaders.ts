@@ -10,6 +10,7 @@ import {
 } from "../shared/events";
 import type { Role, Question } from "../shared/types";
 import type { TournamentReport } from "../shared/report";
+import type { TournamentReview } from "../shared/review";
 import { api } from "./api";
 import { RoomSession } from "./RoomSession";
 export interface HomeData {
@@ -34,6 +35,10 @@ export interface ReportData {
   report: TournamentReport | null;
   loginRequired: boolean;
   unavailable: boolean;
+}
+export interface ReviewData {
+  id: string;
+  review: TournamentReview | null;
 }
 export function createRouteLoaders() {
   let config: { publicOrigin: string } | undefined;
@@ -171,6 +176,24 @@ export function createRouteLoaders() {
       throw error;
     }
   }
+  async function review(args: LoaderFunctionArgs): Promise<ReviewData> {
+    await configuration(args);
+    const id = args.params.id!;
+    try {
+      return {
+        id,
+        review: await api<TournamentReview>(
+          `/api/e/${encodeURIComponent(id)}/review`,
+          undefined,
+          args.request.signal,
+        ),
+      };
+    } catch (error) {
+      if ((error as { status?: number }).status === 409)
+        return { id, review: null };
+      throw error;
+    }
+  }
   function retain(active?: RoomSession) {
     for (const session of sessions)
       if (session !== active) {
@@ -178,7 +201,7 @@ export function createRouteLoaders() {
         sessions.delete(session);
       }
   }
-  return { configuration, home, events, viewer, game, report, retain };
+  return { configuration, home, events, viewer, game, report, review, retain };
 }
 
 export function bindRoomSessions(

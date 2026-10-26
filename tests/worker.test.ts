@@ -10,6 +10,7 @@ import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
 import sessionMigration from "../migrations/0004_client_sessions.sql?raw";
 import readyWaitMigration from "../migrations/0003_unify_resting_with_unanswered.sql?raw";
 import { tournamentReport } from "../src/worker/report";
+import { tournamentReview } from "../src/worker/review";
 import migration from "../migrations/0001_initial.sql?raw";
 import {
   newGame,
@@ -719,6 +720,87 @@ it("詳細結果は終了後に管理者だけが取得でき、認証情報を�
     ],
   });
   expect((await loadGame(bindings.DB, game.id))?.phase).toBe("finished");
+});
+
+it("復習資料は全ての終了前フェーズで拒否し、終了後は誰でも同じ匿名集計を取得できる", async () => {
+  let game = fixture();
+  const first = game.rounds[0].question;
+  game = newGame(
+    game.id,
+    game.name,
+    [first, { ...first, id: crypto.randomUUID() }],
+    0,
+  );
+  const player = {
+    id: crypto.randomUUID(),
+    name: "非公開の参加者名",
+    joinedAt: 0,
+  };
+  addPlayer(game, player);
+  const round = game.rounds[0];
+  round.openedAt = 1000;
+  round.closedAt = 5000;
+  round.participants = { [player.id]: "eligible" };
+  round.answers = { [player.id]: { choice: "B", receivedAt: 2000 } };
+  await saveGame(bindings.DB, null, game, "PRIVATE_REVIEW_HASH");
+  const url = `http://test/api/e/${game.id}/review`;
+  const { token: adminToken } = await sessionFixture({ role: "admin" });
+  const { token: playerToken } = await sessionFixture({
+    role: "player",
+    eventId: game.id,
+    playerId: player.id,
+  });
+  for (const phase of [
+    "waiting",
+    "choicesPreparing",
+    "countdown",
+    "choicesReading",
+    "acceptingAnswers",
+    "answersClosed",
+    "answerRevealed",
+    "rankingShown",
+    "questionVoided",
+  ] as const) {
+    const before = structuredClone(game);
+    game.phase = phase;
+    await saveGame(bindings.DB, before, game);
+    for (const token of [null, adminToken, playerToken]) {
+      const response = await exports.default.fetch(
+        new Request(url, {
+          headers: token ? { Cookie: `se_session=${token}` } : {},
+        }),
+      );
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "大会終了後に復習資料を確認できます。",
+      });
+    }
+  }
+  const before = structuredClone(game);
+  game.phase = "finished";
+  await saveGame(bindings.DB, before, game);
+  for (const token of [null, adminToken, playerToken]) {
+    const response = await exports.default.fetch(
+      new Request(url, {
+        headers: token ? { Cookie: `se_session=${token}` } : {},
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    const review = await response.text();
+    expect(JSON.parse(review)).toEqual(tournamentReview(game));
+    expect(review).not.toContain(player.id);
+    expect(review).not.toContain(player.name);
+    expect(review).not.toContain("PRIVATE_REVIEW_HASH");
+    expect(review).not.toContain("receivedAt");
+  }
+  expect(
+    (
+      await exports.default.fetch(
+        new Request("http://test/api/e/missing-review/review"),
+      )
+    ).status,
+  ).toBe(404);
 });
 
 it("参加コードの衝突を再発行し、保存・再起動後も同じコードを保持する", async () => {
