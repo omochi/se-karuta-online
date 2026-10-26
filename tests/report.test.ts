@@ -112,7 +112,7 @@ it("未回答を分母に含め、お休み・途中参加前・無効・未出�
     medianElapsed: 1000,
     fastestCorrect: 1000,
   });
-  expect(report.rounds[1].difficult).toBe(true);
+  expect(report.rounds[1].difficult).toBe(false);
   expect(report.rounds[0].difficult).toBe(false);
   expect(report.rounds[2]).toMatchObject({
     status: "voided",
@@ -154,7 +154,7 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
     averageRank: 1,
     averageCorrectElapsed: 3000,
     fastestCorrect: 1000,
-    difficultCorrect: 1,
+    difficultCorrect: 0,
     stableQualified: true,
   });
   expect(report.players[1]).toMatchObject({
@@ -172,6 +172,28 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
   });
   expect(JSON.stringify(report)).not.toContain("PRIVATE_HASH");
   expect(JSON.stringify(report)).not.toContain("sessionHash");
+});
+it("最多得票以外の正解だけを問題別レポート・参加者・最終表彰に共通で加算する", () => {
+  const g = fixture();
+  g.rounds[1].answers.p1 = { choice: "A", receivedAt: 21000 };
+  g.rounds[1].answers.p2 = { choice: "A", receivedAt: 22000 };
+  Object.assign(g, { difficultyThreshold: 0 });
+  const report = tournamentReport(g);
+  expect(report.rounds[1]).toMatchObject({
+    difficult: true,
+    correctRate: 0.2,
+    distribution: { A: 2, B: 1, C: 0, D: 0 },
+  });
+  expect(report.results.difficult).toEqual([
+    { playerId: "p0", name: "同名", rank: 1, value: 1 },
+  ]);
+  expect(report.players[0].difficultCorrect).toBe(1);
+  expect(report).not.toHaveProperty("difficultyThreshold");
+  g.rounds[1].answers.p2.choice = "B";
+  const majority = tournamentReport(g);
+  expect(majority.rounds[1].difficult).toBe(false);
+  expect(majority.results.difficult).toEqual([]);
+  expect(majority.players[0].difficultCorrect).toBe(0);
 });
 it("偶数件の中央値と0ミリ秒の回答を欠損値と区別する", () => {
   const g = fixture();

@@ -10,7 +10,7 @@ export function AnswerDistribution({
   correctChoice,
 }: {
   distribution: Distribution;
-  correctChoice: Choice;
+  correctChoice?: Choice;
 }) {
   const answered = CHOICES.reduce(
     (sum, choice) => sum + distribution.counts[choice],
@@ -54,7 +54,7 @@ export function AnswerDistribution({
         })}
       </ul>
       <p className="distribution-summary">
-        回答 {answered}人 · 未回答 {distribution.unanswered}人
+        回答 {answered} / {eligible}人 · 未回答 {distribution.unanswered}人
       </p>
       {eligible === 0 && (
         <p className="distribution-empty">この問題の回答対象者はいません</p>

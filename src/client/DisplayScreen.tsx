@@ -27,13 +27,12 @@ export function DisplayScreen({
 }) {
   const q = v.question;
   const revealing = ["answerRevealed", "rankingShown"].includes(v.phase);
-  const distribution =
-    revealing && q?.correctChoice && v.answerDistribution ? (
-      <AnswerDistribution
-        distribution={v.answerDistribution}
-        correctChoice={q.correctChoice}
-      />
-    ) : null;
+  const distribution = v.answerDistribution ? (
+    <AnswerDistribution
+      distribution={v.answerDistribution}
+      correctChoice={revealing ? q?.correctChoice : undefined}
+    />
+  ) : null;
   const fitQuestion = [
     "acceptingAnswers",
     "answersClosed",
@@ -49,7 +48,7 @@ export function DisplayScreen({
         {status}
       </header>
       <main
-        className={`display-content phase-${progress.phase}${distribution && v.phase === "answerRevealed" ? " has-distribution" : ""}`}
+        className={`display-content phase-${progress.phase}${distribution && fitQuestion ? " has-distribution" : ""}`}
       >
         {q?.difficulty !== undefined &&
           ["choicesPreparing", "countdown", "choicesReading"].includes(

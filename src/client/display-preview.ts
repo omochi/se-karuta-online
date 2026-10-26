@@ -32,6 +32,7 @@ export function createDisplayPreviewView(
   origin: string,
 ): RoomView {
   const { question, phase } = snapshot;
+  const showDistribution = phase !== "choicesReading";
   const phaseDurationMs =
     phase === "answerRevealed"
       ? 0
@@ -54,11 +55,11 @@ export function createDisplayPreviewView(
     timing: { ...DEFAULT_TIMING },
     questionNumber: snapshot.questionNumber,
     totalQuestions: snapshot.totalQuestions,
-    playerCount: phase === "answerRevealed" ? 20 : 0,
-    eligibleCount: phase === "answerRevealed" ? 20 : 0,
+    playerCount: showDistribution ? 20 : 0,
+    eligibleCount: showDistribution ? 20 : 0,
     readyCount: 0,
-    answerCount: phase === "answerRevealed" ? 18 : 0,
-    ...(phase === "answerRevealed" && {
+    answerCount: showDistribution ? 18 : 0,
+    ...(showDistribution && {
       answerDistribution: {
         counts: { A: 3, B: 9, C: 4, D: 2 },
         unanswered: 2,

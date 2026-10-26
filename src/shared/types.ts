@@ -60,7 +60,6 @@ export interface Game {
   phase: Phase;
   currentIndex: number;
   phaseEndsAt: number | null;
-  difficultyThreshold: number;
   timing: TimingSettings;
   players: Player[];
   rounds: Round[];
