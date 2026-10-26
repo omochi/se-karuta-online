@@ -104,7 +104,7 @@
     {
       "id": "isolated-reservation",
       "difficulty": 3,
-      "bodyMarkdown": "`reserve` は `Stock` の外にある同期関数。在庫確認から減算まで、引数の `stock` の隔離領域で、中断せずに実行したい。本体を変えず、`/* ? */` に修飾子を補ってこれを可能にした Proposal は？\n\n```swift\nactor Stock { var remaining = 1 }\n\nfunc reserve(_ stock: /* ? */ Stock) -> Bool {\n    guard stock.remaining > 0 else { return false }\n    stock.remaining -= 1\n    return true\n}\n\nfunc buy(_ stock: Stock) async {\n    print(await reserve(stock))\n}\n```\n\n`reserve` の本体は変更しない。Swift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
+      "bodyMarkdown": "`reserve` は `Stock` の外にある同期関数。`reserve` の本体では、引数の `stock` の在庫確認と減算を `await` なしで同期的に行いたい。本体を変えず、`/* ? */` に修飾子を補ってこれを可能にした Proposal は？\n\n```swift\nactor Stock { var remaining = 1 }\n\nfunc reserve(_ stock: /* ? */ Stock) -> Bool {\n    guard stock.remaining > 0 else { return false }\n    stock.remaining -= 1\n    return true\n}\n\nfunc buy(_ stock: Stock) async {\n    print(await reserve(stock))\n}\n```\n\n`reserve` の本体は変更しない。Swift 6 言語モード、デフォルトの actor isolation は nonisolated とする。",
       "choices": {
         "A": {
           "number": "SE-0420",
