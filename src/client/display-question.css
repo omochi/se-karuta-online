@@ -37,9 +37,6 @@
   padding: 12px 3% 18px;
   gap: 12px;
 }
-.display-page.display-page-question .display-content.phase-answerRevealed {
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
-}
 .display-page.display-page-question .game-progress-display {
   flex-direction: row;
   align-items: center;
@@ -113,12 +110,6 @@
   font-size: clamp(14px, 1.2vw, 18px);
   line-height: 1.35;
   overflow-wrap: anywhere;
-}
-.display-page.display-page-question .display-explanation {
-  min-height: 0;
-  max-height: 20dvh;
-  overflow: auto;
-  padding-top: 10px;
 }
 .display-page.display-page-question .fitted-question {
   min-height: 0;

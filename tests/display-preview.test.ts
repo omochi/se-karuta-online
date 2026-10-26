@@ -139,7 +139,7 @@ it.each(["期限到達直後", "サーバーの締切確定後"])(
   },
 );
 
-it("選択肢公開では問題を隠し、正解発表では本文・正解の強調・解説を表示する", () => {
+it("選択肢公開では問題を隠し、正解発表では本文と正解の強調を表示し、解説は表示しない", () => {
   const reading = preview("choicesReading");
   expect(reading).toContain("Alpha");
   expect(reading).toContain("残り 15 秒");
@@ -149,7 +149,8 @@ it("選択肢公開では問題を隠し、正解発表では本文・正解の�
   const revealed = preview("answerRevealed");
   expect(revealed).toContain("QUESTION BODY");
   expect(revealed).toContain('data-difficulty="2"');
-  expect(revealed).toContain("ANSWER EXPLANATION");
+  expect(revealed).not.toContain("ANSWER EXPLANATION");
+  expect(revealed).not.toContain("display-explanation");
   expect(revealed).toMatch(/class="choice choice-b [^"]*correct/);
   expect(revealed).not.toContain("残り 30 秒");
 });

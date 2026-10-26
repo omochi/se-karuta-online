@@ -86,8 +86,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(290px, 32%);
 }
 .has-distribution > .game-progress,
-.has-distribution > .choices,
-.has-distribution > .display-explanation {
+.has-distribution > .choices {
   grid-column: 1 / -1;
 }
 .has-distribution > .answer-distribution {
@@ -101,7 +100,7 @@
 @media (max-width: 760px) {
   .display-page.display-page-question .display-content.has-distribution {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
   }
   .has-distribution > .answer-distribution {
     padding: 10px 14px;
