@@ -755,7 +755,10 @@ export function Player({ room }: { room: RoomConnection }) {
           <PlayerAnswerStatus room={room} progress={progress} />
         )}
         {v.phase === "finished" && (
-          <Link className="button primary" to={`/e/${v.id}/review`}>
+          <Link
+            className="button primary player-review-link"
+            to={`/e/${v.id}/review`}
+          >
             復習資料を見る →
           </Link>
         )}
