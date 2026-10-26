@@ -43,6 +43,7 @@ function fixture(): Game {
   }));
   const g = newGame("event", "集計テスト", questions, 0);
   g.phase = "finished";
+  g.readyExemptPlayerIds = ["p4"];
   g.players = Array.from({ length: 6 }, (_, i) => ({
     id: `p${i}`,
     name: i < 2 ? "同名" : `参加者${i}`,
@@ -111,6 +112,12 @@ it("未回答を分母に含め、途中参加前・無効・未出題を正し�
     medianElapsed: 1000,
     fastestCorrect: 1000,
   });
+  expect(
+    report.rounds[0].answers.find((a) => a.playerId === "p4")?.status,
+  ).toBe("unanswered");
+  expect(
+    report.rounds[0].answers.find((a) => a.playerId === "p3")?.status,
+  ).toBe("unanswered");
   expect(report.rounds[1].difficult).toBe(false);
   expect(report.rounds[0].difficult).toBe(false);
   expect(report.rounds[2]).toMatchObject({

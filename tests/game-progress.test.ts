@@ -391,3 +391,25 @@ describe("3画面の進行案内", () => {
     expect(html).toContain('aria-pressed="true"');
   });
 });
+
+it("管理画面は待ち合わせ人数と回答人数を分け、参加者ごとのトグルを表示する", () => {
+  const room = fixture("choicesPreparing");
+  room.view!.eligibleCount = 2;
+  room.view!.readyWaitCount = 1;
+  room.view!.readyCount = 0;
+  room.view!.players = [true, false].map((waitForReady, i) => ({
+    id: `p${i}`,
+    name: `参加者${i}`,
+    online: false,
+    ready: false,
+    participation: "eligible",
+    answered: false,
+    waitForReady,
+  }));
+  const html = render(Control, room);
+  expect(html).toContain("0 / 1");
+  expect(html).toContain('role="switch" aria-checked="true"');
+  expect(html).toContain('role="switch" aria-checked="false"');
+  expect(html).toContain("開始を待たない");
+  expect(html).toContain("次の問題から反映");
+});
