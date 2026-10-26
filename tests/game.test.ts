@@ -195,26 +195,40 @@ describe("回答の確定と受付境界", () => {
   });
 });
 describe("権限と公開段階", () => {
-  it("難易度はDisplayの問題本文と同時に公開し、Controlでは事前確認できる", () => {
-    const g = fixture();
-    g.rounds[0].question.difficulty = 3;
-    command(g, "start");
-    const view = (role: "display" | "player" | "control", now: number) =>
-      viewFor(g, role, "p0", presence, "e", now, "http://test");
-    expect(view("control", 0).preview?.difficulty).toBe(3);
-    expect(view("display", 0).question?.difficulty).toBeUndefined();
-    beginCountdownIfReady(g, new Set(g.players.map((p) => p.id)), 0);
-    expect(view("display", 1).question?.difficulty).toBeUndefined();
-    advanceTimer(g, 5000);
-    expect(view("display", 5000).question?.difficulty).toBeUndefined();
-    advanceTimer(g, 20000);
-    expect(view("display", 20001).question?.difficulty).toBe(3);
-    expect(view("player", 20001).question?.difficulty).toBeUndefined();
-    command(g, "close", 21000);
-    expect(view("display", 21000).question?.difficulty).toBe(3);
-    command(g, "reveal", 22000);
-    expect(view("display", 22000).question?.difficulty).toBe(3);
-  });
+  it.each([1, 2, 3] as const)(
+    "難易度%iはDisplayに出題前から公開し、Playerには送らない",
+    (difficulty) => {
+      const g = fixture();
+      g.rounds[0].question.difficulty = difficulty;
+      command(g, "start");
+      const view = (role: "display" | "player" | "control", now: number) =>
+        viewFor(g, role, "p0", presence, "e", now, "http://test");
+      const checkBeforeBody = (now: number, showChoices: boolean) => {
+        const display = view("display", now);
+        expect(display.question?.difficulty).toBe(difficulty);
+        expect(display.question?.bodyMarkdown).toBeUndefined();
+        expect(display.question?.correctChoice).toBeUndefined();
+        expect(display.question?.explanationMarkdown).toBeUndefined();
+        expect(display.question?.choices).toEqual(
+          showChoices ? question.choices : undefined,
+        );
+        expect(view("player", now).question?.difficulty).toBeUndefined();
+      };
+      expect(view("control", 0).preview?.difficulty).toBe(difficulty);
+      checkBeforeBody(0, false);
+      beginCountdownIfReady(g, new Set(g.players.map((p) => p.id)), 0);
+      checkBeforeBody(1, false);
+      advanceTimer(g, 5000);
+      checkBeforeBody(5000, true);
+      advanceTimer(g, 20000);
+      expect(view("display", 20001).question?.difficulty).toBe(difficulty);
+      expect(view("player", 20001).question?.difficulty).toBeUndefined();
+      command(g, "close", 21000);
+      expect(view("display", 21000).question?.difficulty).toBe(difficulty);
+      command(g, "reveal", 22000);
+      expect(view("display", 22000).question?.difficulty).toBe(difficulty);
+    },
+  );
   it.each(["自動締切", "手動締切"])(
     "%s後もDisplayへ本文を送り、正解・解説・回答分布は正解発表まで送らない",
     (closing) => {

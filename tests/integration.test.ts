@@ -219,7 +219,8 @@ test(
     );
     const roundId = control.state!.question!.id;
     assert.equal(display.state!.question!.bodyMarkdown, undefined);
-    assert.equal(display.state!.question!.difficulty, undefined);
+    assert.equal(display.state!.question!.difficulty, 1);
+    assert.equal(players[0].state!.question!.difficulty, undefined);
     assert.equal(display.state!.question!.correctChoice, undefined);
     assert.equal(players[0].state!.preview, undefined);
     // Displayは随時追加・切断でき、準備完了通知は不要。
@@ -230,6 +231,8 @@ test(
     display.close();
     await control.wait((v) => v.displays?.length === 0);
     display = await connect("display", displayCookie);
+    assert.equal(display.state!.question!.difficulty, 1);
+    assert.equal(display.state!.question!.bodyMarkdown, undefined);
     await control.wait((v) => v.displays?.length === 1);
     const monitor = await connect("display", displayCookie);
     // 別PCで同じパスワードを使ってログインしたサテライト画面。
@@ -260,13 +263,19 @@ test(
     assert.equal(countdown.eligibleCount, 39);
     assert.equal(countdown.phaseEndsAt! - countdown.serverNow <= 5000, true);
     await display.wait((v) => v.phase === "countdown");
+    assert.equal(display.state!.question!.difficulty, 1);
+    assert.equal(display.state!.question!.bodyMarkdown, undefined);
     assert.equal(display.state!.question!.choices, undefined);
     const reading = await control.wait(
       (v) => v.phase === "choicesReading",
       8000,
     );
     assert.equal(reading.phaseDurationMs, 15000);
+    await display.wait((v) => v.phase === "choicesReading");
+    assert.equal(display.state!.question!.difficulty, 1);
+    assert.equal(display.state!.question!.bodyMarkdown, undefined);
     await players[0].wait((v) => v.phase === "choicesReading");
+    assert.equal(players[0].state!.question!.difficulty, undefined);
     assert.deepEqual(
       players[0].state!.question!.choices,
       questionSet.questions[0].choices,
