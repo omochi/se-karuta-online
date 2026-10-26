@@ -73,6 +73,35 @@ it("出題中は問題と全選択肢・固定タイマーを表示し、正解�
   expect(html).not.toMatch(/class="choice [^"]*correct/);
 });
 
+it.each(["期限到達直後", "サーバーの締切確定後"])(
+  "%sも問題文と選択肢を画面内に表示し、正解と解説は公開しない",
+  (timing) => {
+    const state = view("acceptingAnswers");
+    if (timing === "サーバーの締切確定後") {
+      state.phase = "answersClosed";
+      state.phaseEndsAt = null;
+    }
+    const html = render(
+      createElement(DisplayScreen, {
+        view: state,
+        progress: getGameProgress(state, 30000),
+        status: null,
+      }),
+    );
+    expect(html).toContain("回答を締め切りました");
+    expect(html).toContain("QUESTION BODY");
+    expect(html).toContain('data-difficulty="2"');
+    expect(html).toContain("display-page-question");
+    expect(html).toContain("fitted-question");
+    for (const choice of Object.values(question.choices))
+      expect(html).toContain(choice);
+    expect(html).not.toContain("ANSWER EXPLANATION");
+    expect(html).not.toContain("みんなの回答");
+    expect(html).not.toMatch(/class="choice [^"]*correct/);
+    expect(html).not.toContain('role="progressbar"');
+  },
+);
+
 it("選択肢公開では問題を隠し、正解発表では本文・正解の強調・解説を表示する", () => {
   const reading = preview("choicesReading");
   expect(reading).toContain("Alpha");

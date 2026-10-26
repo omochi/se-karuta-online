@@ -138,11 +138,12 @@ describe("3画面の進行案内", () => {
     const control = render(Control, room);
     expect(control).not.toContain("回答を締め切る");
     expect(control).not.toContain("正解を発表する");
-    expect(render(Display, room)).not.toContain("SHARED QUESTION BODY");
+    expect(render(Display, room)).toContain("SHARED QUESTION BODY");
     expect(render(Player, room)).toContain("回答なし");
     expect(room.view!.phase).toBe("acceptingAnswers");
     room.view!.phase = "answersClosed";
     expect(render(Control, room)).toContain("正解を発表する");
+    expect(render(Display, room)).toContain("SHARED QUESTION BODY");
   });
   it.each(["countdown", "choicesReading"] as const)(
     "%sは残り0秒でもサーバー通知前に次段階へ進めない",

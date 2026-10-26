@@ -358,12 +358,13 @@ export function viewFor(
     ["answerRevealed", "rankingShown", "finished"].includes(g.phase) &&
     !r?.isVoided;
   const showBody =
-    ["acceptingAnswers", "answerRevealed", "rankingShown", "finished"].includes(
-      g.phase,
-    ) &&
-    !r?.isVoided &&
-    (g.phase !== "acceptingAnswers" ||
-      (g.phaseEndsAt !== null && now < g.phaseEndsAt));
+    [
+      "acceptingAnswers",
+      "answersClosed",
+      "answerRevealed",
+      "rankingShown",
+      "finished",
+    ].includes(g.phase) && !r?.isVoided;
   const rankings = r ? roundRanking(g, r) : [];
   const eligible = r
     ? Object.keys(r.participants).filter(
