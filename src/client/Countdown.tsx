@@ -15,8 +15,15 @@ export function Countdown({
       data-urgent={timer.seconds <= 5}
     >
       <div className="countdown-heading">
-        <span className={`countdown-label ${styles.label}`}>
-          {timer.label}
+        <span
+          className={`countdown-label ${styles.label} ${timer.extension ? styles.extension : ""}`}
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span key={timer.extension?.at ?? "deadline"}>
+            {timer.extension?.message ?? timer.label}
+          </span>
         </span>
         <span className={`countdown-value ${styles.value}`}>
           {timer.seconds}

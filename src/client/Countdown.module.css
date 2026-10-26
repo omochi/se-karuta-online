@@ -20,6 +20,10 @@
 .label {
   color: var(--timer-label);
 }
+.label.extension {
+  color: var(--timer-normal);
+  font-weight: 700;
+}
 .track {
   background: var(--timer-track);
 }

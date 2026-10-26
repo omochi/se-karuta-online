@@ -432,6 +432,15 @@ export function Control({ room }: { room: RoomConnection }) {
                 )}
                 {progress.answering && (
                   <button
+                    className="secondary"
+                    disabled={disabled}
+                    onClick={() => room.command("extendAnswers")}
+                  >
+                    ＋15秒
+                  </button>
+                )}
+                {progress.answering && (
+                  <button
                     className="primary"
                     disabled={disabled}
                     onClick={() => room.command("close")}

@@ -407,6 +407,83 @@ describe("表彰と無効問題", () => {
   });
 });
 describe("時間設定と期限", () => {
+  it("15秒ずつ繰り返し延長し、回答・計測開始時刻・次問の設定を維持する", () => {
+    const g = fixture(3);
+    open(g);
+    const round = currentRound(g)!;
+    const timing = { ...g.timing };
+    const answer = receiveAnswer(g, "p0", round.id, "B", 21000);
+    command(g, "extendAnswers", 49000);
+    expect(g.phaseEndsAt).toBe(65000);
+    expect(advanceTimer(g, 50000)).toBe(false);
+    receiveAnswer(g, "p1", round.id, "B", 64000);
+    command(g, "extendAnswers", 64999);
+    expect(g.phaseEndsAt).toBe(80000);
+    expect(round.answerExtendedAt).toBe(64999);
+    expect(round.openedAt).toBe(20000);
+    expect(receiveAnswer(g, "p0", round.id, "A", 70000)).toEqual(answer);
+    expect(roundRanking(g, round).map((r) => r.value)).toEqual([1000, 44000]);
+    expect(g.timing).toEqual(timing);
+    for (const role of ["control", "display", "player"] as const) {
+      const view = viewFor(g, role, "p0", presence, "e", 65000, "http://test");
+      expect(view.phaseEndsAt).toBe(80000);
+      expect(view.phaseDurationMs).toBe(60000);
+      expect(view.answerExtendedAt).toBe(64999);
+    }
+    receiveAnswer(g, "p2", round.id, "B", 79999);
+    expect(advanceTimer(g, 80000)).toBe(true);
+    expect(round.closedAt).toBe(80000);
+    command(g, "reveal", 80001);
+    command(g, "ranking", 80002);
+    open(g, 80003);
+    expect(g.phaseEndsAt).toBe(130003);
+    expect(currentRound(g)!.answerExtendedAt).toBeUndefined();
+    expect(
+      viewFor(g, "player", "p0", presence, "e", 100003, "http://test")
+        .answerExtendedAt,
+    ).toBeUndefined();
+  });
+  it.each([50000, 50001])(
+    "アラーム未処理でも期限以降の延長を拒否する (%i)",
+    (now) => {
+      const g = fixture();
+      open(g);
+      const before = structuredClone(g);
+      expect(() => command(g, "extendAnswers", now)).toThrow("締切前");
+      expect(g).toEqual(before);
+      expect(advanceTimer(g, now)).toBe(true);
+      expect(currentRound(g)!.closedAt).toBe(50000);
+    },
+  );
+  it("期限直前の延長だけを受け付け、古い操作による二重延長を拒否する", () => {
+    const g = fixture();
+    open(g);
+    const revision = g.revision;
+    applyCommand(g, { command: "extendAnswers", revision }, 49999);
+    expect(g.phaseEndsAt).toBe(65000);
+    expect(() =>
+      applyCommand(g, { command: "extendAnswers", revision }, 50000),
+    ).toThrow("更新");
+    expect(g.phaseEndsAt).toBe(65000);
+    expect(() =>
+      receiveAnswer(g, "p0", currentRound(g)!.id, "B", 65000),
+    ).toThrow("受付中");
+  });
+  it.each([
+    "waiting",
+    "countdown",
+    "choicesReading",
+    "answersClosed",
+    "questionVoided",
+    "finished",
+  ] as const)("%sでは延長せず、手動締切・無効化後も復活させない", (phase) => {
+    const g = fixture();
+    open(g);
+    g.phase = phase;
+    const before = structuredClone(g);
+    expect(() => command(g, "extendAnswers", 21000)).toThrow("締切前");
+    expect(g).toEqual(before);
+  });
   it.each([1, 2, 3] as const)(
     "難易度%iの初期回答時間で配信・受付・自動締切する",
     (difficulty) => {

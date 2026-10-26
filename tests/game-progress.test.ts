@@ -184,6 +184,52 @@ describe("回答画面の固定領域", () => {
 });
 
 describe("3画面の進行案内", () => {
+  it("延長操作を回答受付中のControlだけに表示し、通信中・切断中は無効にする", () => {
+    vi.spyOn(performance, "now").mockReturnValue(1000);
+    const room = fixture("acceptingAnswers");
+    expect(render(Control, room)).toContain("＋15秒");
+    for (const screen of [Player, Display])
+      expect(render(screen, room)).not.toContain("＋15秒");
+    for (const phase of phases.filter((phase) => phase !== "acceptingAnswers"))
+      expect(render(Control, fixture(phase))).not.toContain("＋15秒");
+    for (const patch of [{ busy: true }, { connected: false }]) {
+      const html = render(Control, { ...room, ...patch });
+      expect(html).toMatch(/<button[^>]*disabled=""[^>]*>＋15秒<\/button>/);
+    }
+    room.serverNow = () => 16000;
+    expect(render(Control, room)).not.toContain("＋15秒");
+  });
+  it("全画面で延長後の残り時間・バーと5秒間のお知らせを表示する", () => {
+    vi.spyOn(performance, "now").mockReturnValue(2000);
+    const room = fixture("acceptingAnswers");
+    Object.assign(room.view!, {
+      answerExtendedAt: 2000,
+      phaseEndsAt: 31000,
+      phaseDurationMs: 30000,
+    });
+    for (const screen of screens) {
+      const html = render(screen, room);
+      expect(html).toContain("15秒延長！");
+      expect(html).toContain(
+        'role="status" aria-live="polite" aria-atomic="true"',
+      );
+      expect(html).toContain('aria-valuemax="30"');
+      expect(html).toContain("残り 29 秒");
+    }
+    expect(getGameProgress(room.view!, 6999).timer!.extension).not.toBeNull();
+    expect(getGameProgress(room.view!, 7000).timer!.extension).toBeNull();
+    vi.spyOn(performance, "now").mockReturnValue(7000);
+    // 再接続などで同じ状態を受け取っても、古いお知らせは再表示しない。
+    for (const screen of screens) {
+      const html = render(screen, room);
+      expect(html).not.toContain("15秒延長！");
+      expect(html).toContain("回答締切まで");
+    }
+    room.view!.answerExtendedAt = 7000;
+    expect(getGameProgress(room.view!, 7000).timer!.extension?.at).toBe(7000);
+    expect(render(Player, room)).toContain("15秒延長！");
+    expect(getGameProgress(room.view!, 31000).timer).toBeNull();
+  });
   it("Controlに任意の共有画面の接続数と共有URLを表示し、準備を要求しない", () => {
     const room = fixture("choicesPreparing");
     room.view!.displays = [

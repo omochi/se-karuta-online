@@ -18,6 +18,7 @@ import {
 } from "../shared/types";
 import {
   answeringSeconds,
+  ANSWER_EXTENSION_SECONDS,
   DEFAULT_TIMING,
   validateTiming,
 } from "../shared/timing";
@@ -94,6 +95,19 @@ export function applyCommand(
     return;
   }
   const r = currentRound(g);
+  if (input.command === "extendAnswers") {
+    requireCondition(
+      r &&
+        g.phase === "acceptingAnswers" &&
+        g.phaseEndsAt !== null &&
+        now < g.phaseEndsAt,
+      "回答受付中の締切前だけ延長できます。",
+    );
+    g.phaseEndsAt += ANSWER_EXTENSION_SECONDS * 1000;
+    r.answerExtendedAt = now;
+    g.revision += 1;
+    return;
+  }
   switch (input.command) {
     case "start": {
       requireCondition(
@@ -388,6 +402,9 @@ export function viewFor(
     epoch,
     serverNow: now,
     phaseEndsAt: g.phaseEndsAt,
+    ...(g.phase === "acceptingAnswers" && r?.answerExtendedAt !== undefined
+      ? { answerExtendedAt: r.answerExtendedAt }
+      : {}),
     phaseDurationMs:
       g.phaseEndsAt === null
         ? 0

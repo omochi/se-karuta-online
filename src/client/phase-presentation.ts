@@ -1,4 +1,8 @@
 import type { Phase, RoomView } from "../shared/types";
+import {
+  ANSWER_EXTENSION_NOTICE_MS,
+  ANSWER_EXTENSION_SECONDS,
+} from "../shared/timing";
 
 interface PhaseMessage {
   title: string;
@@ -56,6 +60,16 @@ export function getGameProgress(
       : view.phase;
   const message = PHASE_MESSAGES[phase];
   const seconds = remainingMs === null ? 0 : Math.ceil(remainingMs / 1000);
+  const extension =
+    phase === "acceptingAnswers" &&
+    view.answerExtendedAt !== undefined &&
+    serverNow >= view.answerExtendedAt &&
+    serverNow < view.answerExtendedAt + ANSWER_EXTENSION_NOTICE_MS
+      ? {
+          at: view.answerExtendedAt,
+          message: `${ANSWER_EXTENSION_SECONDS}秒延長！`,
+        }
+      : null;
   return {
     phase,
     ...message,
@@ -67,10 +81,11 @@ export function getGameProgress(
       message.timerLabel && remainingMs !== null
         ? {
             label: message.timerLabel,
+            extension,
             seconds,
             remainingLabel: `残り ${seconds} 秒`,
             durationSeconds: view.phaseDurationMs / 1000,
-            // 数字とバーは同じ残り時間を使う。分母は開始時に確定した時間。
+            // 数字とバーは同じ残り時間を使う。延長時は分母にも加算する。
             fraction:
               view.phaseDurationMs > 0
                 ? Math.min(1, remainingMs / view.phaseDurationMs)
