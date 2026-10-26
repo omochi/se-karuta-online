@@ -83,6 +83,7 @@ function roomView(): RoomView {
 }
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 let authorized = true;
+let debugMode = false;
 let finished = false;
 let eventResponse: (() => Promise<Response>) | undefined;
 let socketResponse: (() => Promise<Response>) | undefined;
@@ -90,6 +91,7 @@ let loaders: ReturnType<typeof createRouteLoaders>;
 let router: ReturnType<typeof createMemoryRouter>;
 beforeEach(() => {
   authorized = true;
+  debugMode = false;
   finished = false;
   eventResponse = undefined;
   socketResponse = undefined;
@@ -99,7 +101,11 @@ beforeEach(() => {
     "fetch",
     vi.fn(async (path: string) => {
       if (path === "/api/config")
-        return json({ publicOrigin: "http://localhost" });
+        return json({ publicOrigin: "http://localhost", debugMode });
+      if (path.startsWith("/api/debug/session/players?"))
+        return authorized
+          ? json({ players: [{ id: "p-12345678", name: "確認用参加者" }] })
+          : json({}, 401);
       if (path.startsWith("/api/events?"))
         return eventResponse
           ? eventResponse()
@@ -710,4 +716,32 @@ it("未ログインでもトップページにコード入力があり、管理�
   expect(html()).toContain("参加コードで大会に入る");
   expect(html()).toContain("管理用パスワード");
   expect(html()).not.toContain("autofocus");
+});
+
+it("デバッグ無効時は管理者にもメニューを出さず、専用画面の直アクセスを拒否する", async () => {
+  await start();
+  expect(html()).not.toContain("参加者の動作確認");
+  await router.navigate("/debug/session");
+  expect(router.state.errors?.root).toMatchObject({ status: 404 });
+  expect(html()).not.toContain("セッション取得用URLを発行");
+  await router.navigate("/debug/session/start");
+  expect(router.state.errors?.root).toMatchObject({ status: 404 });
+});
+it("デバッグ有効時も未ログインでは管理者のメニューや参加者選択を表示しない", async () => {
+  debugMode = true;
+  authorized = false;
+  await start();
+  expect(html()).not.toContain("参加者の動作確認");
+  await router.navigate("/debug/session?event=game");
+  expect(html()).toContain("管理用パスワード");
+  expect(html()).not.toContain("確認用参加者");
+});
+it("管理者は有効なデバッグメニューから大会と参加者を選択できる", async () => {
+  debugMode = true;
+  await start();
+  expect(html()).toContain('href="/debug/session"');
+  await router.navigate("/debug/session?event=game");
+  expect(html()).toContain("Test game");
+  expect(html()).toContain("確認用参加者");
+  expect(html()).toContain("セッション取得用URLを発行");
 });

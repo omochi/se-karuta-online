@@ -18,6 +18,7 @@ import {
   viewFor,
 } from "./game";
 import { readAuthorizations } from "./auth";
+import { debugModeEnabled } from "./debug-mode";
 import { loadGame, saveGame } from "./repository";
 interface Connection {
   id: string;
@@ -183,7 +184,12 @@ export class TournamentRoom extends DurableObject<Env> {
           return response({ error: "権限がありません。" }, 403);
         const tokenHash = request.headers.get("x-session-hash") ?? "";
         const auth = (
-          await readAuthorizations(this.env.DB, g.id, [tokenHash])
+          await readAuthorizations(
+            this.env.DB,
+            g.id,
+            [tokenHash],
+            debugModeEnabled(this.env),
+          )
         ).get(tokenHash);
         if (
           !auth ||
@@ -352,6 +358,7 @@ export class TournamentRoom extends DurableObject<Env> {
           this.env.DB,
           g.id,
           [...this.connections.values()].map((c) => c.tokenHash),
+          debugModeEnabled(this.env),
         );
       } catch (error) {
         console.error("Session validation failed", error);

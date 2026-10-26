@@ -13,6 +13,10 @@ import TournamentReport from "./TournamentReport";
 import TournamentReview from "./TournamentReview";
 import PersonalResult from "./PersonalResult";
 import EventsPage from "./EventsPage";
+import DebugSession, {
+  DebugSessionStart,
+  DebugSessionBanner,
+} from "./DebugSession";
 import { Header } from "./components";
 import { createRouteLoaders } from "./route-loaders";
 export function InitialScreen() {
@@ -23,6 +27,7 @@ export function InitialScreen() {
 function Layout() {
   return (
     <>
+      <DebugSessionBanner />
       <Outlet />
       <ScrollRestoration />
     </>
@@ -69,6 +74,16 @@ export function createAppRoutes(
       HydrateFallback: InitialScreen,
       errorElement: <RouteError loaders={loaders} />,
       children: [
+        {
+          path: "debug/session",
+          loader: loaders.debugSession,
+          Component: DebugSession,
+        },
+        {
+          path: "debug/session/start",
+          loader: loaders.debugStart,
+          Component: DebugSessionStart,
+        },
         { index: true, loader: loaders.home, Component: Home },
         { path: "events", loader: loaders.events, Component: EventsPage },
         {

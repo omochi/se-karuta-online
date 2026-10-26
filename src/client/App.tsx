@@ -1,5 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useLoaderData, useNavigate, useRevalidator } from "react-router";
+import {
+  Link,
+  useLoaderData,
+  useNavigate,
+  useRevalidator,
+  useRouteLoaderData,
+} from "react-router";
 import type { HomeData, GameData } from "./route-loaders";
 import type { RoomSession } from "./RoomSession";
 import type { EventUrls } from "../shared/urls";
@@ -30,6 +36,7 @@ import "./player-layout.css";
 import { JoinTournamentForm } from "./JoinTournamentForm";
 import { EventList } from "./EventList";
 export function Home() {
+  const config = useRouteLoaderData<{ debugMode?: boolean }>("root");
   const { events } = useLoaderData<HomeData>();
   const navigate = useNavigate();
   const revalidator = useRevalidator();
@@ -190,6 +197,26 @@ export function Home() {
             </>
           )}
         </section>
+        {events !== null && config?.debugMode && (
+          <section
+            className="home-panel home-tools"
+            aria-labelledby="home-tools-heading"
+          >
+            <div className="home-tools-heading">
+              <h2 id="home-tools-heading">管理用ツール</h2>
+              <span className="home-tools-badge">ローカル限定</span>
+            </div>
+            <nav aria-label="管理機能">
+              <Link className="home-tool-link" to="/debug/session">
+                <div>
+                  <strong>参加者の動作確認</strong>
+                  <p>参加者を選んで、画面や操作を確認します。</p>
+                </div>
+                <span aria-hidden="true">→</span>
+              </Link>
+            </nav>
+          </section>
+        )}
         <footer>
           <a className="proposal-home-link" href="/proposal/">
             このゲームの提案資料
