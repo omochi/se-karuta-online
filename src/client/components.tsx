@@ -227,7 +227,11 @@ export function PlayerTitles({ titles }: { titles: PlayerTitle[] }) {
       <h3>取得した称号</h3>
       <p>
         {titles.length
-          ? titles.map(({ title, rank }) => `${title}（${rank}位）`).join("、")
+          ? titles.map(({ key, title, rank }, index) => (
+              <span className="player-title" key={key}>
+                {title}（{rank}位）{index < titles.length - 1 ? "、" : ""}
+              </span>
+            ))
           : "該当なし"}
       </p>
     </div>

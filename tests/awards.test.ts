@@ -28,7 +28,7 @@ it("本人の3位以内の称号だけを表彰順に取得し、4番目に並�
   expect(
     renderToStaticMarkup(
       createElement(PlayerTitles, { titles: playerTitles(results, "p") }),
-    ),
+    ).replace(/<[^>]*>/g, ""),
   ).toContain("正答王（2位）、友情王（3位）");
   expect(
     renderToStaticMarkup(createElement(PlayerTitles, { titles: [] })),

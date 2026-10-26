@@ -632,7 +632,9 @@ it("終了済み大会のQRで新規登録を案内せず、既存セッショ�
     (router.state.loaderData["game-play"] as GameData).session,
   ).not.toBeNull();
   expect(html()).toContain("取得した称号");
-  expect(html()).toContain("正答王（2位）、友情王（3位）");
+  expect(html().replace(/<[^>]*>/g, "")).toContain(
+    "正答王（2位）、友情王（3位）",
+  );
 });
 it("未ログインでもトップページにコード入力があり、管理用パスワードに自動フォーカスしない", async () => {
   authorized = false;
