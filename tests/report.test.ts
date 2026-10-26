@@ -161,12 +161,17 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
     averageCorrectElapsed: 3000,
     fastestCorrect: 1000,
     difficultCorrect: 0,
-    stableQualified: true,
+    friendshipMatches: 2,
+    titles: [
+      { key: "correct", title: "正答王", rank: 1 },
+      { key: "fastest", title: "早押し王", rank: 1 },
+      { key: "friendship", title: "友情王", rank: 1 },
+    ],
   });
   expect(report.players[1]).toMatchObject({
     correct: 1,
     firstPlaces: 1,
-    stableQualified: true,
+    friendshipMatches: 1,
   });
   expect(report.players[2]).toMatchObject({
     correct: 0,
@@ -174,7 +179,8 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
     averageElapsed: 4000,
     averageCorrectElapsed: null,
     fastestCorrect: null,
-    stableQualified: false,
+    friendshipMatches: 0,
+    titles: [],
   });
   expect(JSON.stringify(report)).not.toContain("PRIVATE_HASH");
   expect(JSON.stringify(report)).not.toContain("sessionHash");
@@ -194,6 +200,9 @@ it("最多得票以外の正解だけを問題別レポート・参加者・最�
     { playerId: "p0", name: "同名", rank: 1, value: 1 },
   ]);
   expect(report.players[0].difficultCorrect).toBe(1);
+  expect(report.players[0].friendshipMatches).toBe(1);
+  expect(report.players[1].friendshipMatches).toBe(2);
+  expect(report.players[2].friendshipMatches).toBe(1);
   expect(report).not.toHaveProperty("difficultyThreshold");
   g.rounds[1].answers.p2.choice = "B";
   const majority = tournamentReport(g);

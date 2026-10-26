@@ -4,6 +4,7 @@ import type { HomeData, GameData } from "./route-loaders";
 import type { RoomSession } from "./RoomSession";
 import type { EventUrls } from "../shared/urls";
 import type { TimingSettings } from "../shared/types";
+import { playerTitles } from "../shared/awards";
 import { useRoom, type RoomConnection } from "./useRoom";
 import { api } from "./api";
 import {
@@ -16,6 +17,7 @@ import {
   JoinCode,
   MarkdownBody,
   PasswordForm,
+  PlayerTitles,
   Ranking,
 } from "./components";
 import { GameProgress } from "./GameProgress";
@@ -740,7 +742,10 @@ export function Player({ room }: { room: RoomConnection }) {
           <PlayerAnswerStatus room={room} progress={progress} />
         )}
         {v.phase === "finished" && v.results && (
-          <FinalResults results={v.results} />
+          <>
+            {me && <PlayerTitles titles={playerTitles(v.results, me.id)} />}
+            <FinalResults results={v.results} />
+          </>
         )}
         {showChoices && q && (
           <Choices

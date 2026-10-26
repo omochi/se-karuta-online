@@ -1,4 +1,3 @@
-import { choiceLabel } from "../shared/proposal-title";
 import { eventUrls } from "../shared/urls";
 import {
   CHOICES,
@@ -330,9 +329,15 @@ export function isDifficultRound(r: Round): boolean {
 }
 export function finalResults(g: Game): Results {
   const valid = g.rounds.filter(isScoredRound);
-  const minimumCorrect = Math.max(1, Math.ceil(valid.length / 2));
   const rankings = valid.map((r) => roundRanking(g, r));
   const hard = valid.map(isDifficultRound);
+  const majorityChoices = valid.map((r) => {
+    const { counts } = roundAnswerDistribution(r);
+    const mostVotes = Math.max(...Object.values(counts));
+    return CHOICES.filter(
+      (choice) => mostVotes > 0 && counts[choice] === mostVotes,
+    );
+  });
   const scores = g.players.map((p) => {
     const rows = rankings.map((r) => r.find((x) => x.playerId === p.id));
     const correct = rows.filter(Boolean).length;
@@ -342,39 +347,30 @@ export function finalResults(g: Game): Results {
       correct,
       fastest: rows.filter((r) => r?.rank === 1).length,
       difficult: rows.filter((r, i) => r && hard[i]).length,
-      stable: correct
-        ? rows.reduce((sum, r) => sum + (r?.rank ?? 0), 0) / correct
-        : 0,
+      friendship: valid.filter((r, i) => {
+        const answer = r.answers[p.id];
+        return (
+          r.participants[p.id] === "eligible" &&
+          answer &&
+          majorityChoices[i].includes(answer.choice)
+        );
+      }).length,
     };
   });
-  const board = (key: "correct" | "fastest" | "difficult" | "stable") =>
+  const board = (key: "correct" | "fastest" | "difficult" | "friendship") =>
     rank(
       scores
-        .filter((p) =>
-          key === "stable" ? p.correct >= minimumCorrect : p[key] > 0,
-        )
+        .filter((p) => p[key] > 0)
         .map((p) => ({ playerId: p.playerId, name: p.name, value: p[key] })),
-      key === "stable",
+      false,
     );
-  const allRecords = valid.flatMap((r, i) =>
-    rankings[i].map((row) => ({
-      playerId: row.playerId,
-      name: row.name,
-      elapsed: row.value,
-      questionNumber: g.rounds.indexOf(r) + 1,
-      proposal: choiceLabel(r.question, r.question.correctChoice),
-    })),
-  );
-  const best = Math.min(...allRecords.map((r) => r.elapsed));
   return {
     correct: board("correct"),
     fastest: board("fastest"),
     difficult: board("difficult"),
-    stable: board("stable"),
+    friendship: board("friendship"),
     validQuestions: valid.length,
     difficultQuestions: hard.filter(Boolean).length,
-    minimumCorrect,
-    record: allRecords.filter((r) => r.elapsed === best),
   };
 }
 export function viewFor(

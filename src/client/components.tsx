@@ -7,6 +7,7 @@ import { formatJoinCode } from "../shared/join-code";
 import { choiceLabel } from "../shared/proposal-title";
 import { ProposalTitle } from "./ProposalTitle";
 import { CHOICES } from "../shared/types";
+import { AWARDS, type PlayerTitle } from "../shared/awards";
 export function Brand({ small = false }: { small?: boolean }) {
   return (
     <Link className={`brand ${small ? "small" : ""}`} to="/">
@@ -176,11 +177,7 @@ export function Ranking({
           <span className={`rank rank-${row.rank}`}>{row.rank}</span>
           <strong>{row.name}</strong>
           <span className="rank-value">
-            {unit === "sec"
-              ? (row.value / 1000).toFixed(3)
-              : unit === "平均位"
-                ? row.value.toFixed(2)
-                : row.value}
+            {unit === "sec" ? (row.value / 1000).toFixed(3) : row.value}
             <small>{unit}</small>
           </span>
         </li>
@@ -197,60 +194,42 @@ export function FinalResults({
   results: Results;
   compact?: boolean;
 }) {
+  const descriptions = {
+    correct: { subtitle: "知識でつかんだ正解", unit: "問" },
+    fastest: { subtitle: "誰よりも早く、正確に", unit: "回" },
+    difficult: {
+      subtitle: `最多得票以外が正解の ${results.difficultQuestions} 問`,
+      unit: "問",
+    },
+    friendship: { subtitle: "みんなと一番答えがそろった人", unit: "回" },
+  };
   return (
     <div className={`final-results ${compact ? "compact" : ""}`}>
       <div className="awards-grid">
-        {[
-          ["正答王", "知識でつかんだ正解", results.correct, "問"],
-          ["早押し王", "誰よりも早く、正確に", results.fastest, "回"],
-          [
-            "安定王",
-            `${results.minimumCorrect} 問以上正解した人の平均順位`,
-            results.stable,
-            "平均位",
-          ],
-          [
-            "難問王",
-            `最多得票以外が正解の ${results.difficultQuestions} 問`,
-            results.difficult,
-            "問",
-          ],
-        ].map(([title, subtitle, rows, unit]) => (
-          <section className="award" key={title as string}>
-            <p className="eyebrow">{subtitle as string}</p>
-            <h2>{title as string}</h2>
+        {AWARDS.map(({ key, title }) => (
+          <section className="award" key={key}>
+            <p className="eyebrow">{descriptions[key].subtitle}</p>
+            <h2>{title}</h2>
             <Ranking
-              rows={rows as RankRow[]}
-              unit={unit as string}
+              rows={results[key]}
+              unit={descriptions[key].unit}
               limit={compact ? 3 : undefined}
             />
           </section>
         ))}
       </div>
-      <section className="record">
-        <div>
-          <p className="eyebrow">FASTEST ANSWER</p>
-          <h3>大会最速回答</h3>
-        </div>
-        {results.record.length ? (
-          results.record.map((r, i) => (
-            <div key={i}>
-              <strong className="record-time">
-                {(r.elapsed / 1000).toFixed(3)}
-                <small>sec</small>
-              </strong>
-              <p>
-                {r.name}{" "}
-                <span className="muted">
-                  / Q{r.questionNumber} · {r.proposal}
-                </span>
-              </p>
-            </div>
-          ))
-        ) : (
-          <p className="muted">該当者なし</p>
-        )}
-      </section>
+    </div>
+  );
+}
+export function PlayerTitles({ titles }: { titles: PlayerTitle[] }) {
+  return (
+    <div className="player-titles">
+      <h3>取得した称号</h3>
+      <p>
+        {titles.length
+          ? titles.map(({ title, rank }) => `${title}（${rank}位）`).join("、")
+          : "該当なし"}
+      </p>
     </div>
   );
 }

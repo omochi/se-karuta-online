@@ -1,4 +1,5 @@
 import type { Choice, Question, Results } from "./types";
+import type { PlayerTitle } from "./awards";
 
 export type ReportRoundStatus = "scored" | "voided" | "unasked";
 export type ReportAnswerStatus =
@@ -37,6 +38,7 @@ export interface ReportRound {
 export interface ReportPlayer {
   id: string;
   name: string;
+  titles: PlayerTitle[];
   eligible: number;
   answered: number;
   correct: number;
@@ -49,8 +51,8 @@ export interface ReportPlayer {
   fastestCorrect: number | null;
   firstPlaces: number;
   averageRank: number | null;
-  stableQualified: boolean;
   difficultCorrect: number;
+  friendshipMatches: number;
 }
 export interface TournamentReport {
   id: string;
