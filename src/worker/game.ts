@@ -16,7 +16,11 @@ import {
   type Round,
   type TimingSettings,
 } from "../shared/types";
-import { DEFAULT_TIMING, validateTiming } from "../shared/timing";
+import {
+  answeringSeconds,
+  DEFAULT_TIMING,
+  validateTiming,
+} from "../shared/timing";
 import { roundAnswerDistribution } from "./answer-distribution";
 import { generateJoinCode } from "../shared/join-code";
 export function newGame(
@@ -211,7 +215,8 @@ export function advanceTimer(g: Game, now: number): boolean {
     // 遅延・復旧後も実際の出題時刻を起点にし、過去の予定時刻から計測しない。
     r.openedAt = now;
     g.phase = "acceptingAnswers";
-    g.phaseEndsAt = now + g.timing.answeringSeconds * 1000;
+    g.phaseEndsAt =
+      now + answeringSeconds(g.timing, r.question.difficulty) * 1000;
   } else if (g.phase === "acceptingAnswers") {
     // アラームが遅れても受付期限を延長せず、未回答は回答なしのまま残す。
     r.closedAt = g.phaseEndsAt;

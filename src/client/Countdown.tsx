@@ -15,13 +15,13 @@ export function Countdown({
       data-urgent={timer.seconds <= 5}
     >
       <div className="countdown-heading">
+        <span className={`countdown-label ${styles.label}`}>
+          {timer.label}
+        </span>
         <span className={`countdown-value ${styles.value}`}>
           {timer.seconds}
         </span>
-        <span className={`countdown-label ${styles.label}`}>
-          {timer.label}
-          <small>{timer.remainingLabel}</small>
-        </span>
+        <span className={`countdown-unit ${styles.label}`}>秒</span>
       </div>
       <div
         className={`countdown-bar ${styles.track}`}

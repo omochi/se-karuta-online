@@ -282,7 +282,7 @@ test(
       (v) => v.phase === "choicesReading",
       8000,
     );
-    assert.equal(reading.phaseDurationMs, 15000);
+    assert.equal(reading.phaseDurationMs, 20000);
     await display.wait((v) => v.phase === "choicesReading");
     assert.equal(display.state!.question!.difficulty, 1);
     assert.equal(display.state!.question!.bodyMarkdown, undefined);
@@ -299,7 +299,7 @@ test(
       );
       assert.equal(peer.state!.question!.choices!.B.titleJa, null);
     }
-    await control.wait((v) => v.phase === "acceptingAnswers", 18000);
+    await control.wait((v) => v.phase === "acceptingAnswers", 23000);
     assert.equal(control.state!.phaseDurationMs, 30000);
     await display.wait((v) => v.phase === "acceptingAnswers");
     await Promise.all(

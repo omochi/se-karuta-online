@@ -1,6 +1,6 @@
 import type { Question, RoomView } from "../shared/types";
 import { eventUrls } from "../shared/urls";
-import { DEFAULT_TIMING } from "../shared/timing";
+import { answeringSeconds, DEFAULT_TIMING } from "../shared/timing";
 import type { QuestionFit } from "./fit-question";
 
 export type DisplayPreviewPhase =
@@ -37,7 +37,7 @@ export function createDisplayPreviewView(
       ? 0
       : (phase === "choicesReading"
           ? DEFAULT_TIMING.readingSeconds
-          : DEFAULT_TIMING.answeringSeconds) * 1000;
+          : answeringSeconds(DEFAULT_TIMING, question.difficulty)) * 1000;
   return {
     type: "state",
     joinCode: null,

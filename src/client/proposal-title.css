@@ -66,7 +66,7 @@
 /* 邦題の増加分を、回答中の進行案内の余白を詰めて確保する。 */
 .player-page-question .game-progress-player {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 118px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   margin: 20px 0 16px;
@@ -85,19 +85,19 @@
   margin-bottom: 6px;
 }
 .player-page-question .game-progress-player .countdown {
+  width: max-content;
+  max-width: 100%;
   margin: 0;
 }
 .player-page-question .game-progress-player .countdown-value {
-  font-size: 44px;
+  font-size: 32px;
 }
 .player-page-question .game-progress-player .countdown-heading {
   gap: 6px;
 }
-.player-page-question .game-progress-player .countdown-label {
+.player-page-question .game-progress-player .countdown-label,
+.player-page-question .game-progress-player .countdown-unit {
   font-size: 10px;
-}
-.player-page-question .game-progress-player .countdown-label small {
-  display: none;
 }
 .player-page-question .game-progress-player:not(:has(.countdown)) {
   grid-template-columns: minmax(0, 1fr);

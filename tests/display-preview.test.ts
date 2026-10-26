@@ -124,11 +124,27 @@ it("出題中は問題と全選択肢・固定タイマーを表示し、正解�
     expect(html).toContain(choice.title);
   expect(html).toContain("回答受付中");
   expect(html).toContain('data-difficulty="2"');
-  expect(html).toContain("残り 30 秒");
+  expect(html).toContain("残り 45 秒");
   expect(html).toContain("QUESTION 02 / 3");
   expect(html).not.toContain("ANSWER EXPLANATION");
   expect(html).not.toMatch(/class="choice [^"]*correct/);
 });
+
+it.each([1, 2, 3] as const)(
+  "難易度%iのプレビューには初期回答時間を使う",
+  (difficulty) => {
+    const snapshot = {
+      name: "Preview",
+      question: { ...question, difficulty },
+      questionNumber: 1,
+      totalQuestions: 1,
+      phase: "acceptingAnswers" as const,
+    };
+    const state = createDisplayPreviewView(snapshot, "http://test");
+    expect(state.phaseDurationMs).toBe([30, 45, 60][difficulty - 1] * 1000);
+    expect(state.phaseEndsAt).toBe(state.phaseDurationMs);
+  },
+);
 
 it.each(["期限到達直後", "サーバーの締切確定後"])(
   "%sも問題文と選択肢を画面内に表示し、正解と解説は公開しない",
@@ -141,7 +157,7 @@ it.each(["期限到達直後", "サーバーの締切確定後"])(
     const html = render(
       createElement(DisplayScreen, {
         view: state,
-        progress: getGameProgress(state, 30000),
+        progress: getGameProgress(state, state.phaseDurationMs),
         status: null,
       }),
     );
@@ -162,7 +178,7 @@ it.each(["期限到達直後", "サーバーの締切確定後"])(
 it("選択肢公開では問題を隠し、正解発表では本文と正解の強調を表示し、解説は表示しない", () => {
   const reading = preview("choicesReading");
   expect(reading).toContain("Alpha");
-  expect(reading).toContain("残り 15 秒");
+  expect(reading).toContain("残り 20 秒");
   expect(reading).not.toContain("QUESTION BODY");
   expect(reading).toContain('data-difficulty="2"');
   expect(reading).not.toContain("ANSWER EXPLANATION");
@@ -172,7 +188,7 @@ it("選択肢公開では問題を隠し、正解発表では本文と正解の�
   expect(revealed).not.toContain("ANSWER EXPLANATION");
   expect(revealed).not.toContain("display-explanation");
   expect(revealed).toMatch(/class="choice choice-b [^"]*correct/);
-  expect(revealed).not.toContain("残り 30 秒");
+  expect(revealed).not.toContain("残り 45 秒");
 });
 
 it("正解発表のプレビューにはサンプルの回答分布があり、公開前にはない", () => {

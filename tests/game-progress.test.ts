@@ -36,7 +36,13 @@ function fixture(phase: Phase): RoomConnection {
     serverNow: 1000,
     phaseEndsAt: timed ? 16000 : null,
     phaseDurationMs: timed ? 15000 : 0,
-    timing: { countdownSeconds: 5, readingSeconds: 15, answeringSeconds: 15 },
+    timing: {
+      countdownSeconds: 5,
+      readingSeconds: 15,
+      answeringSeconds1: 15,
+      answeringSeconds2: 15,
+      answeringSeconds3: 15,
+    },
     questionNumber: phase === "waiting" ? 0 : 1,
     totalQuestions: 3,
     playerCount: 3,
@@ -267,7 +273,7 @@ describe("3画面の進行案内", () => {
   );
   it("締切直前の残り秒数とバーは同じ時間を使い、設定変更で全長を変えない", () => {
     const view = fixture("acceptingAnswers").view!;
-    view.timing.answeringSeconds = 60;
+    view.timing.answeringSeconds2 = 60;
     const progress = getGameProgress(view, 6000);
     expect(progress.timer).toMatchObject({
       seconds: 10,

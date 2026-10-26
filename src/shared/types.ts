@@ -67,7 +67,9 @@ export interface Game {
 export interface TimingSettings {
   countdownSeconds: number;
   readingSeconds: number;
-  answeringSeconds: number;
+  answeringSeconds1: number;
+  answeringSeconds2: number;
+  answeringSeconds3: number;
 }
 export interface RankRow {
   playerId: string;

@@ -1,10 +1,41 @@
-import type { TimingSettings } from "./types";
+import type { Difficulty, TimingSettings } from "./types";
 
 export const DEFAULT_TIMING: Readonly<TimingSettings> = {
   countdownSeconds: 5,
-  readingSeconds: 15,
-  answeringSeconds: 30,
+  readingSeconds: 20,
+  answeringSeconds1: 30,
+  answeringSeconds2: 45,
+  answeringSeconds3: 60,
 };
+
+export function answeringSeconds(
+  timing: Readonly<TimingSettings>,
+  difficulty: Difficulty,
+): number {
+  return timing[`answeringSeconds${difficulty}`];
+}
+
+// 旧形式の共通回答時間は全難易度へ引き継ぎ、設定のない大会には初期値を使う。
+export function restoreTiming(input: unknown): TimingSettings {
+  if (!input || typeof input !== "object") return { ...DEFAULT_TIMING };
+  const saved = input as Record<string, unknown>;
+  return validateTiming({
+    ...DEFAULT_TIMING,
+    ...saved,
+    answeringSeconds1:
+      saved.answeringSeconds1 ??
+      saved.answeringSeconds ??
+      DEFAULT_TIMING.answeringSeconds1,
+    answeringSeconds2:
+      saved.answeringSeconds2 ??
+      saved.answeringSeconds ??
+      DEFAULT_TIMING.answeringSeconds2,
+    answeringSeconds3:
+      saved.answeringSeconds3 ??
+      saved.answeringSeconds ??
+      DEFAULT_TIMING.answeringSeconds3,
+  });
+}
 
 export function validateTiming(input: unknown): TimingSettings {
   if (!input || typeof input !== "object")

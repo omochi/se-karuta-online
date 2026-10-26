@@ -15,7 +15,7 @@ import { validateQuestions } from "../src/shared/questions";
 import type { Game, Presence, Question } from "../src/shared/types";
 const question: Question = {
   id: "test",
-  difficulty: 2 as const,
+  difficulty: 1 as const,
   bodyMarkdown: "SECRET BODY",
   choices: {
     A: {
@@ -50,9 +50,15 @@ function fixture(count = 3): Game {
   const g = newGame(
     "event",
     "Test",
-    [question, { ...question, id: "q2" }, { ...question, id: "q3" }],
+    structuredClone([
+      question,
+      { ...question, id: "q2" },
+      { ...question, id: "q3" },
+    ]),
     0,
   );
+  // 採点・公開範囲のシナリオは出題開始を20秒に固定し、初期値は別途検証する。
+  g.timing.readingSeconds = 15;
   for (let i = 0; i < count; i++)
     addPlayer(g, {
       id: `p${i}`,
@@ -97,23 +103,24 @@ describe("全員の準備確認と時間進行", () => {
     );
     expect(g.phaseEndsAt).toBe(5100);
   });
-  it("公開前5秒、選択肢公開後15秒を経て出題し、30秒で締め切る", () => {
+  it("公開前5秒、選択肢公開後20秒を経て出題し、30秒で締め切る", () => {
     const g = fixture();
+    g.timing = newGame("defaults", "Defaults", [], 0).timing;
     command(g, "start");
     beginCountdownIfReady(g, new Set(["p0", "p1", "p2"]), 100);
     expect(advanceTimer(g, 5099)).toBe(false);
     expect(advanceTimer(g, 5100)).toBe(true);
     expect(g.phase).toBe("choicesReading");
-    expect(advanceTimer(g, 20099)).toBe(false);
-    expect(advanceTimer(g, 20100)).toBe(true);
+    expect(advanceTimer(g, 25099)).toBe(false);
+    expect(advanceTimer(g, 25100)).toBe(true);
     expect(g.phase).toBe("acceptingAnswers");
-    expect(currentRound(g)?.openedAt).toBe(20100);
-    expect(advanceTimer(g, 35100)).toBe(false);
+    expect(currentRound(g)?.openedAt).toBe(25100);
+    expect(advanceTimer(g, 40100)).toBe(false);
     expect(g.phase).toBe("acceptingAnswers");
-    expect(advanceTimer(g, 50099)).toBe(false);
-    expect(advanceTimer(g, 50100)).toBe(true);
+    expect(advanceTimer(g, 55099)).toBe(false);
+    expect(advanceTimer(g, 55100)).toBe(true);
     expect(g.phase).toBe("answersClosed");
-    expect(currentRound(g)?.closedAt).toBe(50100);
+    expect(currentRound(g)?.closedAt).toBe(55100);
     expect(g.phaseEndsAt).toBeNull();
   });
   it("遅延したタイマーで過去の時刻へ出題を遡らせない", () => {
@@ -400,22 +407,80 @@ describe("表彰と無効問題", () => {
   });
 });
 describe("時間設定と期限", () => {
-  it("大会ごとに5秒・15秒・30秒で初期化する", () => {
-    const g = fixture();
+  it.each([1, 2, 3] as const)(
+    "難易度%iの初期回答時間で配信・受付・自動締切する",
+    (difficulty) => {
+      const g = fixture(2);
+      g.rounds[0].question = { ...question, difficulty };
+      open(g);
+      const duration = [30, 45, 60][difficulty - 1] * 1000;
+      const deadline = 20000 + duration;
+      expect(g.phaseEndsAt).toBe(deadline);
+      for (const role of ["control", "display", "player"] as const) {
+        const view = viewFor(
+          g,
+          role,
+          "p0",
+          presence,
+          "e",
+          20000,
+          "http://test",
+        );
+        expect(view.phaseDurationMs).toBe(duration);
+        expect(view.phaseEndsAt).toBe(deadline);
+      }
+      expect(advanceTimer(g, deadline - 1)).toBe(false);
+      receiveAnswer(g, "p0", currentRound(g)!.id, "B", deadline - 1);
+      expect(() =>
+        receiveAnswer(g, "p1", currentRound(g)!.id, "B", deadline),
+      ).toThrow("受付中");
+      expect(advanceTimer(g, deadline)).toBe(true);
+      expect(g.phase).toBe("answersClosed");
+      expect(currentRound(g)!.closedAt).toBe(deadline);
+    },
+  );
+  it.each([1, 2, 3] as const)(
+    "難易度%iの回答時間を個別に変更できる",
+    (difficulty) => {
+      const g = fixture(1);
+      g.rounds[0].question = { ...question, difficulty };
+      command(g, "updateTiming", 0, {
+        timing: {
+          countdownSeconds: 5,
+          readingSeconds: 15,
+          answeringSeconds1: 1,
+          answeringSeconds2: 23,
+          answeringSeconds3: 600,
+        },
+      });
+      open(g);
+      expect(g.phaseEndsAt).toBe(20000 + [1, 23, 600][difficulty - 1] * 1000);
+    },
+  );
+  it("大会ごとに公開前5秒・選択肢20秒・難易度別30/45/60秒で初期化する", () => {
+    const g = newGame("defaults", "Defaults", [], 0);
     expect(g.timing).toEqual({
       countdownSeconds: 5,
-      readingSeconds: 15,
-      answeringSeconds: 30,
+      readingSeconds: 20,
+      answeringSeconds1: 30,
+      answeringSeconds2: 45,
+      answeringSeconds3: 60,
     });
     g.timing.readingSeconds = 60;
-    expect(fixture().timing.readingSeconds).toBe(15);
+    expect(newGame("other", "Other", [], 0).timing.readingSeconds).toBe(20);
   });
   it("設定は次の段階から使い、進行中の期限とバーの長さを維持する", () => {
     const g = fixture(1);
     command(g, "start");
     beginCountdownIfReady(g, new Set(["p0"]), 0);
     command(g, "updateTiming", 1000, {
-      timing: { countdownSeconds: 8, readingSeconds: 12, answeringSeconds: 7 },
+      timing: {
+        countdownSeconds: 8,
+        readingSeconds: 12,
+        answeringSeconds1: 7,
+        answeringSeconds2: 7,
+        answeringSeconds3: 7,
+      },
     });
     expect(g.phaseEndsAt).toBe(5000);
     expect(
@@ -425,13 +490,25 @@ describe("時間設定と期限", () => {
     advanceTimer(g, 5000);
     expect(g.phaseEndsAt).toBe(17000);
     command(g, "updateTiming", 6000, {
-      timing: { countdownSeconds: 8, readingSeconds: 40, answeringSeconds: 9 },
+      timing: {
+        countdownSeconds: 8,
+        readingSeconds: 40,
+        answeringSeconds1: 9,
+        answeringSeconds2: 9,
+        answeringSeconds3: 9,
+      },
     });
     expect(g.phaseEndsAt).toBe(17000);
     advanceTimer(g, 17000);
     expect(g.phaseEndsAt).toBe(26000);
     command(g, "updateTiming", 18000, {
-      timing: { countdownSeconds: 8, readingSeconds: 40, answeringSeconds: 60 },
+      timing: {
+        countdownSeconds: 8,
+        readingSeconds: 40,
+        answeringSeconds1: 60,
+        answeringSeconds2: 60,
+        answeringSeconds3: 60,
+      },
     });
     expect(g.phaseEndsAt).toBe(26000);
     expect(() =>
@@ -447,15 +524,55 @@ describe("時間設定と期限", () => {
   it.each([
     null,
     {},
-    { countdownSeconds: 0, readingSeconds: 20, answeringSeconds: 30 },
-    { countdownSeconds: 5, readingSeconds: 1.5, answeringSeconds: 30 },
-    { countdownSeconds: 5, readingSeconds: 20, answeringSeconds: 601 },
-    { countdownSeconds: "5", readingSeconds: 20, answeringSeconds: 30 },
+    {
+      countdownSeconds: 0,
+      readingSeconds: 20,
+      answeringSeconds1: 30,
+      answeringSeconds2: 30,
+      answeringSeconds3: 30,
+    },
+    {
+      countdownSeconds: 5,
+      readingSeconds: 1.5,
+      answeringSeconds1: 30,
+      answeringSeconds2: 30,
+      answeringSeconds3: 30,
+    },
+    {
+      countdownSeconds: 5,
+      readingSeconds: 20,
+      answeringSeconds1: 601,
+      answeringSeconds2: 601,
+      answeringSeconds3: 601,
+    },
+    {
+      countdownSeconds: "5",
+      readingSeconds: 20,
+      answeringSeconds1: 30,
+      answeringSeconds2: 30,
+      answeringSeconds3: 30,
+    },
   ])("不正な時間設定を保存しない (%#)", (timing) => {
     const g = fixture();
     const before = structuredClone(g);
     expect(() => command(g, "updateTiming", 0, { timing })).toThrow();
     expect(g).toEqual(before);
+  });
+  it.each([
+    "answeringSeconds1",
+    "answeringSeconds2",
+    "answeringSeconds3",
+  ] as const)("%sの不正値や欠落を拒否し、保存済み設定を維持する", (key) => {
+    for (const value of [0, 601, 1.5, "30", null, undefined]) {
+      const g = fixture();
+      const before = structuredClone(g);
+      expect(() =>
+        command(g, "updateTiming", 0, {
+          timing: { ...g.timing, [key]: value },
+        }),
+      ).toThrow();
+      expect(g).toEqual(before);
+    }
   });
   it("アラームが遅れても期限直前だけ受理し、期限以降は未回答のまま締め切る", () => {
     const g = fixture(2);
