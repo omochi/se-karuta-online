@@ -84,8 +84,74 @@ const progressMarkup = (html: string) =>
     .match(/<section class="game-progress .*?<\/section>/s)![0]
     .replace(/game-progress-(player|display|control)/g, "game-progress-layout")
     .replace(/data-color-scheme="(light|dark)"/g, 'data-color-scheme="theme"')
+    .replace(/<p class="progress-answer-count">.*?<\/p>/g, "")
     .replace(/h2>/g, "h1>");
 afterEach(() => vi.restoreAllMocks());
+
+describe("回答画面の固定領域", () => {
+  it.each(["idle", "pending", "answered", "offline", "error"])(
+    "%sでも選択肢の前に同じお知らせ枠を置き、ブランドと接続状態を下端にまとめる",
+    (state) => {
+      vi.spyOn(performance, "now").mockReturnValue(1000);
+      const room = fixture("acceptingAnswers");
+      if (state === "pending")
+        room.pending = {
+          type: "answer",
+          requestId: "r",
+          roundId: "q1",
+          choice: "B",
+        };
+      if (state === "answered")
+        room.view!.me!.answer = { choice: "B", receivedAt: 1200 };
+      if (state === "offline") room.connected = false;
+      if (state === "error") room.error = "送信に失敗しました";
+      const html = render(Player, room);
+      const event = html.match(/<div class="player-event-slot".*?<\/div>/s)![0];
+      expect(event).toContain('aria-live="polite"');
+      expect(event).toContain(
+        {
+          idle: "回答は一度だけ",
+          pending: "回答を送信中",
+          answered: "回答しました！",
+          offline: "接続を取り戻しています",
+          error: "送信に失敗しました",
+        }[state]!,
+      );
+      expect(html.match(/class="player-event-slot"/g)).toHaveLength(1);
+      expect(html.indexOf('class="player-event-slot"')).toBeLessThan(
+        html.indexOf('class="choices"'),
+      );
+      expect(html).not.toContain('class="site-header"');
+      const footer = html.slice(html.indexOf('<footer class="player-footer"'));
+      for (const label of [
+        "SE ",
+        "Karuta",
+        "Test",
+        "Alice",
+        state === "offline" ? "再接続中" : "接続中",
+      ])
+        expect(footer).toContain(label);
+    },
+  );
+  it("正解発表の詳しい結果は選択肢の後へ置き、お知らせ枠は短い正誤案内に保つ", () => {
+    vi.spyOn(performance, "now").mockReturnValue(1000);
+    const room = fixture("answerRevealed");
+    Object.assign(room.view!.me!, {
+      answer: { choice: "B", receivedAt: 2234 },
+      correct: true,
+      rank: 1,
+      correctCount: 2,
+      elapsed: 1234,
+    });
+    const html = render(Player, room);
+    const event = html.match(/<div class="player-event-slot".*?<\/div>/s)![0];
+    expect(event).toContain("正解！");
+    expect(event).not.toContain("personal-result");
+    expect(html.indexOf('class="personal-result"')).toBeGreaterThan(
+      html.indexOf('class="choices"'),
+    );
+  });
+});
 
 describe("3画面の進行案内", () => {
   it("Controlに任意の共有画面の接続数と共有URLを表示し、準備を要求しない", () => {
@@ -105,7 +171,22 @@ describe("3画面の進行案内", () => {
     expect(html).not.toContain("会場用にする");
     expect(html).not.toContain("閲覧のみ");
   });
-  it.each(phases)("%sで同じ見出し・補足・人数・タイマーを表示する", (phase) => {
+  it.each([
+    "acceptingAnswers",
+    "answersClosed",
+    "answerRevealed",
+    "rankingShown",
+  ] as const)(
+    "%sの回答済み人数は運営・Displayに表示し、スマホには表示しない",
+    (phase) => {
+      vi.spyOn(performance, "now").mockReturnValue(1000);
+      const room = fixture(phase);
+      expect(render(Player, room)).not.toContain("人が回答済み");
+      for (const screen of [Control, Display])
+        expect(render(screen, room)).toContain("1 / 3 人が回答済み");
+    },
+  );
+  it.each(phases)("%sで共通の見出し・補足・タイマーを表示する", (phase) => {
     vi.spyOn(performance, "now").mockReturnValue(1000);
     const room = fixture(phase);
     const markup = screens.map((screen) =>

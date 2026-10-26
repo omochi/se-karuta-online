@@ -6,9 +6,11 @@ import type { GameProgressState } from "./phase-presentation";
 export function PlayerAnswerStatus({
   room,
   progress,
+  compact = false,
 }: {
   room: RoomConnection;
   progress: GameProgressState;
+  compact?: boolean;
 }) {
   const v = room.view!;
   const me = v.me;
@@ -35,24 +37,47 @@ export function PlayerAnswerStatus({
     );
   const revealed = ["answerRevealed", "rankingShown"].includes(v.phase);
   const answered = !!me?.answer;
-  if (!revealed && !answered && !room.pending && !progress.closed) return null;
+  if (!revealed && !answered && !room.pending && !progress.closed)
+    return compact ? (
+      <p className="player-answer-event-hint">
+        {progress.answering
+          ? "回答は一度だけ。押したら変更できません。"
+          : "選択肢を読んでお待ちください。"}
+      </p>
+    ) : null;
+  const heading = revealed
+    ? answered
+      ? me?.correct
+        ? "正解！"
+        : "おしい、不正解。"
+      : "今回は未回答でした"
+    : room.pending
+      ? "回答を送信中…"
+      : answered
+        ? "回答しました！"
+        : "回答なし";
+  if (compact)
+    return (
+      <div
+        className={`player-answer-event ${revealed && me?.correct ? "success" : ""}`}
+      >
+        <strong>{heading}</strong>
+        {!revealed && (room.pending || answered) && (
+          <span>
+            回答 <b>{room.pending?.choice ?? me?.answer?.choice}</b>{" "}
+            {room.pending ? "を送信しています。" : "を受け付けました。"}
+          </span>
+        )}
+        {progress.closed && !answered && !room.pending && (
+          <span>時間内に回答がありませんでした。</span>
+        )}
+      </div>
+    );
   return (
     <section
       className={`player-answer-status ${revealed && me?.correct ? "success" : ""}`}
     >
-      <h2>
-        {revealed
-          ? answered
-            ? me?.correct
-              ? "正解！"
-              : "おしい、不正解。"
-            : "今回は未回答でした"
-          : room.pending
-            ? "回答を送信中…"
-            : answered
-              ? "回答しました！"
-              : "回答なし"}
-      </h2>
+      <h2>{heading}</h2>
       {progress.closed && !answered && !room.pending && (
         <p>時間内に回答がありませんでした。</p>
       )}
