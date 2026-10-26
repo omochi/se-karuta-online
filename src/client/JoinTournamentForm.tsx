@@ -49,9 +49,12 @@ export function JoinTournamentForm() {
             autoCapitalize="characters"
             spellCheck={false}
             maxLength={30}
-            aria-describedby="join-hint"
+            aria-describedby="join-hint join-code-case-hint"
             required
           />
+          <small className="muted" id="join-code-case-hint">
+            大文字でも小文字でも、同じコードとして受け付けます。
+          </small>
         </label>
         <ErrorBox message={error} />
         <button className="primary" disabled={busy}>
