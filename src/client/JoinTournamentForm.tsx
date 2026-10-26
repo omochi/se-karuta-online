@@ -44,7 +44,7 @@ export function JoinTournamentForm() {
             className="join-code-input"
             value={code}
             onChange={(event) => setCode(event.target.value)}
-            placeholder="ABC DEF"
+            placeholder="ABCDEF"
             autoComplete="off"
             autoCapitalize="characters"
             spellCheck={false}

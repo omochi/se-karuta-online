@@ -15,5 +15,5 @@ export function normalizeJoinCode(value: string): string | null {
   return /^[A-HJKMNP-Z]{6}$/.test(code) ? code : null;
 }
 export function formatJoinCode(code: string): string {
-  return `${code.slice(0, 3)} ${code.slice(3)}`;
+  return code;
 }
