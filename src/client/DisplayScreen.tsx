@@ -53,7 +53,9 @@ export function DisplayScreen({
       <main
         className={`display-content phase-${progress.phase}${distribution && v.phase === "answerRevealed" ? " has-distribution" : ""}`}
       >
-        <GameProgress progress={progress} layout="display" />
+        {v.phase !== "rankingShown" && (
+          <GameProgress progress={progress} layout="display" />
+        )}
         {v.phase === "waiting" ? (
           <div className="display-welcome">
             <DisplayJoinGuide
@@ -67,6 +69,7 @@ export function DisplayScreen({
         ) : v.phase === "rankingShown" ? (
           <div className="display-ranking">
             <div className="display-ranking-summary">
+              <GameProgress progress={progress} layout="display" />
               <p>
                 正解 {q?.correctChoice} ·{" "}
                 {q?.correctChoice && q.choices?.[q.correctChoice]}

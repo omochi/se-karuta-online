@@ -1444,9 +1444,11 @@ input::placeholder {
   align-items: center;
   gap: 8%;
   flex: 1;
-  padding: 15px 0;
+  /* 案内も左列に収め、右列の順位には表示領域の高さ全体を使う。 */
+  padding: 0;
 }
-.display-ranking p:not(.eyebrow) {
+.display-ranking-summary > p,
+.display-ranking .answer-distribution p {
   font-size: 15px;
   color: #c7ac9b;
   line-height: 1.7;
