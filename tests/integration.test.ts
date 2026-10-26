@@ -570,6 +570,8 @@ test(
     await reconnected.wait((v) => v.phase === "finished");
     assert.equal(reconnected.state!.results!.validQuestions, 1);
     assert.equal(reconnected.state!.results!.correct.length, 38);
-    assert(reconnected.state!.results!.record.length > 0);
+    assert(reconnected.state!.results!.fastest.length > 0);
+    assert(reconnected.state!.results!.friendship.length > 0);
+    assert(!("record" in reconnected.state!.results!));
   },
 );

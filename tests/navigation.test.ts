@@ -608,11 +608,33 @@ it("終了済み大会のQRで新規登録を案内せず、既存セッショ�
   const navigation = router.revalidate();
   await vi.waitFor(() => expect(Socket.all).toHaveLength(1));
   Socket.all[0].open();
-  Socket.all[0].state({ ...roomView(), phase: "finished" });
+  Socket.all[0].state({
+    ...roomView(),
+    phase: "finished",
+    me: {
+      id: "p",
+      name: "参加者",
+      participation: "eligible",
+      answer: null,
+      elapsed: null,
+    },
+    results: {
+      correct: [{ playerId: "p", name: "参加者", rank: 2, value: 2 }],
+      fastest: [],
+      difficult: [],
+      friendship: [{ playerId: "p", name: "参加者", rank: 3, value: 1 }],
+      validQuestions: 3,
+      difficultQuestions: 1,
+    },
+  });
   await navigation;
   expect(
     (router.state.loaderData["game-play"] as GameData).session,
   ).not.toBeNull();
+  expect(html()).toContain("取得した称号");
+  expect(html().replace(/<[^>]*>/g, "")).toContain(
+    "正答王（2位）、友情王（3位）",
+  );
 });
 it("未ログインでもトップページにコード入力があり、管理用パスワードに自動フォーカスしない", async () => {
   authorized = false;

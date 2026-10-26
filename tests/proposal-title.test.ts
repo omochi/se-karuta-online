@@ -10,7 +10,7 @@ import { createDisplayPreviewView } from "../src/client/display-preview";
 import { validateQuestions } from "../src/shared/questions";
 import { choiceLabel } from "../src/shared/proposal-title";
 import type { Phase, Role } from "../src/shared/types";
-import { newGame, viewFor, finalResults } from "../src/worker/game";
+import { newGame, viewFor } from "../src/worker/game";
 import { tournamentReport } from "../src/worker/report";
 import volume from "../data/questions/vol-01.json";
 import tutorial from "../data/questions/tutorial.json";
@@ -119,7 +119,7 @@ it.each(["control", "display", "player"] satisfies Role[])(
     }
   },
 );
-it("表示プレビュー・レポート・最速回答にも邦題を残す", () => {
+it("表示プレビュー・レポートにも邦題を残す", () => {
   const view = createDisplayPreviewView(
     {
       name: "確認",
@@ -143,9 +143,6 @@ it("表示プレビュー・レポート・最速回答にも邦題を残す", (
   round.answers = { p: { choice: question.correctChoice, receivedAt: 1500 } };
   expect(tournamentReport(game).rounds[0].question.choices).toEqual(
     question.choices,
-  );
-  expect(finalResults(game).record[0].proposal).toBe(
-    choiceLabel(question, question.correctChoice),
   );
 });
 it("SE番号・原題・邦題を別々に表示し、読み上げにも邦題を含める", () => {

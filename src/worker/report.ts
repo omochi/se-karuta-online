@@ -1,5 +1,6 @@
 import { roundAnswerDistribution } from "./answer-distribution";
 import { type Game } from "../shared/types";
+import { playerTitles } from "../shared/awards";
 import type {
   ReportAnswer,
   ReportRound,
@@ -100,6 +101,7 @@ export function tournamentReport(g: Game): TournamentReport {
     return {
       id: p.id,
       name: p.name,
+      titles: playerTitles(results, p.id),
       eligible,
       correct,
       answered: answers.filter((a) => a.choice !== null).length,
@@ -115,9 +117,10 @@ export function tournamentReport(g: Game): TournamentReport {
       averageRank: average(
         correctAnswers.flatMap((a) => (a.rank === null ? [] : [a.rank])),
       ),
-      stableQualified: correct >= results.minimumCorrect,
       difficultCorrect:
         results.difficult.find((row) => row.playerId === p.id)?.value ?? 0,
+      friendshipMatches:
+        results.friendship.find((row) => row.playerId === p.id)?.value ?? 0,
     };
   });
   const eligible = valid.reduce((sum, r) => sum + r.eligible, 0);

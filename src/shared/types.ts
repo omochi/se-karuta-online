@@ -82,18 +82,10 @@ export interface RankRow {
 export interface Results {
   correct: RankRow[];
   fastest: RankRow[];
-  stable: RankRow[];
   difficult: RankRow[];
+  friendship: RankRow[];
   validQuestions: number;
   difficultQuestions: number;
-  minimumCorrect: number;
-  record: Array<{
-    playerId: string;
-    name: string;
-    elapsed: number;
-    questionNumber: number;
-    proposal: string;
-  }>;
 }
 export interface Presence {
   onlinePlayers: Set<string>;

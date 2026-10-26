@@ -391,7 +391,57 @@ describe("権限と公開段階", () => {
   });
 });
 describe("表彰と無効問題", () => {
-  it("最多得票以外の正解を難問王に加算し、誤答を最速記録にしない", () => {
+  it.each([
+    { choices: ["A", "A", "B"], expected: ["p0", "p1"] },
+    { choices: ["B", "B", "A"], expected: ["p0", "p1"] },
+    { choices: ["A", "A", "B", "B", "C"], expected: ["p0", "p1", "p2", "p3"] },
+    { choices: ["A", "B", "C", "D"], expected: ["p0", "p1", "p2", "p3"] },
+    { choices: [], expected: [] },
+  ] as const)(
+    "友情王は正誤に関係なく最多得票（同率を含む）の $choices を選んだ人に加算する",
+    ({ choices, expected }) => {
+      const g = fixture(6);
+      open(g);
+      const r = currentRound(g)!;
+      choices.forEach((choice, i) =>
+        receiveAnswer(g, `p${i}`, r.id, choice, 20100 + i),
+      );
+      expect(finalResults(g).friendship).toEqual([]);
+      command(g, "close", 21000);
+      expect(finalResults(g).friendship).toEqual(
+        expected.map((id) => ({
+          playerId: id,
+          name: `Player ${id.slice(1)}`,
+          rank: 1,
+          value: 1,
+        })),
+      );
+      r.isVoided = true;
+      expect(finalResults(g).friendship).toEqual([]);
+    },
+  );
+  it("友情王は対象外の回答を票にも加点にも含めず、最多得票を選んだ回数で順位を決める", () => {
+    const g = fixture(4);
+    for (let i = 0; i < 3; i++) {
+      open(g, i * 40000);
+      const r = currentRound(g)!;
+      receiveAnswer(g, "p0", r.id, "A", i * 40000 + 20100);
+      if (i === 0) receiveAnswer(g, "p1", r.id, "A", 20200);
+      if (i > 0) receiveAnswer(g, "p2", r.id, "A", i * 40000 + 20200);
+      delete r.participants.p3;
+      r.answers.p3 = { choice: "B", receivedAt: i * 40000 + 20300 };
+      r.answers.unknown = { choice: "B", receivedAt: i * 40000 + 20400 };
+      command(g, "close", i * 40000 + 21000);
+      command(g, "reveal");
+      command(g, "ranking");
+    }
+    expect(finalResults(g).friendship).toEqual([
+      { playerId: "p0", name: "Player 0", rank: 1, value: 3 },
+      { playerId: "p2", name: "Player 2", rank: 2, value: 2 },
+      { playerId: "p1", name: "Player 1", rank: 3, value: 1 },
+    ]);
+  });
+  it("最多得票以外の正解を難問王に加算し、早い誤答を早押し王に加算しない", () => {
     const g = fixture(5);
     command(g, "start");
     command(g, "setReadyWait", 0, { waitForReady: false, playerId: "p4" });
@@ -406,7 +456,9 @@ describe("表彰と無効問題", () => {
     const result = finalResults(g);
     expect(result.difficultQuestions).toBe(1);
     expect(result.difficult[0].playerId).toBe("p0");
-    expect(result.record[0].elapsed).toBe(200);
+    expect(result.fastest).toEqual([
+      { playerId: "p0", name: "Player 0", rank: 1, value: 1 },
+    ]);
   });
   it("未回答が多くても、正解が最多得票なら難問にしない", () => {
     const g = fixture(4);
@@ -471,7 +523,7 @@ describe("表彰と無効問題", () => {
     Object.assign(g, { difficultyThreshold: 0 });
     expect(isDifficultRound(r)).toBe(true);
   });
-  it("同着1位を全員に加算し、安定王の最低正解数を大会全体から求める", () => {
+  it("同着1位を全員に加算し、最速になった回数で早押し王を決める", () => {
     const g = fixture(2);
     for (let i = 0; i < 3; i++) {
       open(g, i * 40000);
@@ -483,9 +535,10 @@ describe("表彰と無効問題", () => {
       command(g, "ranking");
     }
     const result = finalResults(g);
-    expect(result.fastest.find((p) => p.playerId === "p1")?.value).toBe(1);
-    expect(result.minimumCorrect).toBe(2);
-    expect(result.stable.map((p) => p.playerId)).toEqual(["p0"]);
+    expect(result.fastest).toEqual([
+      { playerId: "p0", name: "Player 0", rank: 1, value: 3 },
+      { playerId: "p1", name: "Player 1", rank: 2, value: 1 },
+    ]);
   });
   it("無効問題と未出題問題を全集計から除外する", () => {
     const g = fixture();
@@ -498,8 +551,9 @@ describe("表彰と無効問題", () => {
     const result = finalResults(g);
     expect(result.validQuestions).toBe(0);
     expect(result.correct).toEqual([]);
-    expect(result.record).toEqual([]);
-    expect(result.stable).toEqual([]);
+    expect(result.fastest).toEqual([]);
+    expect(result.difficult).toEqual([]);
+    expect(result.friendship).toEqual([]);
   });
   it("未回答だけの大会では受賞者を作らない", () => {
     const g = fixture();
@@ -509,7 +563,8 @@ describe("表彰と無効問題", () => {
     command(g, "ranking");
     command(g, "finish");
     expect(finalResults(g).correct).toEqual([]);
-    expect(finalResults(g).record).toEqual([]);
+    expect(finalResults(g).fastest).toEqual([]);
+    expect(finalResults(g).friendship).toEqual([]);
   });
 });
 describe("時間設定と期限", () => {
