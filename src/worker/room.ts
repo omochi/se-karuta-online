@@ -225,6 +225,15 @@ export class TournamentRoom extends DurableObject<Env> {
       const m = JSON.parse(data) as ClientMessage;
       if ("requestId" in m && typeof m.requestId === "string")
         requestId = m.requestId;
+      if (m.type === "timeSync") {
+        this.send(c, {
+          type: "timeSync",
+          requestId: m.requestId,
+          serverReceivedAt: receivedAt,
+          serverSentAt: Date.now(),
+        });
+        return;
+      }
       if (m.type === "ping") {
         const phase = this.game!.phase;
         await this.maybeBegin();

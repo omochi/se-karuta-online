@@ -169,6 +169,7 @@ export type Command =
   | "updateTiming";
 export type ClientMessage =
   | { type: "ping" }
+  | { type: "timeSync"; requestId: string }
   | { type: "ready"; roundId: string; epoch: string }
   | { type: "answer"; requestId: string; roundId: string; choice: Choice }
   | {
@@ -182,5 +183,11 @@ export type ClientMessage =
     };
 export type ServerMessage =
   | RoomView
+  | {
+      type: "timeSync";
+      requestId: string;
+      serverReceivedAt: number;
+      serverSentAt: number;
+    }
   | { type: "ack"; requestId: string; answer?: Answer }
   | { type: "error"; requestId?: string; message: string };

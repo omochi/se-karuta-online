@@ -9,7 +9,12 @@ import {
   type GameData,
 } from "../src/client/route-loaders";
 import { RoomSession } from "../src/client/RoomSession";
-import type { RoomView, ClientMessage } from "../src/shared/types";
+import type {
+  RoomView,
+  ClientMessage,
+  ServerMessage,
+} from "../src/shared/types";
+import { getGameProgress } from "../src/client/phase-presentation";
 import { eventUrls } from "../src/shared/urls";
 import { newGame } from "../src/worker/game";
 import { tournamentReport } from "../src/worker/report";
@@ -34,7 +39,10 @@ class Socket {
     this.onopen?.();
   }
   state(view = roomView()) {
-    this.onmessage?.({ data: JSON.stringify(view) });
+    this.message(view);
+  }
+  message(message: ServerMessage) {
+    this.onmessage?.({ data: JSON.stringify(message) });
   }
   close() {
     this.readyState = 3;
@@ -359,6 +367,80 @@ it("再接続中も既存データを保持し、再接続したstateを反映�
   Socket.all[1].state({ ...roomView(), playerCount: 5 });
   expect(session.getSnapshot().connected).toBe(true);
   expect(session.getSnapshot().view?.playerCount).toBe(5);
+  session.dispose();
+  expect(vi.getTimerCount()).toBe(0);
+});
+it("状態受信の遅延で残り時間を戻さず、専用同期だけを速度補正に使う", async () => {
+  vi.useFakeTimers();
+  const session = new RoomSession("game", "display", "http://localhost");
+  const ws = Socket.all[0];
+  ws.open();
+  const view: RoomView = {
+    ...roomView(),
+    phase: "acceptingAnswers",
+    phaseEndsAt: 31000,
+    phaseDurationMs: 30000,
+  };
+  ws.state(view);
+  await session.ready;
+  await vi.advanceTimersByTimeAsync(100);
+  const before = getGameProgress(view, session.serverNow()).timer!.fraction;
+  ws.state({ ...view, serverNow: 1005, answerCount: 1 });
+  const after = getGameProgress(
+    session.getSnapshot().view!,
+    session.serverNow(),
+  ).timer!.fraction;
+  expect(after).toBe(before);
+  const sync = ws.sent.find((m) => m.type === "timeSync")!;
+  if (sync.type !== "timeSync") throw new Error("missing timeSync");
+  const clockBefore = session.serverNow();
+  ws.message({
+    type: "timeSync",
+    requestId: sync.requestId,
+    serverReceivedAt: 2000,
+    serverSentAt: 2000,
+  });
+  expect(session.serverNow()).toBe(clockBefore);
+  await vi.advanceTimersByTimeAsync(100);
+  expect(session.serverNow() - clockBefore).toBeCloseTo(120);
+  // 未対応のIDや処理済み応答で再同期しない。
+  ws.message({
+    type: "timeSync",
+    requestId: sync.requestId,
+    serverReceivedAt: 0,
+    serverSentAt: 0,
+  });
+  const current = session.serverNow();
+  await vi.advanceTimersByTimeAsync(100);
+  expect(session.serverNow() - current).toBeCloseTo(120);
+  session.dispose();
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it("再接続で時計を巻き戻さず、旧接続の同期応答を無視する", async () => {
+  vi.useFakeTimers();
+  const session = new RoomSession("game", "display", "http://localhost");
+  const first = Socket.all[0];
+  first.open();
+  first.state();
+  await session.ready;
+  const sync = first.sent.find((m) => m.type === "timeSync")!;
+  if (sync.type !== "timeSync") throw new Error("missing timeSync");
+  first.close();
+  await vi.advanceTimersByTimeAsync(500);
+  const second = Socket.all[1];
+  second.open();
+  const before = session.serverNow();
+  second.state({ ...roomView(), serverNow: 1001 });
+  first.message({
+    type: "timeSync",
+    requestId: sync.requestId,
+    serverReceivedAt: 0,
+    serverSentAt: 0,
+  });
+  expect(session.serverNow()).toBe(before);
+  await vi.advanceTimersByTimeAsync(100);
+  expect(session.serverNow() - before).toBeCloseTo(100);
   session.dispose();
   expect(vi.getTimerCount()).toBe(0);
 });

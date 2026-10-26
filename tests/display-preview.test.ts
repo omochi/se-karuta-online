@@ -60,7 +60,7 @@ function preview(phase: DisplayPreviewPhase) {
   return render(
     createElement(DisplayScreen, {
       view: state,
-      progress: getGameProgress(state, 0),
+      progress: getGameProgress(state),
       status: createElement(ConnectionBadge, { connected: true }),
     }),
   );
@@ -82,7 +82,7 @@ it.each([1, 2, 3] as const)(
       const html = render(
         createElement(DisplayScreen, {
           view: state,
-          progress: getGameProgress(state, 0),
+          progress: getGameProgress(state),
           status: null,
         }),
       );
@@ -112,7 +112,7 @@ it.each<DisplayPreviewPhase>([
     pending: null,
     answer: vi.fn(),
     command: vi.fn(),
-    receivedAt: { current: 1000 },
+    serverNow: () => 0,
   };
   expect(render(createElement(Display, { room }))).toBe(preview(phase));
 });
@@ -197,7 +197,7 @@ it("正解発表の全4択に、JSONで明示したURLを開くアイコンだ�
   const html = render(
     createElement(DisplayScreen, {
       view: state,
-      progress: getGameProgress(state, 0),
+      progress: getGameProgress(state),
       status: null,
     }),
   );
@@ -233,7 +233,7 @@ it.each([
   const html = render(
     createElement(DisplayScreen, {
       view: state,
-      progress: getGameProgress(state, 0),
+      progress: getGameProgress(state),
       status: null,
     }),
   );

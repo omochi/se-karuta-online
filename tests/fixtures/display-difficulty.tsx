@@ -49,7 +49,7 @@ createRoot(document.getElementById("root")!).render(
   <MemoryRouter>
     <DisplayScreen
       view={view}
-      progress={getGameProgress(view, 0)}
+      progress={getGameProgress(view)}
       status={<span className="display-event">チュートリアル表示</span>}
     />
   </MemoryRouter>,

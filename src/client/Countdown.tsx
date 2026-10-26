@@ -34,7 +34,7 @@ export function Countdown({
       >
         <div
           className={`countdown-bar-fill ${styles.fill}`}
-          style={{ transform: `scaleX(${timer.fraction})` }}
+          style={{ width: `${timer.fraction * 100}%` }}
         />
       </div>
     </div>

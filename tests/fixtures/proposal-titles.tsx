@@ -103,11 +103,7 @@ function Screen() {
       }, 300);
     },
     command: () => {},
-    receivedAt: {
-      get current() {
-        return performance.now();
-      },
-    },
+    serverNow: () => view.serverNow,
   };
   return mode === "player" ? (
     <Player room={room} />
@@ -116,7 +112,7 @@ function Screen() {
   ) : (
     <DisplayScreen
       view={view}
-      progress={getGameProgress(view, 0)}
+      progress={getGameProgress(view)}
       status="表示確認"
     />
   );

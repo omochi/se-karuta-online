@@ -82,7 +82,7 @@ function draw(
       <MemoryRouter>
         <DisplayScreen
           view={view}
-          progress={getGameProgress(view, elapsed)}
+          progress={getGameProgress(view, view.serverNow + elapsed)}
           status={null}
           onQuestionFit={reportFit}
         />
