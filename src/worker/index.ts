@@ -32,6 +32,30 @@ async function body(request: Request): Promise<Record<string, unknown>> {
     throw new Error("送信形式が不正です。");
   return value;
 }
+// Cookieの署名だけでなく、大会の参加者とセッションハッシュまで確認する。
+async function existingPlayerSession(
+  request: Request,
+  env: Env,
+  id: string,
+): Promise<Response | null> {
+  const session = await readSession(
+    request,
+    `se_player_${id}`,
+    env.SESSION_SECRET,
+  );
+  if (session?.role !== "player" || session.eventId !== id || !session.playerId)
+    return null;
+  return env.ROOMS.get(env.ROOMS.idFromName(id)).fetch(
+    new Request("https://room/session", {
+      headers: {
+        "x-event-id": id,
+        "x-role": "player",
+        "x-player-id": session.playerId,
+        "x-session-hash": await digest(session.nonce),
+      },
+    }),
+  );
+}
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -64,8 +88,17 @@ export default {
             { error: "大会が見つかりません。参加コードを確認してください。" },
             404,
           );
-        if (tournament.phase === "finished")
-          return json({ error: "この大会は終了しました。" }, 410);
+        if (tournament.phase === "finished") {
+          const previous = await existingPlayerSession(
+            request,
+            env,
+            tournament.id,
+          );
+          if (!previous?.ok) {
+            if (previous && previous.status !== 401) return previous;
+            return json({ error: "この大会は終了しました。" }, 410);
+          }
+        }
         return json({
           id: tournament.id,
           name: tournament.name,
@@ -230,17 +263,10 @@ export default {
         });
       }
       if (action === "join" && request.method === "POST") {
-        const previous = await readSession(
-          request,
-          `se_player_${id}`,
-          env.SESSION_SECRET,
-        );
-        if (previous?.role === "player" && previous.eventId === id)
-          return invoke("session", {
-            "x-role": "player",
-            "x-player-id": previous.playerId!,
-            "x-session-hash": await digest(previous.nonce),
-          });
+        const previous = await existingPlayerSession(request, env, id);
+        // DB復元などで古いCookieだけ残っても、名前を入力して参加し直せる。
+        // 通信・保存障害は再登録と区別し、既存の参加者を増やさない。
+        if (previous && previous.status !== 401) return previous;
         const b = await body(request);
         if (
           typeof b.name !== "string" ||

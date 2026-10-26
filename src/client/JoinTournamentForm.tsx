@@ -58,7 +58,7 @@ export function JoinTournamentForm() {
         </label>
         <ErrorBox message={error} />
         <button className="primary" disabled={busy}>
-          {busy ? "確認中…" : "名前の入力へ →"}
+          {busy ? "確認中…" : "大会へ進む →"}
         </button>
       </form>
     </section>
