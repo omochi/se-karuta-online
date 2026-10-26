@@ -51,7 +51,8 @@ export function validateQuestions(input: unknown): Question[] {
         Array.isArray(rawChoice)
       )
         throw new Error(
-          error + "SE番号・原題・邦題を持つオブジェクトで指定してください。",
+          error +
+            "SE番号・原題・邦題・解説URLを持つオブジェクトで指定してください。",
         );
       const choice = rawChoice as Record<string, unknown>;
       if (
@@ -75,10 +76,25 @@ export function validateQuestions(input: unknown): Question[] {
           error +
             "titleJa は1〜300文字、または邦題なしの null で指定してください。",
         );
+      try {
+        if (
+          typeof choice.explanationUrl !== "string" ||
+          choice.explanationUrl.length > 2048 ||
+          /\s/.test(choice.explanationUrl) ||
+          !choice.explanationUrl.startsWith("https://") ||
+          new URL(choice.explanationUrl).protocol !== "https:"
+        )
+          throw new Error();
+      } catch {
+        throw new Error(
+          error + "explanationUrl は HTTPS の絶対URLで指定してください。",
+        );
+      }
       choices[key] = {
         number: choice.number,
         title: choice.title,
         titleJa: choice.titleJa,
+        explanationUrl: choice.explanationUrl,
       };
     }
     if (!CHOICES.includes(q.correctChoice as never))

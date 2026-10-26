@@ -100,7 +100,13 @@ export function DisplayScreen({
                 </section>
               ))}
             {distribution}
-            {q && <Choices question={q} showCorrect={revealing} />}
+            {q && (
+              <Choices
+                question={q}
+                showCorrect={revealing}
+                showExplanationLinks={v.phase === "answerRevealed"}
+              />
+            )}
           </>
         ) : null}
       </main>

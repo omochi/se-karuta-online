@@ -91,33 +91,72 @@ export function Choices({
   disabled = true,
   onChoose,
   showCorrect = false,
+  showExplanationLinks = false,
 }: {
   question: NonNullable<RoomView["question"]>;
   selected?: Choice;
   disabled?: boolean;
   onChoose?: (c: Choice) => void;
   showCorrect?: boolean;
+  showExplanationLinks?: boolean;
 }) {
   const choices = question.choices;
   if (!choices) return null;
   return (
     <div className="choices">
-      {CHOICES.map((c) => (
-        <button
-          key={c}
-          className={`choice choice-${c.toLowerCase()} ${selected === c ? "selected" : ""} ${showCorrect && question.correctChoice === c ? "correct" : ""}`}
-          disabled={disabled}
-          aria-pressed={selected === c}
-          onClick={() => onChoose?.(c)}
-          aria-label={`${c}. ${choiceLabel(question, c)}`}
-        >
-          <span className="choice-letter">{c}</span>
-          <span className="choice-text">
-            <ProposalTitle proposal={choices[c]} />
-          </span>
-          {selected === c && <span className="choice-check">✓</span>}
-        </button>
-      ))}
+      {CHOICES.map((c) => {
+        const className = `choice choice-${c.toLowerCase()} ${selected === c ? "selected" : ""} ${showCorrect && question.correctChoice === c ? "correct" : ""}`;
+        const content = (
+          <>
+            <span className="choice-letter">{c}</span>
+            <span className="choice-text">
+              <ProposalTitle proposal={choices[c]} />
+            </span>
+            {selected === c && <span className="choice-check">✓</span>}
+          </>
+        );
+        // 解説リンクを回答ボタンの中へ入れず、独立して操作できるようにする。
+        return showExplanationLinks ? (
+          <div key={c} className={className}>
+            {content}
+            <a
+              className="choice-explanation-link"
+              href={choices[c].explanationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`選択肢 ${c}（${choices[c].number}）の解説を Swift Digest で開く（別タブ）`}
+              title="Swift Digest で解説を開く（別タブ）"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M14 3h7v7M21 3l-11 11" />
+                <path d="M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5" />
+              </svg>
+            </a>
+          </div>
+        ) : (
+          <button
+            key={c}
+            className={className}
+            disabled={disabled}
+            aria-pressed={selected === c}
+            onClick={() => onChoose?.(c)}
+            aria-label={`${c}. ${choiceLabel(question, c)}`}
+          >
+            {content}
+          </button>
+        );
+      })}
     </div>
   );
 }

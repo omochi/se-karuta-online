@@ -18,10 +18,30 @@ const question: Question = {
   difficulty: 2 as const,
   bodyMarkdown: "SECRET BODY",
   choices: {
-    A: { number: "SE-0001", title: "a", titleJa: null },
-    B: { number: "SE-0002", title: "b", titleJa: null },
-    C: { number: "SE-0003", title: "c", titleJa: null },
-    D: { number: "SE-0004", title: "d", titleJa: null },
+    A: {
+      number: "SE-0001",
+      title: "a",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0001.html",
+    },
+    B: {
+      number: "SE-0002",
+      title: "b",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0002.html",
+    },
+    C: {
+      number: "SE-0003",
+      title: "c",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0003.html",
+    },
+    D: {
+      number: "SE-0004",
+      title: "d",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0004.html",
+    },
   },
   correctChoice: "B",
   explanationMarkdown: "SECRET EXPLANATION",
@@ -508,9 +528,27 @@ describe("問題JSONの検証", () => {
         {
           ...question,
           choices: {
-            A: { number: "SE-0001", title: "a", titleJa: null },
-            B: { number: "SE-0002", title: "b", titleJa: null },
-            C: { number: "SE-0003", title: "c", titleJa: null },
+            A: {
+              number: "SE-0001",
+              title: "a",
+              titleJa: null,
+              explanationUrl:
+                "https://swiftdigest.koherent.org/proposals/se-0001.html",
+            },
+            B: {
+              number: "SE-0002",
+              title: "b",
+              titleJa: null,
+              explanationUrl:
+                "https://swiftdigest.koherent.org/proposals/se-0002.html",
+            },
+            C: {
+              number: "SE-0003",
+              title: "c",
+              titleJa: null,
+              explanationUrl:
+                "https://swiftdigest.koherent.org/proposals/se-0003.html",
+            },
           },
         },
       ],

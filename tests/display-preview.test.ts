@@ -18,10 +18,30 @@ const question = {
   difficulty: 2 as const,
   bodyMarkdown: "QUESTION BODY\n\n```swift\nlet value = 42\n```",
   choices: {
-    A: { number: "SE-0001", title: "Alpha", titleJa: null },
-    B: { number: "SE-0002", title: "Beta", titleJa: null },
-    C: { number: "SE-0003", title: "Gamma", titleJa: null },
-    D: { number: "SE-0004", title: "Delta", titleJa: null },
+    A: {
+      number: "SE-0001",
+      title: "Alpha",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0001.html",
+    },
+    B: {
+      number: "SE-0002",
+      title: "Beta",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0002.html",
+    },
+    C: {
+      number: "SE-0003",
+      title: "Gamma",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0003.html",
+    },
+    D: {
+      number: "SE-0004",
+      title: "Delta",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0004.html",
+    },
   },
   correctChoice: "B" as const,
   explanationMarkdown: "ANSWER EXPLANATION",
@@ -163,4 +183,59 @@ it("正解発表のプレビューにはサンプルの回答分布があり、�
   expect(revealed).toContain("サンプル");
   expect(revealed).toContain('aria-label="B：9人、正解"');
   expect(revealed).toContain("回答 18人 · 未回答 2人");
+});
+
+it("正解発表の全4択に、JSONで明示したURLを開くアイコンだけの独立リンクを表示する", () => {
+  const state = view("answerRevealed");
+  state.question!.choices = {
+    ...question.choices,
+    A: {
+      ...question.choices.A,
+      explanationUrl: "https://swiftdigest.koherent.org/custom-article.html",
+    },
+  };
+  const html = render(
+    createElement(DisplayScreen, {
+      view: state,
+      progress: getGameProgress(state, 0),
+      status: null,
+    }),
+  );
+  for (const c of ["A", "B", "C", "D"] as const) {
+    expect(html).toContain(
+      `href="${state.question!.choices![c].explanationUrl}"`,
+    );
+    expect(html).toContain(
+      `aria-label="選択肢 ${c}（${question.choices[c].number}）の解説を Swift Digest で開く（別タブ）"`,
+    );
+  }
+  expect(html.match(/class="choice-explanation-link"/g)).toHaveLength(4);
+  expect(html.match(/target="_blank" rel="noopener noreferrer"/g)).toHaveLength(
+    4,
+  );
+  expect(html.match(/<div class="choice choice-/g)).toHaveLength(4);
+  expect(html).not.toContain('<button class="choice');
+  expect(html).toMatch(/class="choice choice-b [^"]*correct/);
+  expect(html.match(/<svg[^>]*aria-hidden="true"/g)).toHaveLength(4);
+});
+
+it.each([
+  "choicesPreparing",
+  "countdown",
+  "choicesReading",
+  "acceptingAnswers",
+  "answersClosed",
+  "rankingShown",
+  "questionVoided",
+] satisfies Phase[])("%s では解説リンクを表示しない", (phase) => {
+  const state = view("answerRevealed");
+  state.phase = phase;
+  const html = render(
+    createElement(DisplayScreen, {
+      view: state,
+      progress: getGameProgress(state, 0),
+      status: null,
+    }),
+  );
+  expect(html).not.toContain("choice-explanation-link");
 });

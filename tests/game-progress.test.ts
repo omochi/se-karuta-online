@@ -46,10 +46,34 @@ function fixture(phase: Phase): RoomConnection {
     question: {
       id: "q1",
       choices: {
-        A: { number: "SE-0001", title: "Choice A", titleJa: null },
-        B: { number: "SE-0002", title: "Choice B", titleJa: null },
-        C: { number: "SE-0003", title: "Choice C", titleJa: null },
-        D: { number: "SE-0004", title: "Choice D", titleJa: null },
+        A: {
+          number: "SE-0001",
+          title: "Choice A",
+          titleJa: null,
+          explanationUrl:
+            "https://swiftdigest.koherent.org/proposals/se-0001.html",
+        },
+        B: {
+          number: "SE-0002",
+          title: "Choice B",
+          titleJa: null,
+          explanationUrl:
+            "https://swiftdigest.koherent.org/proposals/se-0002.html",
+        },
+        C: {
+          number: "SE-0003",
+          title: "Choice C",
+          titleJa: null,
+          explanationUrl:
+            "https://swiftdigest.koherent.org/proposals/se-0003.html",
+        },
+        D: {
+          number: "SE-0004",
+          title: "Choice D",
+          titleJa: null,
+          explanationUrl:
+            "https://swiftdigest.koherent.org/proposals/se-0004.html",
+        },
       },
       bodyMarkdown: "SHARED QUESTION BODY",
       voidReason: phase === "questionVoided" ? "問題文の誤り" : null,

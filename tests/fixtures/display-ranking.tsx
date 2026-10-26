@@ -64,17 +64,33 @@ const view: RoomView = {
     id: "ranking-fixture",
     correctChoice: "A",
     choices: {
-      A: { number: "SE-0296", title: "Async/await", titleJa: null },
+      A: {
+        number: "SE-0296",
+        title: "Async/await",
+        titleJa: null,
+        explanationUrl:
+          "https://swiftdigest.koherent.org/proposals/se-0296.html",
+      },
       B: {
         number: "SE-0235",
         title: "Add Result to the Standard Library",
         titleJa: null,
+        explanationUrl:
+          "https://swiftdigest.koherent.org/proposals/se-0235.html",
       },
-      C: { number: "SE-0258", title: "Property Wrappers", titleJa: null },
+      C: {
+        number: "SE-0258",
+        title: "Property Wrappers",
+        titleJa: null,
+        explanationUrl:
+          "https://swiftdigest.koherent.org/proposals/se-0258.html",
+      },
       D: {
         number: "SE-0195",
         title: 'Introduce User-defined "Dynamic Member Lookup" Types',
         titleJa: null,
+        explanationUrl:
+          "https://swiftdigest.koherent.org/proposals/se-0195.html",
       },
     },
   },

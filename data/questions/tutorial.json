@@ -10,26 +10,30 @@
         "A": {
           "number": "SE-0296",
           "title": "Async/await",
-          "titleJa": null
+          "titleJa": null,
+          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0296.html"
         },
         "B": {
           "number": "SE-0235",
           "title": "Add Result to the Standard Library",
-          "titleJa": "Resultを標準ライブラリに追加する"
+          "titleJa": "Resultを標準ライブラリに追加する",
+          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0235.html"
         },
         "C": {
           "number": "SE-0258",
           "title": "Property Wrappers",
-          "titleJa": null
+          "titleJa": null,
+          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0258.html"
         },
         "D": {
           "number": "SE-0195",
           "title": "Introduce User-defined \"Dynamic Member Lookup\" Types",
-          "titleJa": "ユーザー定義の”Dynamic Member Lookup”型を導入する"
+          "titleJa": "ユーザー定義の”Dynamic Member Lookup”型を導入する",
+          "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0195.html"
         }
       },
       "correctChoice": "A",
-      "explanationMarkdown": "正解は **A：SE-0296 · Async/await**。`async` で非同期関数を宣言し、`await` を付けて非同期関数を呼び出せるようになりました。問題文・コードと同じ「Async/await」が選択肢のタイトルにあります。\n\nB は成功・失敗を表す `Result` 型の標準ライブラリへの追加、C はプロパティの処理を共通化する Property Wrappers、D は `@dynamicMemberLookup` によるメンバーアクセスの仕組みです。\n\nこの1問は、選択肢を読む・回答する・正解と解説を見る操作を試すための公開チュートリアルです。\n\n[Swift Digest：SE-0296の日本語要約](https://swiftdigest.koherent.org/proposals/se-0296.html)"
+      "explanationMarkdown": "正解は **A：SE-0296 · Async/await**。`async` で非同期関数を宣言し、`await` を付けて非同期関数を呼び出せるようになりました。問題文・コードと同じ「Async/await」が選択肢のタイトルにあります。\n\nB は成功・失敗を表す `Result` 型の標準ライブラリへの追加、C はプロパティの処理を共通化する Property Wrappers、D は `@dynamicMemberLookup` によるメンバーアクセスの仕組みです。\n\nこの1問は、選択肢を読む・回答する・正解と解説を見る操作を試すための公開チュートリアルです。"
     }
   ],
   "choiceTitleSource": {

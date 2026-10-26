@@ -162,24 +162,28 @@ npm run seed:report
 
 [`data/questions/vol-01.json`](data/questions/vol-01.json) を参考にします。`id`、`difficulty`（1: 入門、2: 標準、3: 難問）、`bodyMarkdown`、A〜D の `choices`、`correctChoice`、`explanationMarkdown` を持つ配列です。CLI は `questions` プロパティで包んだ形式も読み込みます。問題数は1〜100問、各文字数・ID重複・選択肢数・難易度を検証します。統合問題集は入門・標準・難問を4問ずつ、計12問収録しています。旧JSONで難易度がない場合は2として読み込みます。
 
-選択肢の `choices.A`〜`choices.D` は、SE番号・原題・邦題をまとめたオブジェクトです。3つのプロパティは必須で、邦題が原題と同じ表記の場合は `titleJa: null` で邦題なしを明記します。
+選択肢の `choices.A`〜`choices.D` は、SE番号・原題・邦題・解説URLをまとめたオブジェクトです。4つのプロパティは必須で、邦題が原題と同じ表記の場合は `titleJa: null` で邦題なしを明記します。`explanationUrl` には、対応する Swift Digest 記事の HTTPS の絶対URLを保存します。
 
 ```json
 "choices": {
   "A": {
     "number": "SE-0380",
     "title": "if and switch expressions",
-    "titleJa": "ifとswitch式"
+    "titleJa": "ifとswitch式",
+    "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0380.html"
   },
   "B": {
     "number": "SE-0289",
     "title": "Result builders",
-    "titleJa": null
+    "titleJa": null,
+    "explanationUrl": "https://swiftdigest.koherent.org/proposals/se-0289.html"
   }
 }
 ```
 
 上は2択分の抜粋です。実際の問題にはA〜Dの4択を定義します。邦題は [Swift Digest](https://swiftdigest.koherent.org/proposals/) から事前に取得してJSONへ保存し、実行時には外部取得しません。第1集とチュートリアルには2026-10-26時点の邦題を収録しています。文字列形式の選択肢は読み込めません。更新したJSONから新しい大会を作成すると反映されます。
+
+Display の正解発表画面では、全選択肢の右端に解説リンクのアイコンを表示し、別タブで Swift Digest を開きます。URL は SE番号や解説本文から組み立てず、JSONの値をそのまま使います。`explanationUrl` のない旧JSONは読み込めません。問題ビューワで各選択肢のURLを編集してJSONへ保存できます。
 
 ```sh
 npm run questions:check

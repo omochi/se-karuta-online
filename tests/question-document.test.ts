@@ -8,10 +8,30 @@ const question = {
   difficulty: 2 as const,
   bodyMarkdown: "問題\n```swift\nlet x = 1\n```",
   choices: {
-    A: { number: "SE-0001", title: "a", titleJa: null },
-    B: { number: "SE-0002", title: "b", titleJa: null },
-    C: { number: "SE-0003", title: "c", titleJa: null },
-    D: { number: "SE-0004", title: "d", titleJa: null },
+    A: {
+      number: "SE-0001",
+      title: "a",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0001.html",
+    },
+    B: {
+      number: "SE-0002",
+      title: "b",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0002.html",
+    },
+    C: {
+      number: "SE-0003",
+      title: "c",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0003.html",
+    },
+    D: {
+      number: "SE-0004",
+      title: "d",
+      titleJa: null,
+      explanationUrl: "https://swiftdigest.koherent.org/proposals/se-0004.html",
+    },
   },
   correctChoice: "B",
   explanationMarkdown: "[解説](https://example.com)",
@@ -33,6 +53,8 @@ it("オブジェクト形式の大会名や付随情報を保持し、BOM付きJ
   };
   const doc = readQuestionDocument("\uFEFF" + JSON.stringify(input));
   doc.questions[0].choices.A.title = "新しい選択肢";
+  doc.questions[0].choices.A.explanationUrl =
+    "https://swiftdigest.koherent.org/custom-article.html";
   expect(JSON.parse(writeQuestionDocument(doc))).toEqual({
     ...input,
     questions: [
@@ -40,11 +62,49 @@ it("オブジェクト形式の大会名や付随情報を保持し、BOM付きJ
         ...question,
         choices: {
           ...question.choices,
-          A: { number: "SE-0001", title: "新しい選択肢", titleJa: null },
+          A: {
+            ...question.choices.A,
+            title: "新しい選択肢",
+            explanationUrl:
+              "https://swiftdigest.koherent.org/custom-article.html",
+          },
         },
       },
     ],
   });
+});
+
+it.each([
+  undefined,
+  null,
+  123,
+  "",
+  " ",
+  "not a URL",
+  "/proposals/se-0001.html",
+  "http://swiftdigest.koherent.org/proposals/se-0001.html",
+  "javascript:alert(1)",
+  "data:text/html,test",
+  "https://",
+  "https://swift digest.koherent.org/",
+  "https://swiftdigest.koherent.org/\n",
+  "https://example.com/" + "a".repeat(2048),
+])("不正な解説URL %j を選択肢ごとのエラーで拒否する", (explanationUrl) => {
+  for (const choice of ["A", "B", "C", "D"] as const) {
+    expect(() =>
+      readQuestionDocument(
+        JSON.stringify([
+          {
+            ...question,
+            choices: {
+              ...question.choices,
+              [choice]: { ...question.choices[choice], explanationUrl },
+            },
+          },
+        ]),
+      ),
+    ).toThrow(`問題 1: 選択肢 ${choice}: explanationUrl`);
+  }
 });
 it("不正な入力と、編集で生じたID重複・正解不正を拒否する", () => {
   for (const text of ["{", "null", "{}", "[]"])
