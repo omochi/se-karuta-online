@@ -188,7 +188,16 @@ button.onclick = async () => {
       chart.textContent!.includes("未回答 2人"),
       "未回答人数が表示されない",
     );
-    results.push("PASS 正解発表の本文・回答分布・選択肢・解説が収まる");
+    assert(
+      !document.querySelector(".display-explanation") &&
+        !document
+          .querySelector(".display-content")!
+          .textContent!.includes("Test explanation"),
+      "正解発表で解説が表示された",
+    );
+    results.push(
+      "PASS 正解発表の本文・回答分布・選択肢が収まり、解説は表示しない",
+    );
     sampledFrames++;
     draw(cases[0][1], 0, "closed-question", "answersClosed");
     await frame();

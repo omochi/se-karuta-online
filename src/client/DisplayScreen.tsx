@@ -2,13 +2,7 @@ import { choiceLabel } from "../shared/proposal-title";
 import type { ReactNode } from "react";
 import type { RoomView } from "../shared/types";
 import type { GameProgressState } from "./phase-presentation";
-import {
-  Brand,
-  Choices,
-  FinalResults,
-  MarkdownBody,
-  Ranking,
-} from "./components";
+import { Brand, Choices, FinalResults, Ranking } from "./components";
 import { GameProgress } from "./GameProgress";
 import { FittedQuestion } from "./FittedQuestion";
 import { QuestionBody } from "./QuestionBody";
@@ -107,12 +101,6 @@ export function DisplayScreen({
               ))}
             {distribution}
             {q && <Choices question={q} showCorrect={revealing} />}
-            {revealing && q?.explanationMarkdown && (
-              <div className="display-explanation">
-                <strong>正解 {q.correctChoice}</strong>
-                <MarkdownBody text={q.explanationMarkdown} />
-              </div>
-            )}
           </>
         ) : null}
       </main>
