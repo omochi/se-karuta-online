@@ -50,6 +50,7 @@ export function useRoom(session: RoomSession) {
       if (document.visibilityState === "visible") {
         lastReady.current = null;
         session.send({ type: "ping" });
+        session.synchronizeClock();
       }
       prepare();
     };
@@ -68,7 +69,7 @@ export function useRoom(session: RoomSession) {
     pending: pending?.roundId === view?.question?.id ? pending : null,
     answer: session.answer,
     command: session.command,
-    receivedAt: session.receivedAt,
+    serverNow: session.serverNow,
   };
 }
 export type RoomConnection = ReturnType<typeof useRoom>;

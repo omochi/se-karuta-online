@@ -72,7 +72,7 @@ export default function QuestionDisplayPreview() {
     <DisplayScreen
       view={view}
       // レイアウト確認中は時間を進めず、各段階の初期設定の秒数で固定する。
-      progress={getGameProgress(view, 0)}
+      progress={getGameProgress(view)}
       status={<span className="connection">プレビュー</span>}
       onQuestionFit={reportFit}
     />

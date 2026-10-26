@@ -111,7 +111,7 @@ createRoot(document.getElementById("root")!).render(
   <MemoryRouter>
     <DisplayScreen
       view={view}
-      progress={getGameProgress(view, 0)}
+      progress={getGameProgress(view)}
       status={<span className="display-event">ダミー表示 · 正解者30人</span>}
     />
   </MemoryRouter>,

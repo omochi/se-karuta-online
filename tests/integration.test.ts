@@ -204,6 +204,18 @@ test(
     }
     const control = await connect("control", adminCookie);
     let display = await connect("display", displayCookie);
+    const syncId = crypto.randomUUID();
+    const syncStarted = Date.now();
+    const revisionBeforeSync = display.state!.revision;
+    display.send({ type: "timeSync", requestId: syncId });
+    const synchronized = await display.reply(syncId);
+    assert.equal(synchronized.type, "timeSync");
+    if (synchronized.type !== "timeSync") throw new Error("missing timeSync");
+    assert(synchronized.serverReceivedAt >= syncStarted);
+    assert(synchronized.serverSentAt >= synchronized.serverReceivedAt);
+    assert(synchronized.serverSentAt <= Date.now());
+    assert.equal(display.state!.revision, revisionBeforeSync);
+    assert.equal(display.state!.phase, "waiting");
     const joins = await Promise.all(
       Array.from({ length: 40 }, (_, i) =>
         request(`/api/e/${id}/join`, { name: `Player ${i}` }),

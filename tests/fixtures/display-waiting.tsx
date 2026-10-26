@@ -40,7 +40,7 @@ createRoot(document.getElementById("root")!).render(
   <MemoryRouter>
     <DisplayScreen
       view={view}
-      progress={getGameProgress(view, 0)}
+      progress={getGameProgress(view)}
       status={<ConnectionBadge connected />}
     />
   </MemoryRouter>,

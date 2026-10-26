@@ -95,7 +95,7 @@ function fixture(phase: Phase): RoomConnection {
     pending: null,
     answer: vi.fn(),
     command: vi.fn(),
-    receivedAt: { current: 1000 },
+    serverNow: () => performance.now(),
   };
 }
 const screens = [Player, Display, Control];
@@ -259,7 +259,7 @@ describe("3画面の進行案内", () => {
     "%sは残り0秒でもサーバー通知前に次段階へ進めない",
     (phase) => {
       const room = fixture(phase);
-      const progress = getGameProgress(room.view!, 15000);
+      const progress = getGameProgress(room.view!, 16000);
       expect(progress.phase).toBe(phase);
       expect(progress.timer?.seconds).toBe(0);
       expect(progress.answering).toBe(false);
@@ -268,15 +268,15 @@ describe("3画面の進行案内", () => {
   it("締切直前の残り秒数とバーは同じ時間を使い、設定変更で全長を変えない", () => {
     const view = fixture("acceptingAnswers").view!;
     view.timing.answeringSeconds = 60;
-    const progress = getGameProgress(view, 5000);
+    const progress = getGameProgress(view, 6000);
     expect(progress.timer).toMatchObject({
       seconds: 10,
       durationSeconds: 15,
       fraction: 2 / 3,
     });
-    expect(getGameProgress(view, 14999).answering).toBe(true);
-    expect(getGameProgress(view, 15000).closed).toBe(true);
-    expect(getGameProgress(view, 30000).closed).toBe(true);
+    expect(getGameProgress(view, 15999).answering).toBe(true);
+    expect(getGameProgress(view, 16000).closed).toBe(true);
+    expect(getGameProgress(view, 31000).closed).toBe(true);
   });
   it.each(["answered", "pending", "unanswered"])(
     "締切案内と本人の%s状態を併記する",

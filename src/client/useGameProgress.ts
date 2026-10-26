@@ -10,5 +10,5 @@ export function useGameProgress(room: RoomConnection) {
     const timer = setInterval(() => tick((n) => n + 1), 100);
     return () => clearInterval(timer);
   }, [view.phaseEndsAt]);
-  return getGameProgress(view, performance.now() - room.receivedAt.current);
+  return getGameProgress(view, room.serverNow());
 }

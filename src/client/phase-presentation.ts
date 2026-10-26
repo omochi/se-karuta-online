@@ -41,11 +41,14 @@ export const PHASE_MESSAGES: Record<Phase, PhaseMessage> = {
   finished: { title: "大会終了", description: "おつかれさまでした！" },
 };
 
-export function getGameProgress(view: RoomView, elapsedMs: number) {
+export function getGameProgress(
+  view: RoomView,
+  serverNow: number = view.serverNow,
+) {
   const remainingMs =
     view.phaseEndsAt === null
       ? null
-      : Math.max(0, view.phaseEndsAt - view.serverNow - Math.max(0, elapsedMs));
+      : Math.max(0, view.phaseEndsAt - serverNow);
   // 期限到達時の表示だけを揃える。問題公開やサーバーの進行状態は先に進めない。
   const phase: Phase =
     view.phase === "acceptingAnswers" && remainingMs === 0

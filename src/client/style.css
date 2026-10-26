@@ -917,8 +917,8 @@ button.choice:not(:disabled):active {
 .countdown-bar-fill {
   height: 100%;
   width: 100%;
-  transform-origin: left;
-  transition: transform 100ms linear;
+  /* Safariのtransform transitionは更新が重なると描画が巻き戻るため幅で補間する。 */
+  transition: width 100ms linear;
 }
 .preparation-count strong {
   font-size: 28px;

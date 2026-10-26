@@ -1,5 +1,6 @@
 import { api } from "./api";
 import { getGameProgress } from "./phase-presentation";
+import { ServerClock } from "./ServerClock";
 import type {
   Choice,
   ClientMessage,
@@ -33,7 +34,10 @@ function requestId() {
 // loaderで初回stateを待ち、同じ接続をReactに引き渡す。
 // 準備完了通知は描画後のuseRoomだけが送る。先読みだけでは大会を進めない。
 export class RoomSession {
-  readonly receivedAt = { current: performance.now() };
+  private readonly clock = new ServerClock();
+  readonly serverNow = this.clock.now;
+  private syncPending = new Map<string, number>();
+  private syncTimers: Array<ReturnType<typeof setTimeout>> = [];
   readonly ready: Promise<void>;
   private resolveReady!: () => void;
   private rejectReady!: (reason: unknown) => void;
@@ -84,6 +88,7 @@ export class RoomSession {
     );
     this.heartbeat = setInterval(() => {
       this.send({ type: "ping" });
+      this.synchronizeClock();
       if (this.snapshot.pending) this.send(this.snapshot.pending);
     }, 10000);
     void this.connect(false);
@@ -116,6 +121,20 @@ export class RoomSession {
     this.socket.send(JSON.stringify(message));
     return true;
   };
+  synchronizeClock = () => {
+    const sentAt = performance.now();
+    for (const [id, time] of this.syncPending)
+      if (sentAt - time >= 30000) this.syncPending.delete(id);
+    const id = requestId();
+    this.syncPending.set(id, sentAt);
+    if (!this.send({ type: "timeSync", requestId: id }))
+      this.syncPending.delete(id);
+  };
+  private clearClockRequests() {
+    for (const timer of this.syncTimers) clearTimeout(timer);
+    this.syncTimers = [];
+    this.syncPending.clear();
+  }
   private async connect(checkSession: boolean) {
     if (checkSession) {
       try {
@@ -148,7 +167,7 @@ export class RoomSession {
     }
     this.socket = ws;
     ws.onopen = () => {
-      if (this.stopped) return;
+      if (this.stopped || this.socket !== ws) return;
       this.attempts = 0;
       this.update({
         connected: true,
@@ -156,13 +175,18 @@ export class RoomSession {
         generation: this.snapshot.generation + 1,
       });
       this.send({ type: "ping" });
+      this.synchronizeClock();
+      // 接続直後は複数回測り、偶然遅かった応答だけに依存しない。
+      this.syncTimers = [250, 500].map((delay) =>
+        setTimeout(this.synchronizeClock, delay),
+      );
       if (this.snapshot.pending) this.send(this.snapshot.pending);
     };
     ws.onmessage = (event) => {
-      if (this.stopped) return;
+      if (this.stopped || this.socket !== ws) return;
       const message = JSON.parse(event.data) as ServerMessage;
       if (message.type === "state") {
-        this.receivedAt.current = performance.now();
+        this.clock.initialize(message.serverNow);
         const pending = this.snapshot.pending;
         if (
           pending &&
@@ -175,6 +199,16 @@ export class RoomSession {
           clearTimeout(this.initialTimeout);
           this.resolveReady();
         }
+      } else if (message.type === "timeSync") {
+        const sentAt = this.syncPending.get(message.requestId);
+        if (sentAt === undefined) return;
+        this.syncPending.delete(message.requestId);
+        this.clock.synchronize(
+          sentAt,
+          performance.now(),
+          message.serverReceivedAt,
+          message.serverSentAt,
+        );
       } else {
         if (message.type === "error") this.update({ error: message.message });
         if (message.requestId === this.snapshot.pending?.requestId)
@@ -186,7 +220,8 @@ export class RoomSession {
       }
     };
     ws.onclose = () => {
-      if (this.stopped) return;
+      if (this.stopped || this.socket !== ws) return;
+      this.clearClockRequests();
       this.busyId = null;
       this.update({ connected: false, busy: false });
       this.retry = setTimeout(
@@ -205,8 +240,7 @@ export class RoomSession {
       pending ||
       !connected ||
       view.me?.participation !== "eligible" ||
-      !getGameProgress(view, performance.now() - this.receivedAt.current)
-        .answering
+      !getGameProgress(view, this.serverNow()).answering
     )
       return;
     const message: Pending = {
@@ -253,6 +287,7 @@ export class RoomSession {
     clearTimeout(this.retry);
     clearTimeout(this.initialTimeout);
     clearInterval(this.heartbeat);
+    this.clearClockRequests();
     this.socket?.close();
     // 遷移完了で廃棄する旧画面に「再接続中」を通知しない。
     // Reactが新画面を反映するまでは最後の表示を維持する。
