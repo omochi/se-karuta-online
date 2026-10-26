@@ -1,5 +1,6 @@
 import { choiceLabel } from "../shared/proposal-title";
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import type { RoomView } from "../shared/types";
 import type { GameProgressState } from "./phase-presentation";
 import { Brand, Choices, FinalResults, Ranking } from "./components";
@@ -111,6 +112,9 @@ export function DisplayScreen({
       </main>
       <footer className="display-footer">
         <span>Swift Evolution Karuta Online</span>
+        {v.phase === "finished" && (
+          <Link to={`/e/${v.id}/review`}>復習資料を見る →</Link>
+        )}
       </footer>
     </div>
   );

@@ -74,6 +74,9 @@ export default function TournamentReport() {
   return (
     <>
       <Header>
+        {data.report && (
+          <Link to={`/e/${data.id}/review`}>復習資料を見る →</Link>
+        )}
         <Link to={`/e/${data.id}/control`}>Controlへ戻る →</Link>
       </Header>
       {data.loginRequired ? (

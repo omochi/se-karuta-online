@@ -14,6 +14,7 @@ import {
 import { newGame } from "./game";
 import { ensureJoinCode, loadGame, saveGame } from "./repository";
 import { tournamentReport } from "./report";
+import { tournamentReview } from "./review";
 import { listEvents } from "./event-list";
 import { validateQuestions } from "../shared/questions";
 export { TournamentRoom } from "./room";
@@ -212,6 +213,13 @@ export default {
           phase: string;
         }>();
       if (!tournament) return json({ error: "大会が見つかりません。" }, 404);
+      if (action === "review" && request.method === "GET") {
+        const game = await loadGame(env.DB, id);
+        if (!game) return json({ error: "大会が見つかりません。" }, 404);
+        if (game.phase !== "finished")
+          return json({ error: "大会終了後に復習資料を確認できます。" }, 409);
+        return json(tournamentReview(game));
+      }
       if (action === "report" && request.method === "GET") {
         if (!isAdmin)
           return json({ error: "管理用パスワードを入力してください。" }, 401);

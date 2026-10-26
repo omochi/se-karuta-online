@@ -254,7 +254,12 @@ function GameGate({ data }: { data: GameData }) {
         </p>
         <h1>{eventName || "SE Karuta"}</h1>
         {role === "player" && data.finished ? (
-          <p role="status">この大会は終了しました。</p>
+          <>
+            <p role="status">この大会は終了しました。</p>
+            <Link className="button primary" to={`/e/${id}/review`}>
+              復習資料を見る →
+            </Link>
+          </>
         ) : role === "player" ? (
           <>
             <p className="muted">名前を入れたら、前のモニターを見て待とう。</p>
@@ -387,9 +392,17 @@ export function Control({ room }: { room: RoomConnection }) {
           </div>
           <div className="links">
             {v.phase === "finished" && (
-              <Link className="button primary" to={`/e/${v.id}/control/report`}>
-                詳細結果を見る →
-              </Link>
+              <>
+                <Link
+                  className="button primary"
+                  to={`/e/${v.id}/control/report`}
+                >
+                  詳細結果を見る →
+                </Link>
+                <Link className="button secondary" to={`/e/${v.id}/review`}>
+                  復習資料を見る →
+                </Link>
+              </>
             )}
             <Link className="button secondary" to={`/questions?event=${v.id}`}>
               問題ビューワ →
@@ -740,6 +753,14 @@ export function Player({ room }: { room: RoomConnection }) {
           </div>
         ) : (
           <PlayerAnswerStatus room={room} progress={progress} />
+        )}
+        {v.phase === "finished" && (
+          <Link
+            className="button primary player-review-link"
+            to={`/e/${v.id}/review`}
+          >
+            復習資料を見る →
+          </Link>
         )}
         {v.phase === "finished" && v.results && (
           <>

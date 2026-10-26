@@ -18,6 +18,7 @@ import { getGameProgress } from "../src/client/phase-presentation";
 import { eventUrls } from "../src/shared/urls";
 import { newGame } from "../src/worker/game";
 import { tournamentReport } from "../src/worker/report";
+import { tournamentReview } from "../src/worker/review";
 import type { EventPage } from "../src/shared/events";
 
 class Socket {
@@ -164,6 +165,11 @@ beforeEach(() => {
         const game = newGame("game", "詳細結果テスト", [], 0);
         game.phase = "finished";
         return authorized ? json(tournamentReport(game)) : json({}, 401);
+      }
+      if (path.endsWith("/review")) {
+        const game = newGame("game", "公開の復習資料", [], 0);
+        game.phase = "finished";
+        return finished ? json(tournamentReview(game)) : json({}, 409);
       }
       if (path.includes("/session?"))
         return socketResponse
@@ -603,6 +609,7 @@ it("終了済み大会のQRで新規登録を案内せず、既存セッショ�
   authorized = false;
   await start("/e/game/play");
   expect(html()).toContain("この大会は終了しました。");
+  expect(html()).toContain('href="/e/game/review"');
   expect(html()).not.toContain("みんなに表示する名前");
   authorized = true;
   const navigation = router.revalidate();
@@ -632,9 +639,21 @@ it("終了済み大会のQRで新規登録を案内せず、既存セッショ�
     (router.state.loaderData["game-play"] as GameData).session,
   ).not.toBeNull();
   expect(html()).toContain("取得した称号");
+  expect(html()).toContain('href="/e/game/review"');
   expect(html().replace(/<[^>]*>/g, "")).toContain(
     "正答王（2位）、友情王（3位）",
   );
+});
+it("復習資料の直リンクは終了前に案内を表示し、終了後は未ログインでもWebSocketなしで開ける", async () => {
+  authorized = false;
+  await start("/e/game/review");
+  expect(html()).toContain("大会終了後に復習できます");
+  expect(html()).not.toContain("公開の復習資料");
+  finished = true;
+  await router.revalidate();
+  expect(html()).toContain("公開の復習資料");
+  expect(html()).not.toContain("管理用パスワード");
+  expect(Socket.all).toHaveLength(0);
 });
 it("未ログインでもトップページにコード入力があり、管理用パスワードに自動フォーカスしない", async () => {
   authorized = false;
