@@ -174,12 +174,12 @@ test(
     const questionSet = JSON.parse(
       await readFile("data/questions/vol-01.json", "utf8"),
     );
-    assert.equal(questionSet.questions.length, 12);
+    assert.equal(questionSet.questions.length, 8);
     assert.deepEqual(
       questionSet.questions
         .map((q: { difficulty: number }) => q.difficulty)
         .sort(),
-      [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
+      [1, 1, 1, 2, 2, 2, 3, 3],
     );
     const firstCorrectChoice = questionSet.questions[0].correctChoice as Choice;
     const differentChoice: Choice = firstCorrectChoice === "A" ? "B" : "A";

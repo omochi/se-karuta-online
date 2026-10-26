@@ -20,7 +20,7 @@ npm run dev
 
 [http://localhost:5218](http://localhost:5218) を開きます。ポート **5218** は、サンプル問題の **SE-0218 (compactMapValues)** にちなんでいます。使用中なら別ポートへ自動で変更せずエラーにします。
 
-別のターミナルで、入門・標準・難問を4問ずつ、計12問を登録できます。
+別のターミナルで、本編8問（入門3問・標準3問・難問2問）を登録できます。
 
 ```sh
 npm run seed
@@ -165,7 +165,7 @@ npm run seed:report
 
 作問・解説リンク・レビューのルールは[作問マニュアル](docs/question-authoring.md)にまとめています。解説のリンク先には koher さんの Swift Digest の日本語要約を使います。
 
-[`data/questions/vol-01.json`](data/questions/vol-01.json) を参考にします。`id`、`difficulty`（1: 入門、2: 標準、3: 難問）、`bodyMarkdown`、A〜D の `choices`、`correctChoice`、`explanationMarkdown` を持つ配列です。CLI は `questions` プロパティで包んだ形式も読み込みます。問題数は1〜100問、各文字数・ID重複・選択肢数・難易度を検証します。統合問題集は入門・標準・難問を4問ずつ、計12問収録しています。旧JSONで難易度がない場合は2として読み込みます。
+[`data/questions/vol-01.json`](data/questions/vol-01.json) を参考にします。`id`、`difficulty`（1: 入門、2: 標準、3: 難問）、`bodyMarkdown`、A〜D の `choices`、`correctChoice`、`explanationMarkdown` を持つ配列です。CLI は `questions` プロパティで包んだ形式も読み込みます。問題数は1〜100問、各文字数・ID重複・選択肢数・難易度を検証します。第1集の本編は入門3問・標準3問・難問2問の計8問です。時間がある場合の追加出題用に、[`data/questions/vol-01-bonus.json`](data/questions/vol-01-bonus.json) へ入門1問・標準1問・難問2問の計4問を難易度順で収録しています。ボーナスは別の問題集として問題ビューワで確認したり、大会作成時に読み込んだりできます。旧JSONで難易度がない場合は2として読み込みます。
 
 選択肢の `choices.A`〜`choices.D` は、SE番号・原題・邦題・解説URLをまとめたオブジェクトです。4つのプロパティは必須で、邦題が原題と同じ表記の場合は `titleJa: null` で邦題なしを明記します。`explanationUrl` には、対応する Swift Digest 記事の HTTPS の絶対URLを保存します。
 
@@ -235,7 +235,7 @@ npm run check
 
 回答画面は選択肢の上に56pxのお知らせ枠を常に確保し、送信中・受付済み・通信エラー・再接続の案内を同じ領域に表示します。選択前後で枠線の幅も変えず、4択の位置と折り返しを維持します。スマホには他の参加者の回答済み人数を表示せず、開始前の参加人数と接続待ちの準備完了人数だけを表示します。ブランド・大会名・本人名・接続状態は通常のページフッターにまとめ、スクロールに追従しません。正解発表後の順位や詳しい結果は選択肢の下に表示します。
 
-開発プレビューの「全問の収まりを検証」は、スマホ2サイズ×全12問について、実際に回答を押して未選択・送信中・受付済みで4択・進行表示・お知らせ枠・フッターの位置が変わらないことも検証します。固定状態の確認には、URLへ `answer=B&answerState=pending`（送信中）、`answer=B&answerState=accepted`（受付済み）、`answerState=error`（通信エラー）、`answerState=offline`（再接続）を付けられます。
+開発プレビューの「全問の収まりを検証」は、スマホ2サイズ×本編全8問について、実際に回答を押して未選択・送信中・受付済みで4択・進行表示・お知らせ枠・フッターの位置が変わらないことも検証します。固定状態の確認には、URLへ `answer=B&answerState=pending`（送信中）、`answer=B&answerState=accepted`（受付済み）、`answerState=error`（通信エラー）、`answerState=offline`（再接続）を付けられます。
 
 純粋なゲームロジック・認証・URL検証、ローカル workerd による D1 の保存失敗時のロールバックと DO 再生成、Miniflare で40参加者の WebSocket 接続・同時回答・再接続・結果集計を確認します。統合テストは独立した一時DBを使い、回答受付30秒を含む実タイマーを含みます。開発サーバーは不要です。
 

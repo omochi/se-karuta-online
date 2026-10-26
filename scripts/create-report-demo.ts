@@ -15,9 +15,16 @@ const vars = parseEnv(await readFile(".dev.vars", "utf8"));
 const origin = normalizePublicOrigin(
   vars.PUBLIC_ORIGIN ?? "http://localhost:5218",
 );
-const input = JSON.parse(await readFile("data/questions/vol-01.json", "utf8"));
+// 本編8問とボーナス4問を使い、有効・無効・未出題を含む12問のサンプルを維持する。
+const inputs = await Promise.all(
+  ["data/questions/vol-01.json", "data/questions/vol-01-bonus.json"].map(
+    async (file) => JSON.parse(await readFile(file, "utf8")),
+  ),
+);
 const id = crypto.randomUUID();
-const questions = validateQuestions(input.questions ?? input).map((q) => ({
+const questions = validateQuestions(
+  inputs.flatMap((input) => input.questions ?? input),
+).map((q) => ({
   ...q,
   id: `report-${id.slice(0, 8)}-${q.id}`,
 }));
