@@ -72,21 +72,17 @@
   margin: 0;
 }
 .display-page.display-page-question .countdown-heading {
-  justify-content: flex-end;
+  justify-content: center;
   gap: 10px;
 }
 .display-page.display-page-question .game-progress-display .countdown-value {
   font-size: 32px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  min-width: 3ch;
-  text-align: right;
 }
-.display-page.display-page-question .countdown-label {
+.display-page.display-page-question .countdown-label,
+.display-page.display-page-question .countdown-unit {
   font-size: 11px;
-}
-.display-page-question .countdown-label small {
-  display: none;
 }
 .display-page.display-page-question .countdown-bar {
   height: 5px;

@@ -308,7 +308,9 @@ function TimingSettingsForm({ room }: { room: RoomConnection }) {
   const fields = [
     ["countdownSeconds", "選択肢公開前のカウントダウン"],
     ["readingSeconds", "選択肢を読んで出題を待つ時間"],
-    ["answeringSeconds", "問題の表示・回答時間"],
+    ["answeringSeconds1", "難易度1の問題の表示・回答時間"],
+    ["answeringSeconds2", "難易度2の問題の表示・回答時間"],
+    ["answeringSeconds3", "難易度3の問題の表示・回答時間"],
   ] as const;
   // サーバーが保存した値を受信して初めて編集状態を解除する。
   useEffect(() => {
@@ -580,7 +582,6 @@ export function Control({ room }: { room: RoomConnection }) {
             )}
           </section>
           <aside className="control-sidebar">
-            <TimingSettingsForm room={room} />
             <section className="panel">
               <div className="section-heading">
                 <h2>参加者</h2>
@@ -653,6 +654,7 @@ export function Control({ room }: { room: RoomConnection }) {
                 <p className="muted">共有画面は接続されていません（任意）。</p>
               )}
             </section>
+            <TimingSettingsForm room={room} />
           </aside>
         </div>
       </main>

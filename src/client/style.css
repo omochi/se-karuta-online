@@ -900,12 +900,8 @@ button.choice:not(:disabled):active {
 }
 .countdown-heading {
   display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.countdown-label small {
-  display: block;
-  margin-top: 4px;
+  align-items: baseline;
+  gap: 12px;
 }
 .countdown-bar {
   width: 100%;
@@ -934,8 +930,10 @@ button.choice:not(:disabled):active {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.05em;
 }
-.countdown-label {
+.countdown-label,
+.countdown-unit {
   font-size: 12px;
+  white-space: nowrap;
 }
 .ranking {
   padding: 0;
@@ -1394,10 +1392,19 @@ button.choice:not(:disabled):active {
   flex-shrink: 0;
 }
 .game-progress-display .countdown-heading {
+  align-items: baseline;
   justify-content: center;
+  gap: 12px;
+  text-align: center;
+}
+.game-progress-display .countdown-label {
+  font-size: clamp(14px, 1.4vw, 18px);
+}
+.game-progress-display .countdown-unit {
+  font-size: clamp(14px, 1.4vw, 18px);
 }
 .game-progress-display .countdown-value {
-  font-size: clamp(70px, 12vw, 165px);
+  font-size: clamp(64px, 10vw, 128px);
 }
 .question-body {
   flex: 1;

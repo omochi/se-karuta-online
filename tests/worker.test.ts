@@ -224,18 +224,24 @@ it("D1に問題のスナップショット・参加資格・回答を保存し�
   applyCommand(next, { command: "start", revision: 0 }, 100);
   beginCountdownIfReady(next, new Set(next.players.map((p) => p.id)), 100);
   advanceTimer(next, 5100);
-  advanceTimer(next, 20100);
-  receiveAnswer(next, next.players[0].id, next.rounds[0].id, "B", 20382);
+  advanceTimer(next, 25100);
+  receiveAnswer(next, next.players[0].id, next.rounds[0].id, "B", 25382);
   applyCommand(
     next,
     {
       command: "updateTiming",
       revision: next.revision,
-      timing: { countdownSeconds: 3, readingSeconds: 15, answeringSeconds: 45 },
+      timing: {
+        countdownSeconds: 3,
+        readingSeconds: 15,
+        answeringSeconds1: 45,
+        answeringSeconds2: 45,
+        answeringSeconds3: 45,
+      },
     },
-    20400,
+    25400,
   );
-  expect(next.phaseEndsAt).toBe(50100);
+  expect(next.phaseEndsAt).toBe(70100);
   await saveGame(bindings.DB, g, next);
   expect(await loadGame(bindings.DB, g.id)).toEqual(next);
   await bindings.DB.prepare(
@@ -442,10 +448,73 @@ it("時間設定のない既存大会をデフォルト値で復元する", asyn
     .run();
   expect((await loadGame(bindings.DB, game.id))?.timing).toEqual({
     countdownSeconds: 5,
-    readingSeconds: 15,
-    answeringSeconds: 30,
+    readingSeconds: 20,
+    answeringSeconds1: 30,
+    answeringSeconds2: 45,
+    answeringSeconds3: 60,
   });
 });
+
+it("旧形式の共通回答時間を全難易度へ引き継ぎ、進行中の期限を維持する", async () => {
+  const game = fixture();
+  applyCommand(game, { command: "start", revision: game.revision }, 100);
+  beginCountdownIfReady(game, new Set(game.players.map((p) => p.id)), 100);
+  advanceTimer(game, 5100);
+  advanceTimer(game, 25100);
+  await saveGame(bindings.DB, null, game, "hash");
+  const legacy = {
+    ...game,
+    timing: { countdownSeconds: 7, readingSeconds: 18, answeringSeconds: 42 },
+  };
+  await bindings.DB.prepare(
+    "UPDATE tournaments SET state_json = ? WHERE id = ?",
+  )
+    .bind(JSON.stringify(legacy), game.id)
+    .run();
+  const restored = (await loadGame(bindings.DB, game.id))!;
+  expect(restored.timing).toEqual({
+    countdownSeconds: 7,
+    readingSeconds: 18,
+    answeringSeconds1: 42,
+    answeringSeconds2: 42,
+    answeringSeconds3: 42,
+  });
+  expect(restored.phaseEndsAt).toBe(game.phaseEndsAt);
+  // 期限を持たない旧大会は、復元した設定と問題の難易度から補う。
+  await bindings.DB.prepare(
+    "UPDATE tournaments SET state_json = json_set(state_json, '$.phaseEndsAt', NULL) WHERE id = ?",
+  )
+    .bind(game.id)
+    .run();
+  expect((await loadGame(bindings.DB, game.id))!.phaseEndsAt).toBe(
+    25100 + 42000,
+  );
+});
+
+it.each([1, 2, 3] as const)(
+  "難易度%iの設定を保存し、期限のない出題中の大会を復元する",
+  async (difficulty) => {
+    const game = fixture();
+    game.rounds[0].question.difficulty = difficulty;
+    game.timing = {
+      ...game.timing,
+      answeringSeconds1: 17,
+      answeringSeconds2: 28,
+      answeringSeconds3: 39,
+    };
+    applyCommand(game, { command: "start", revision: game.revision }, 100);
+    beginCountdownIfReady(game, new Set(game.players.map((p) => p.id)), 100);
+    advanceTimer(game, 5100);
+    advanceTimer(game, 25100);
+    game.phaseEndsAt = null;
+    await saveGame(bindings.DB, null, game, "hash");
+    const restored = (await loadGame(bindings.DB, game.id))!;
+    expect(restored.timing).toEqual(game.timing);
+    expect(restored.phaseEndsAt).toBe(
+      25100 + [17, 28, 39][difficulty - 1] * 1000,
+    );
+  },
+);
 
 it("難易度のない保存済み問題を標準の2として復元する", async () => {
   const game = fixture();
@@ -495,16 +564,16 @@ it("詳細結果は終了後に管理者だけが取得でき、認証情報を�
     0,
   );
   advanceTimer(finished, 5000);
-  advanceTimer(finished, 20000);
+  advanceTimer(finished, 25000);
   receiveAnswer(
     finished,
     finished.players[0].id,
     finished.rounds[0].id,
     "B",
-    20382,
+    25382,
   );
   for (const command of ["close", "reveal", "ranking", "finish"] as const)
-    applyCommand(finished, { command, revision: finished.revision }, 21000);
+    applyCommand(finished, { command, revision: finished.revision }, 26000);
   await saveGame(bindings.DB, game, finished);
   expect((await exports.default.fetch(new Request(url))).status).toBe(401);
   for (const role of ["display", "player"] as const) {

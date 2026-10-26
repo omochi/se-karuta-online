@@ -1,5 +1,5 @@
 import type { Game, Player, Round } from "../shared/types";
-import { DEFAULT_TIMING } from "../shared/timing";
+import { answeringSeconds, restoreTiming } from "../shared/timing";
 import { readDifficulty } from "../shared/questions";
 import { generateJoinCode } from "../shared/join-code";
 const head = ({ players: _p, rounds: _r, joinCode: _c, ...state }: Game) =>
@@ -69,7 +69,7 @@ export async function loadGame(
     players: [],
     rounds: [],
   };
-  game.timing ??= { ...DEFAULT_TIMING };
+  game.timing = restoreTiming(game.timing);
   game.rounds = data[1].results.map((row) => ({
     ...JSON.parse(row.state_json as string),
     question: JSON.parse(row.question_json as string),
@@ -103,7 +103,9 @@ export async function loadGame(
     game.phaseEndsAt === null &&
     current?.openedAt != null
   )
-    game.phaseEndsAt = current.openedAt + game.timing.answeringSeconds * 1000;
+    game.phaseEndsAt =
+      current.openedAt +
+      answeringSeconds(game.timing, current.question.difficulty) * 1000;
   return game;
 }
 async function persistGame(

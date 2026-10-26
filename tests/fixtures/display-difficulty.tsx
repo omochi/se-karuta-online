@@ -34,7 +34,7 @@ if (phase !== "choicesPreparing")
 if (phase === "choicesReading") advanceTimer(game, 5000);
 if (phase === "acceptingAnswers") {
   advanceTimer(game, 5000);
-  advanceTimer(game, 20000);
+  advanceTimer(game, 25000);
 }
 const view = viewFor(
   game,
@@ -42,7 +42,7 @@ const view = viewFor(
   undefined,
   { onlinePlayers: new Set(), readyPlayers: new Set(), displays: [] },
   "preview",
-  phase === "choicesReading" ? 5000 : phase === "acceptingAnswers" ? 20000 : 0,
+  phase === "choicesReading" ? 5000 : phase === "acceptingAnswers" ? 25000 : 0,
   location.origin,
 );
 createRoot(document.getElementById("root")!).render(
