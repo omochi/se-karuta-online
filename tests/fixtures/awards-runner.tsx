@@ -127,9 +127,7 @@ const router = createMemoryRouter([
     }),
     element:
       screen === "result" ? (
-        <PersonalResultContent
-          data={{ result, owner: false, shareUrl: null }}
-        />
+        <PersonalResultContent data={{ result, owner: true, shareUrl: null }} />
       ) : screen === "report" ? (
         <TournamentReport />
       ) : screen === "player" ? (
