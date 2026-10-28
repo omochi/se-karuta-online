@@ -418,6 +418,11 @@ export function Control({ room }: { room: RoomConnection }) {
           <div>
             <p className="eyebrow">HOST YOUR GAME</p>
             <h1>{v.name}</h1>
+            {v.phase === "finished" && v.joinCode && (
+              <p className="control-join-code">
+                参加コード <strong>{v.joinCode}</strong>
+              </p>
+            )}
           </div>
           <div className="links">
             {v.phase === "finished" && (
