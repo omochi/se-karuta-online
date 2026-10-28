@@ -203,32 +203,19 @@ export function FinalResults({
   results: Results;
   compact?: boolean;
 }) {
-  const descriptions = {
-    correct: { subtitle: "知識でつかんだ正解", unit: "問" },
-    fastest: {
-      subtitle: "正解者内の順位が高いほど高得点（小数第3位まで表示）",
-      unit: "点",
-    },
-    difficult: {
-      subtitle: "正解が少ないほど高得点（小数第3位まで表示）",
-      unit: "点",
-    },
-    friendship: {
-      subtitle: "答えがそろうほど高得点（小数第3位まで表示）",
-      unit: "点",
-    },
-  };
   return (
     <div className={`final-results ${compact ? "compact" : ""}`}>
       <div className="awards-grid">
         {AWARDS.map(({ key, title }) => (
           <section className="award" key={key}>
-            <p className="eyebrow">{descriptions[key].subtitle}</p>
             <h2>{title}</h2>
             <Ranking
-              rows={results[key]}
-              unit={descriptions[key].unit}
-              limit={compact ? 3 : undefined}
+              rows={
+                compact
+                  ? results[key].filter((row) => row.rank <= 3)
+                  : results[key]
+              }
+              unit={key === "correct" ? "問" : "点"}
             />
           </section>
         ))}

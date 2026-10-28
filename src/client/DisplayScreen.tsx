@@ -41,7 +41,7 @@ export function DisplayScreen({
   ].includes(progress.phase);
   return (
     <div
-      className={`display-page ${fitQuestion ? "display-page-question" : v.phase === "waiting" ? "display-page-waiting" : ""}`}
+      className={`display-page ${fitQuestion ? "display-page-question" : v.phase === "waiting" ? "display-page-waiting" : v.phase === "finished" ? "display-page-finished" : ""}`}
     >
       <header className="display-header">
         <Brand small />
