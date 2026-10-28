@@ -8,9 +8,11 @@ import "./answer-distribution.css";
 export function AnswerDistribution({
   distribution,
   correctChoice,
+  colorScheme = "dark",
 }: {
   distribution: Distribution;
   correctChoice?: Choice;
+  colorScheme?: "light" | "dark";
 }) {
   const answered = CHOICES.reduce(
     (sum, choice) => sum + distribution.counts[choice],
@@ -18,7 +20,11 @@ export function AnswerDistribution({
   );
   const eligible = answered + distribution.unanswered;
   return (
-    <section className="answer-distribution" aria-label="みんなの回答">
+    <section
+      className="answer-distribution"
+      data-color-scheme={colorScheme}
+      aria-label="みんなの回答"
+    >
       <div className="distribution-heading">
         <h2>みんなの回答</h2>
         {distribution.sample && <span>サンプル</span>}

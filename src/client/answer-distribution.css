@@ -1,10 +1,10 @@
 .answer-distribution {
   min-width: 0;
-  border: 1px solid #605048;
+  border: 1px solid var(--distribution-line, #605048);
   border-radius: 12px;
-  background: #342d2d;
+  background: var(--distribution-surface, #342d2d);
   padding: 18px;
-  color: #f3f1e4;
+  color: var(--distribution-ink, #f3f1e4);
 }
 .distribution-heading {
   display: flex;
@@ -19,7 +19,7 @@
 }
 .distribution-heading > span {
   font-size: 11px;
-  color: #d3b49d;
+  color: var(--distribution-muted, #d3b49d);
 }
 .distribution-bars {
   display: grid;
@@ -48,22 +48,22 @@
 }
 .distribution-track {
   height: 20px;
-  background: #4b4343;
+  background: var(--distribution-track, #4b4343);
   border-radius: 4px;
   overflow: hidden;
 }
 .distribution-fill {
   height: 100%;
-  background: #ac9a91;
+  background: var(--distribution-fill, #ac9a91);
   border-radius: inherit;
   /* タイムバーと同じく、受信した割合へ幅を補間する。 */
   transition: width 100ms linear;
 }
 .distribution-correct {
-  color: #ffb49c;
+  color: var(--distribution-correct, #ffb49c);
 }
 .distribution-correct .distribution-fill {
-  background: #ffb49c;
+  background: var(--distribution-correct, #ffb49c);
 }
 .distribution-count {
   text-align: right;
@@ -81,7 +81,7 @@
 .answer-distribution .distribution-empty {
   margin: 16px 0 0;
   font-size: 13px;
-  color: #d3bfb3;
+  color: var(--distribution-muted, #d3bfb3);
 }
 @media (prefers-reduced-motion: reduce) {
   .distribution-fill {
@@ -144,4 +144,14 @@
   .has-distribution .distribution-summary {
     margin-top: 8px;
   }
+}
+
+.answer-distribution[data-color-scheme="light"] {
+  --distribution-line: var(--line);
+  --distribution-surface: #f3f5ef;
+  --distribution-ink: var(--ink);
+  --distribution-muted: var(--muted);
+  --distribution-track: #e2e5df;
+  --distribution-fill: #8b9b8e;
+  --distribution-correct: var(--accent);
 }

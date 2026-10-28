@@ -83,6 +83,8 @@ it("全問の本文・正解・解説・Digestリンクを表示し、個別回�
     createElement(MemoryRouter, null, createElement(ReviewContent, { review })),
   );
   expect(html.match(/<article /g)).toHaveLength(4);
+  expect(html).not.toMatch(/display-page|display-content|display-header/);
+  expect(html.match(/data-color-scheme="light"/g)).toHaveLength(2);
   expect(html.match(/aria-label="問題文"/g)).toHaveLength(4);
   expect(html.match(/aria-label="正解と解説"/g)).toHaveLength(4);
   expect(html.match(/class="choice-explanation-link"/g)).toHaveLength(16);
