@@ -35,6 +35,7 @@ import { PlayerAnswerStatus } from "./PlayerAnswerStatus";
 import "./player-layout.css";
 import { JoinTournamentForm } from "./JoinTournamentForm";
 import { EventList } from "./EventList";
+import { ParticipantPanel } from "./ParticipantPanel";
 export function Home() {
   const config = useRouteLoaderData<{ debugMode?: boolean }>("root");
   const { events } = useLoaderData<HomeData>();
@@ -637,76 +638,23 @@ export function Control({ room }: { room: RoomConnection }) {
             )}
           </section>
           <aside className="control-sidebar">
-            <section className="panel">
-              <div className="section-heading">
-                <h2>参加者</h2>
-                <span className="pill">{v.playerCount} 人</span>
-              </div>
-              <p className="muted">
-                開始を待たない設定は、切り替えるまで維持します。回答・未回答の扱いは全員同じです。待つ設定に戻すと、次の問題から反映します。
-              </p>
-              <div className="roster">
-                {v.players?.map((p) => (
-                  <div className="person" key={p.id}>
-                    <i className={`presence-dot ${p.online ? "online" : ""}`} />
-                    <div>
-                      <strong>{p.name}</strong>
-                      <small>
-                        {p.id.slice(0, 4)} ·{" "}
-                        {p.answered
-                          ? "回答済み"
-                          : p.ready
-                            ? "準備完了"
-                            : p.online
-                              ? "接続中"
-                              : "未接続"}
-                        {" · "}
-                        {p.waitForReady ? "開始を待つ" : "開始を待たない"}
-                      </small>
-                    </div>
-                    {v.phase !== "finished" && (
-                      <button
-                        className="ready-wait-toggle"
-                        role="switch"
-                        aria-checked={p.waitForReady}
-                        aria-label={`${p.name}（${p.id.slice(0, 4)}）の準備完了を待つ`}
-                        disabled={disabled}
-                        onClick={() =>
-                          room.command("setReadyWait", {
-                            playerId: p.id,
-                            waitForReady: !p.waitForReady,
-                          })
-                        }
-                      >
-                        {p.waitForReady ? "開始を待つ" : "開始を待たない"}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {!v.playerCount && (
-                <p className="muted empty-small">
-                  参加者の入室を待っています。
-                </p>
-              )}
-            </section>
+            <ParticipantPanel
+              key={v.id}
+              players={v.players ?? []}
+              finished={v.phase === "finished"}
+              disabled={disabled}
+              onReadyWait={(playerId, waitForReady) =>
+                room.command("setReadyWait", { playerId, waitForReady })
+              }
+            />
             <section className="panel">
               <h2>共有画面</h2>
-              <p className="muted">
-                同じDisplay
-                URLを開くと、会場の複数モニターやPCをサテライト画面として使えます。
-                Display用パスワードで入室してください。
-              </p>
               <p className="display-url">
                 <a href={v.urls.display} target="_blank" rel="noreferrer">
                   {v.urls.display}
                 </a>
               </p>
               <p>接続中 {v.displays?.length ?? 0}画面</p>
-              <p className="muted">
-                共有画面はいつでも追加・切断できます。開始時には待ち合わせません。
-                表示は運営が目で確認してください。
-              </p>
               {v.displays?.length ? (
                 v.displays.map((d) => (
                   <div className="display-device" key={d.id}>
