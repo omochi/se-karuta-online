@@ -174,7 +174,12 @@ export function Ranking({
     <ol className="ranking">
       {rows.slice(0, limit ?? rows.length).map((row) => (
         <li key={row.playerId}>
-          <span className={`rank rank-${row.rank}`}>{row.rank}</span>
+          <span
+            className={`rank rank-${row.rank}${row.rank <= 3 ? ` medal medal-${row.rank}` : ""}`}
+            aria-label={`${row.rank}位`}
+          >
+            {row.rank}
+          </span>
           <strong>{row.name}</strong>
           <span className="rank-value">
             {unit === "sec"

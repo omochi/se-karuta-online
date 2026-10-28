@@ -6,6 +6,7 @@ import type {
 } from "../shared/personal-result";
 import type { ResultData } from "./route-loaders";
 import { personalResultPath } from "../shared/urls";
+import { AWARDS } from "../shared/awards";
 import { Brand, ErrorBox, Header } from "./components";
 import { api } from "./api";
 import { AnswerStatus } from "./AnswerStatus";
@@ -89,58 +90,105 @@ export function ResultSummary({
       </div>
       <h1>{result.eventName}</h1>
       <p className="result-player-name">{p.name}</p>
-      {p.titles.length > 0 && (
-        <ul className="result-titles" aria-label="取得した称号">
-          {p.titles.map((t) => (
-            <li key={t.key}>
-              {t.title} <strong>{t.rank}位</strong>
-            </li>
-          ))}
+      <div className="result-awards">
+        <h2>あなたの成績</h2>
+        <ul className="result-award-list">
+          {AWARDS.map(({ key, title }) => {
+            const score =
+              key === "correct"
+                ? p.correct
+                : key === "fastest"
+                  ? p.fastestScore
+                  : key === "difficult"
+                    ? p.difficultScore
+                    : p.friendshipScore;
+            const percent =
+              p.eligible > 0
+                ? Math.min(100, Math.max(0, (score / p.eligible) * 100))
+                : null;
+            const award = p.titles.find((t) => t.key === key);
+            return (
+              <li className="result-award" key={key}>
+                <div className="result-award-heading">
+                  <div className="result-award-name">
+                    <strong>{title}</strong>
+                    {award && (
+                      <span className={`medal medal-${award.rank}`}>
+                        {award.rank}位
+                      </span>
+                    )}
+                  </div>
+                  <span className="result-award-score">
+                    {percent === null ? (
+                      "—"
+                    ) : key === "correct" ? (
+                      <>
+                        {p.correct} <small>/ {p.eligible} 問</small>
+                      </>
+                    ) : (
+                      <>
+                        {score.toFixed(3)} <small>点</small>
+                      </>
+                    )}
+                  </span>
+                </div>
+                <div className="result-award-progress">
+                  <div
+                    className="result-award-track"
+                    role="progressbar"
+                    aria-label={title}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    {...(percent === null
+                      ? { "aria-valuetext": "対象問題なし" }
+                      : {
+                          "aria-valuenow": Math.round(percent),
+                          "aria-valuetext": `${Math.round(percent)}%`,
+                        })}
+                  >
+                    <div
+                      className={`result-award-fill result-award-fill-${key}`}
+                      style={{ width: `${percent ?? 0}%` }}
+                    />
+                  </div>
+                  <span className="result-award-percent">
+                    {percent === null ? "—" : `${Math.round(percent)}%`}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
         </ul>
-      )}
-      <dl className="result-main-metrics">
-        <Metric label="正解数 / 有効問題数">
-          {p.correct} <small>/ {p.eligible} 問</small>
-        </Metric>
-        <Metric label="正答率">
-          {p.correctRate === null
-            ? "—"
-            : `${(p.correctRate * 100).toFixed(1)}%`}
-        </Metric>
-        <Metric label="正解者内1位">
-          {p.firstPlaces} <small>回</small>
-        </Metric>
-        <Metric label="早押し王の得点（小数第3位まで表示）">
-          {p.fastestScore.toFixed(3)} <small>点</small>
-        </Metric>
-        <Metric label="平均順位（正解者内）">
-          {p.averageRank === null ? (
-            "—"
-          ) : (
-            <>
-              {p.averageRank.toFixed(2)} <small>位</small>
-            </>
-          )}
-        </Metric>
-        <Metric label="難問王の得点（小数第3位まで表示）">
-          {p.difficultScore.toFixed(3)} <small>点</small>
-        </Metric>
-        <Metric label="友情王の得点（小数第3位まで表示）">
-          {p.friendshipScore.toFixed(3)} <small>点</small>
-        </Metric>
-        <Metric label="平均回答時間（正解のみ）">
-          {seconds(p.averageCorrectElapsed)}
-        </Metric>
-        <Metric label="平均回答時間（全回答）">
-          {seconds(p.averageElapsed)}
-        </Metric>
-        <Metric label="不正解">
-          {p.incorrect} <small>問</small>
-        </Metric>
-        <Metric label="未回答">
-          {p.unanswered} <small>問</small>
-        </Metric>
-      </dl>
+      </div>
+      <div className="result-details">
+        <h2>その他の記録</h2>
+        <dl className="result-main-metrics">
+          <Metric label="正解者内1位">
+            {p.firstPlaces} <small>回</small>
+          </Metric>
+          <Metric label="平均順位（正解者内）">
+            {p.averageRank === null ? (
+              "—"
+            ) : (
+              <>
+                {p.averageRank.toFixed(2)} <small>位</small>
+              </>
+            )}
+          </Metric>
+          <Metric label="平均回答時間（正解のみ）">
+            {seconds(p.averageCorrectElapsed)}
+          </Metric>
+          <Metric label="平均回答時間（全回答）">
+            {seconds(p.averageElapsed)}
+          </Metric>
+          <Metric label="不正解">
+            {p.incorrect} <small>問</small>
+          </Metric>
+          <Metric label="未回答">
+            {p.unanswered} <small>問</small>
+          </Metric>
+        </dl>
+      </div>
     </section>
   );
 }
