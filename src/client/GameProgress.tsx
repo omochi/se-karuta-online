@@ -17,7 +17,9 @@ export function GameProgress({
       data-phase={progress.phase}
     >
       <div className="game-progress-message">
-        <p className="eyebrow">{progress.questionLabel}</p>
+        {progress.phase !== "finished" && (
+          <p className="eyebrow">{progress.questionLabel}</p>
+        )}
         <Heading>{progress.title}</Heading>
         {progress.description && (
           <p className="game-progress-description">{progress.description}</p>

@@ -50,3 +50,36 @@ it.each([false, true])(
     expect(html).not.toContain("安定王");
   },
 );
+
+it.each([
+  { ranks: [1, 2, 3, 3, 5], expected: 4 },
+  { ranks: [1, 1, 1, 1, 5], expected: 4 },
+  { ranks: [1, 2, 2, 4], expected: 3 },
+])(
+  "Displayの表彰は$ranksを人数で切らず、同率を含めた3位以内の$expected人を表示する",
+  ({ ranks, expected }) => {
+    const friendship = ranks.map((rank, i) => ({
+      playerId: `tied-${i}`,
+      name: `同率テスト${i}`,
+      rank,
+      value: 10 - rank,
+    }));
+    const html = renderToStaticMarkup(
+      createElement(FinalResults, {
+        results: {
+          correct: [],
+          fastest: [],
+          difficult: [],
+          friendship,
+          validQuestions: 1,
+        },
+        compact: true,
+      }),
+    );
+    expect(html.match(/<li>/g)).toHaveLength(expected);
+    for (const row of friendship) {
+      if (row.rank <= 3) expect(html).toContain(row.name);
+      else expect(html).not.toContain(row.name);
+    }
+  },
+);
