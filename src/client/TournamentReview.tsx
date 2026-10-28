@@ -1,7 +1,7 @@
 import { useLoaderData, useRevalidator } from "react-router";
 import type { TournamentReview as Review } from "../shared/review";
 import type { ReviewData } from "./route-loaders";
-import { Brand, Choices, Header, MarkdownBody } from "./components";
+import { Choices, Header, MarkdownBody } from "./components";
 import { QuestionBody } from "./QuestionBody";
 import { AnswerDistribution } from "./AnswerDistribution";
 import "./review.css";
@@ -31,11 +31,10 @@ export default function TournamentReview() {
 
 export function ReviewContent({ review }: { review: Review }) {
   return (
-    <div className="display-page review-page">
-      <header className="display-header">
-        <Brand small />
-        <span className="display-event">復習資料</span>
-      </header>
+    <div className="review-page">
+      <Header>
+        <span className="review-label">復習資料</span>
+      </Header>
       <main className="review-content">
         <div className="review-title">
           <p className="eyebrow">REVIEW</p>
@@ -47,7 +46,7 @@ export function ReviewContent({ review }: { review: Review }) {
         </div>
         {review.rounds.map((round) => (
           <article
-            className="display-content review-question"
+            className="review-question"
             key={round.number}
             aria-labelledby={`review-q${round.number}`}
           >
@@ -68,6 +67,7 @@ export function ReviewContent({ review }: { review: Review }) {
               </section>
               {round.distribution ? (
                 <AnswerDistribution
+                  colorScheme="light"
                   distribution={round.distribution}
                   correctChoice={round.question.correctChoice}
                 />

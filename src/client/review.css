@@ -1,5 +1,5 @@
-.display-page.review-page {
-  height: auto;
+.review-page {
+  color: var(--ink);
   min-height: 100dvh;
 }
 .review-content {
@@ -17,7 +17,10 @@
 .review-title p:last-child {
   color: var(--muted);
 }
-.display-content.review-question {
+.review-question {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
   padding: 28px;
   margin-bottom: 32px;
   gap: 24px;
@@ -73,15 +76,16 @@
   .review-content {
     padding: 28px 16px 40px;
   }
-  .review-page .display-header {
-    padding: 18px 16px;
-    gap: 12px;
-  }
-  .display-content.review-question {
+  .review-question {
     padding: 20px 16px;
   }
   .review-question-summary,
   .review-question > .choices {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.review-label {
+  color: var(--muted);
+  font-size: 14px;
 }
