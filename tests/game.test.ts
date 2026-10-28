@@ -425,26 +425,30 @@ describe("表彰と無効問題", () => {
     ]);
   });
   it("異なる得票割合の合計が等しい場合は同順位にする", () => {
-    const g = fixture(4);
+    const g = fixture(7);
+    const choices = [
+      ["A", null, "B", "B"],
+      ["A", null, "B", "B", "B", "B", "B"],
+      [null, "A", "B"],
+    ] as const;
     g.rounds.forEach((r, i) => {
       r.openedAt = 1;
       r.closedAt = 2;
       r.participants = Object.fromEntries(
         g.players.map((p) => [p.id, "eligible"]),
       );
-      r.answers =
-        i < 2
-          ? {
-              p0: { choice: "A", receivedAt: 2 },
-              p1: { choice: "B", receivedAt: 2 },
-            }
-          : { p3: { choice: "A", receivedAt: 2 } };
+      r.answers = Object.fromEntries(
+        choices[i].flatMap((choice, n) =>
+          choice ? [[`p${n}`, { choice, receivedAt: 2 }]] : [],
+        ),
+      );
     });
     const rows = finalResults(g).friendship;
     const a = rows.find((row) => row.playerId === "p0")!;
-    const b = rows.find((row) => row.playerId === "p3")!;
-    expect(a.value).toBe(1);
-    expect(b.value).toBe(1);
+    const b = rows.find((row) => row.playerId === "p1")!;
+    // p0 は 1/3 + 1/6、p1 は最後の問題にだけ回答して 1/2 点。
+    expect(a.value).toBe(0.5);
+    expect(b.value).toBe(0.5);
     expect(a.rank).toBe(b.rank);
   });
   it("未回答を含む対象者の正答率で難問王を集計する", () => {
