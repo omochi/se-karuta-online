@@ -744,3 +744,81 @@ it("管理者は有効なデバッグメニューから大会と参加者を選�
   expect(html()).toContain("確認用参加者");
   expect(html()).toContain("セッション取得用URLを発行");
 });
+
+it("ボットごとに未送信回答を分離し、再接続にも同じボット指定を使う", async () => {
+  vi.useFakeTimers();
+  const storage = new Map<string, string>([
+    ["se-pending-game", "通常参加者の回答"],
+  ]);
+  vi.stubGlobal("sessionStorage", {
+    getItem: (key: string) => storage.get(key) ?? null,
+    setItem: (key: string, value: string) => storage.set(key, value),
+    removeItem: (key: string) => storage.delete(key),
+  });
+  const a = new RoomSession("game", "player", "http://localhost", "bot-a");
+  const b = new RoomSession("game", "player", "http://localhost", "bot-b");
+  try {
+    for (const [index, ws] of Socket.all.entries()) {
+      expect(ws.url.searchParams.get("botId")).toBe(
+        index === 0 ? "bot-a" : "bot-b",
+      );
+      ws.open();
+      ws.state({
+        ...roomView(),
+        phase: "acceptingAnswers",
+        phaseEndsAt: 10000,
+        phaseDurationMs: 9000,
+        question: { id: "r1" },
+        me: {
+          id: index === 0 ? "bot-a" : "bot-b",
+          name: "Bot",
+          participation: "eligible",
+          answer: null,
+          elapsed: null,
+        },
+      });
+    }
+    await Promise.all([a.ready, b.ready]);
+    a.answer("A");
+    b.answer("B");
+    expect(JSON.parse(storage.get("se-pending-game-bot-bot-a")!).choice).toBe(
+      "A",
+    );
+    expect(JSON.parse(storage.get("se-pending-game-bot-bot-b")!).choice).toBe(
+      "B",
+    );
+    expect(storage.get("se-pending-game")).toBe("通常参加者の回答");
+    Socket.all[0].close();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/e/game/session?role=player&botId=bot-a",
+      expect.anything(),
+    );
+    expect(Socket.all[2].url.searchParams.get("botId")).toBe("bot-a");
+    Socket.all[2].open();
+    Socket.all[2].state();
+  } finally {
+    a.dispose();
+    b.dispose();
+  }
+  expect(vi.getTimerCount()).toBe(0);
+});
+
+it("ボット画面は作成済み10体と操作ボタンを表示し、loaderでは接続しない", async () => {
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (path, init) => {
+    if (path === "/api/e/game/bots")
+      return json({
+        bots: Array.from({ length: 10 }, (_, i) => ({
+          id: `bot-${i}`,
+          name: `BOT ${i + 1}`,
+        })),
+      });
+    return original(path, init);
+  });
+  await start("/e/game/control/bots");
+  expect(html()).toContain("10人追加");
+  expect(html()).toContain("BOT 10");
+  expect(html()).toContain("自動で準備完了");
+  expect(Socket.all).toHaveLength(0);
+});

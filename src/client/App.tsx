@@ -432,6 +432,14 @@ export function Control({ room }: { room: RoomConnection }) {
                 </Link>
               </>
             )}
+            <a
+              className="button secondary"
+              href={`/e/${v.id}/control/bots`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              ボット画面を開く ↗
+            </a>
             <Link className="button secondary" to={`/questions?event=${v.id}`}>
               問題ビューワ →
             </Link>

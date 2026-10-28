@@ -32,6 +32,7 @@ export interface Player {
   id: string;
   name: string;
   joinedAt: number;
+  isBot?: boolean;
 }
 export interface Answer {
   choice: Choice;
@@ -133,6 +134,7 @@ export interface RoomView {
   rankings?: RankRow[];
   results?: Results;
   me?: {
+    ready?: boolean;
     id: string;
     name: string;
     participation: "eligible" | "waiting";

@@ -386,6 +386,14 @@ export default {
           finished: tournament.phase === "finished",
           urls: eventUrls(publicOrigin, id),
         });
+      if (action === "bots" && ["GET", "POST"].includes(request.method)) {
+        if (!isAdmin) return json({ error: "管理者だけが操作できます。" }, 401);
+        return invoke(
+          "bots",
+          { "x-session-hash": session!.tokenHash },
+          request.method === "POST" ? await body(request) : undefined,
+        );
+      }
       if (action === "display/login" && request.method === "POST") {
         if (session?.debugPlayer)
           return json(
@@ -468,7 +476,13 @@ export default {
         return json({ error: "管理用パスワードを入力してください。" }, 401);
       if (role === "display" && !authorization?.canDisplay)
         return json({ error: "表示用パスワードを入力してください。" }, 401);
-      if (role === "player") {
+      const botId = url.searchParams.get("botId");
+      if (url.searchParams.has("botId")) {
+        if (role !== "player" || !authorization?.isAdmin || !botId)
+          return json({ error: "ボットの操作権限を確認できません。" }, 401);
+        headers["x-bot-id"] = botId;
+        headers["x-player-id"] = botId;
+      } else if (role === "player") {
         if (!authorization?.playerId)
           return json({ error: "名前を入力して参加してください。" }, 401);
         headers["x-player-id"] = authorization.playerId;

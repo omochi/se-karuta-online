@@ -19,12 +19,14 @@ import {
 } from "./game";
 import { readAuthorizations } from "./auth";
 import { debugModeEnabled } from "./debug-mode";
+import { pickBotNames } from "./bot-names";
 import { loadGame, saveGame } from "./repository";
 interface Connection {
   id: string;
   ws: WebSocket;
   role: Role;
   playerId?: string;
+  delegatedBot?: boolean;
   tokenHash: string;
   expires: number;
   readyRound?: string;
@@ -178,10 +180,64 @@ export class TournamentRoom extends DurableObject<Env> {
           this.broadcast();
           return response({ ok: true, playerId: player.id }, 201);
         }
+        if (path === "/bots" && ["GET", "POST"].includes(request.method)) {
+          const tokenHash = request.headers.get("x-session-hash") ?? "";
+          const auth = (
+            await readAuthorizations(
+              this.env.DB,
+              g.id,
+              [tokenHash],
+              debugModeEnabled(this.env),
+            )
+          ).get(tokenHash);
+          if (!auth?.isAdmin)
+            return response({ error: "管理者だけが操作できます。" }, 401);
+          if (request.method === "POST") {
+            const { count } = await request.json<{ count?: unknown }>();
+            if (
+              typeof count !== "number" ||
+              !Number.isInteger(count) ||
+              count < 1 ||
+              count > 10
+            )
+              return response(
+                { error: "追加人数は1〜10人で指定してください。" },
+                400,
+              );
+            if (g.phase === "finished" || g.players.length + count > 100)
+              return response(
+                {
+                  error:
+                    "終了した大会、または参加人数の上限を超える追加はできません。",
+                },
+                409,
+              );
+            const next = structuredClone(g);
+            const names = pickBotNames(
+              g.players.map((p) => p.name),
+              count,
+            );
+            for (const name of names)
+              addPlayer(next, {
+                id: crypto.randomUUID(),
+                name,
+                joinedAt: Date.now(),
+                isBot: true,
+              });
+            await this.commit(next);
+            this.broadcast();
+          }
+          return response({
+            bots: this.game!.players.filter((p) => p.isBot).map(
+              ({ id, name }) => ({ id, name }),
+            ),
+          });
+        }
         const role = request.headers.get("x-role") as Role;
         const playerId = request.headers.get("x-player-id") ?? undefined;
         if (!["player", "control", "display"].includes(role))
           return response({ error: "権限がありません。" }, 403);
+        const delegatedBot = request.headers.has("x-bot-id");
         const tokenHash = request.headers.get("x-session-hash") ?? "";
         const auth = (
           await readAuthorizations(
@@ -196,8 +252,12 @@ export class TournamentRoom extends DurableObject<Env> {
           (role === "control" && !auth.isAdmin) ||
           (role === "display" && !auth.canDisplay) ||
           (role === "player" &&
-            (auth.playerId !== playerId ||
-              !g.players.some((p) => p.id === playerId)))
+            (delegatedBot
+              ? !auth.isAdmin ||
+                request.headers.get("x-bot-id") !== playerId ||
+                !g.players.some((p) => p.id === playerId && p.isBot)
+              : auth.playerId !== playerId ||
+                !g.players.some((p) => p.id === playerId)))
         )
           return response({ error: "参加情報・権限を確認できません。" }, 401);
         if (path === "/session") return response({ ok: true, playerId });
@@ -215,6 +275,7 @@ export class TournamentRoom extends DurableObject<Env> {
           ws: server,
           role,
           playerId,
+          delegatedBot,
           tokenHash,
           expires: auth.expires,
           lastSeen: Date.now(),
@@ -371,7 +432,11 @@ export class TournamentRoom extends DurableObject<Env> {
           !auth ||
           (c.role === "control" && !auth.isAdmin) ||
           (c.role === "display" && !auth.canDisplay) ||
-          (c.role === "player" && auth.playerId !== c.playerId)
+          (c.role === "player" &&
+            (c.delegatedBot
+              ? !auth.isAdmin ||
+                !g.players.some((p) => p.id === c.playerId && p.isBot)
+              : auth.playerId !== c.playerId))
         ) {
           this.closeUnauthorized(c);
           continue;

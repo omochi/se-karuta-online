@@ -547,6 +547,7 @@ export function viewFor(
     if (p) {
       const answer = r?.answers[p.id] ?? null;
       view.me = {
+        ready: presence.readyPlayers.has(p.id),
         id: p.id,
         name: p.name,
         participation: r?.participants[p.id] ?? "waiting",
