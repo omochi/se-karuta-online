@@ -125,8 +125,8 @@ export function ResultSummary({
         <Metric label="難問王の得点（小数第3位まで表示）">
           {p.difficultScore.toFixed(3)} <small>点</small>
         </Metric>
-        <Metric label="みんなと同じ答え">
-          {p.friendshipMatches} <small>回</small>
+        <Metric label="友情王の得点（小数第3位まで表示）">
+          {p.friendshipScore.toFixed(3)} <small>点</small>
         </Metric>
         <Metric label="平均回答時間（正解のみ）">
           {seconds(p.averageCorrectElapsed)}

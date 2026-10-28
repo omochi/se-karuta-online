@@ -52,7 +52,7 @@ export interface ReportPlayer {
   fastestScore: number;
   averageRank: number | null;
   difficultScore: number;
-  friendshipMatches: number;
+  friendshipScore: number;
 }
 export interface TournamentReport {
   id: string;

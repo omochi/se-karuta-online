@@ -231,7 +231,7 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
     averageCorrectElapsed: 3000,
     fastestCorrect: 1000,
     difficultScore: 43 / 30,
-    friendshipMatches: 2,
+    friendshipScore: 5 / 3,
     titles: [
       { key: "correct", title: "正答王", rank: 1 },
       { key: "fastest", title: "早押し王", rank: 1 },
@@ -242,7 +242,7 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
   expect(report.players[1]).toMatchObject({
     correct: 1,
     firstPlaces: 1,
-    friendshipMatches: 1,
+    friendshipScore: 2 / 3,
   });
   expect(report.players[2]).toMatchObject({
     correct: 0,
@@ -250,11 +250,18 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
     averageElapsed: 4000,
     averageCorrectElapsed: null,
     fastestCorrect: null,
-    friendshipMatches: 0,
-    titles: [],
+    friendshipScore: 1 / 3,
+    titles: [{ key: "friendship", title: "友情王", rank: 3 }],
   });
   expect(JSON.stringify(report)).not.toContain("PRIVATE_HASH");
   expect(JSON.stringify(report)).not.toContain("sessionHash");
+});
+it("友情王の得点を結果、レポートと個人成績で共有する", () => {
+  const game = fixture();
+  const report = tournamentReport(game);
+  expect(report.results.friendship[0].value).toBeCloseTo(5 / 3);
+  expect(report.players[0].friendshipScore).toBeCloseTo(5 / 3);
+  expect(personalResult(game, "p0").player.friendshipScore).toBeCloseTo(5 / 3);
 });
 it("早押し王の得点と1位回数を個別に集計する", () => {
   const g = fixture();

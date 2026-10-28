@@ -114,7 +114,7 @@ export function tournamentReport(g: Game): TournamentReport {
       ),
       difficultScore:
         results.difficult.find((row) => row.playerId === p.id)?.value ?? 0,
-      friendshipMatches:
+      friendshipScore:
         results.friendship.find((row) => row.playerId === p.id)?.value ?? 0,
     };
   });

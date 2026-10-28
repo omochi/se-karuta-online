@@ -350,12 +350,13 @@ export function finalResults(g: Game): Results {
   const valid = g.rounds.filter(isScoredRound);
   const rankings = valid.map((r) => roundRanking(g, r));
   const weights = valid.map(difficultRoundScore);
-  const majorityChoices = valid.map((r) => {
+  const distributions = valid.map((r) => {
     const { counts } = roundAnswerDistribution(r);
-    const mostVotes = Math.max(...Object.values(counts));
-    return CHOICES.filter(
-      (choice) => mostVotes > 0 && counts[choice] === mostVotes,
+    const answered = Object.values(counts).reduce(
+      (sum, count) => sum + count,
+      0,
     );
+    return { counts, answered };
   });
   const scores = g.players.map((p) => {
     const rows = rankings.map((r) => r.find((x) => x.playerId === p.id));
@@ -378,24 +379,31 @@ export function finalResults(g: Game): Results {
             : sum,
         { numerator: 0n, denominator: 1n },
       ),
-      friendship: valid.filter((r, i) => {
-        const answer = r.answers[p.id];
-        return (
-          r.participants[p.id] === "eligible" &&
-          answer &&
-          majorityChoices[i].includes(answer.choice)
-        );
-      }).length,
+      friendship: valid.reduce<Fraction>(
+        (sum, r, i) => {
+          const answer = r.answers[p.id];
+          const { counts, answered } = distributions[i];
+          return r.participants[p.id] === "eligible" && answer && answered > 0
+            ? addFraction(sum, {
+                numerator: BigInt(counts[answer.choice]),
+                denominator: BigInt(answered),
+              })
+            : sum;
+        },
+        { numerator: 0n, denominator: 1n },
+      ),
     };
   });
-  const board = (key: "correct" | "friendship") =>
+  const board = (key: "correct") =>
     rank(
       scores
         .filter((p) => p[key] > 0)
         .map((p) => ({ playerId: p.playerId, name: p.name, value: p[key] })),
       false,
     );
-  const fractionBoard = (key: "fastest" | "difficult"): RankRow[] => {
+  const fractionBoard = (
+    key: "fastest" | "difficult" | "friendship",
+  ): RankRow[] => {
     const sorted = scores
       .filter((p) => p[key].numerator > 0n)
       .sort((a, b) => {
@@ -429,7 +437,7 @@ export function finalResults(g: Game): Results {
     correct: board("correct"),
     fastest: fractionBoard("fastest"),
     difficult: fractionBoard("difficult"),
-    friendship: board("friendship"),
+    friendship: fractionBoard("friendship"),
     validQuestions: valid.length,
   };
 }
