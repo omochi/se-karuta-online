@@ -475,6 +475,33 @@ describe("表彰と無効問題", () => {
     r.answers = {};
     expect(finalResults(g).difficult).toEqual([]);
   });
+  it("分数の合計が等しい場合は計算順によらず同順位にする", () => {
+    const g = fixture(6);
+    const correct = [
+      [0, 2, 3, 4],
+      [0, 2, 3, 4, 5],
+      [1, 2, 3],
+    ];
+    g.rounds.forEach((r, i) => {
+      r.openedAt = 1;
+      r.closedAt = 2;
+      r.participants = Object.fromEntries(
+        g.players.map((p) => [p.id, "eligible"]),
+      );
+      r.answers = Object.fromEntries(
+        g.players.map((p, n) => [
+          p.id,
+          { choice: correct[i].includes(n) ? "B" : "A", receivedAt: 2 },
+        ]),
+      );
+    });
+    const rows = finalResults(g).difficult;
+    const a = rows.find((row) => row.playerId === "p0")!;
+    const b = rows.find((row) => row.playerId === "p1")!;
+    expect(a.value).toBe(0.5);
+    expect(b.value).toBe(0.5);
+    expect(a.rank).toBe(b.rank);
+  });
   it("同着1位を全員に加算し、最速になった回数で早押し王を決める", () => {
     const g = fixture(2);
     for (let i = 0; i < 3; i++) {

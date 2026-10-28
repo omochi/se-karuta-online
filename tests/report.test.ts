@@ -229,11 +229,12 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
     averageRank: 1,
     averageCorrectElapsed: 3000,
     fastestCorrect: 1000,
-    difficultScore: 0,
+    difficultScore: 43 / 30,
     friendshipMatches: 2,
     titles: [
       { key: "correct", title: "正答王", rank: 1 },
       { key: "fastest", title: "早押し王", rank: 1 },
+      { key: "difficult", title: "難問王", rank: 1 },
       { key: "friendship", title: "友情王", rank: 1 },
     ],
   });
