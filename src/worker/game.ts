@@ -364,7 +364,13 @@ export function finalResults(g: Game): Results {
       playerId: p.id,
       name: p.name,
       correct,
-      fastest: rows.filter((r) => r?.rank === 1).length,
+      fastest: rows.reduce<Fraction>(
+        (sum, row) =>
+          row
+            ? addFraction(sum, { numerator: 1n, denominator: BigInt(row.rank) })
+            : sum,
+        { numerator: 0n, denominator: 1n },
+      ),
       difficult: rows.reduce<Fraction>(
         (sum, row, i) =>
           row && valid[i].participants[p.id] === "eligible"
@@ -382,45 +388,47 @@ export function finalResults(g: Game): Results {
       }).length,
     };
   });
-  const board = (key: "correct" | "fastest" | "friendship") =>
+  const board = (key: "correct" | "friendship") =>
     rank(
       scores
         .filter((p) => p[key] > 0)
         .map((p) => ({ playerId: p.playerId, name: p.name, value: p[key] })),
       false,
     );
-  const difficult = scores
-    .filter((p) => p.difficult.numerator > 0n)
-    .sort((a, b) => {
-      const difference =
-        a.difficult.numerator * b.difficult.denominator -
-        b.difficult.numerator * a.difficult.denominator;
-      return difference > 0n
-        ? -1
-        : difference < 0n
-          ? 1
-          : a.playerId.localeCompare(b.playerId);
+  const fractionBoard = (key: "fastest" | "difficult"): RankRow[] => {
+    const sorted = scores
+      .filter((p) => p[key].numerator > 0n)
+      .sort((a, b) => {
+        const difference =
+          a[key].numerator * b[key].denominator -
+          b[key].numerator * a[key].denominator;
+        return difference > 0n
+          ? -1
+          : difference < 0n
+            ? 1
+            : a.playerId.localeCompare(b.playerId);
+      });
+    let currentRank = 0;
+    return sorted.map((p, i) => {
+      const previous = sorted[i - 1]?.[key];
+      if (
+        !previous ||
+        p[key].numerator * previous.denominator !==
+          previous.numerator * p[key].denominator
+      )
+        currentRank = i + 1;
+      return {
+        playerId: p.playerId,
+        name: p.name,
+        rank: currentRank,
+        value: Number(p[key].numerator) / Number(p[key].denominator),
+      };
     });
-  let currentRank = 0;
-  const difficultBoard = difficult.map((p, i) => {
-    const previous = difficult[i - 1]?.difficult;
-    if (
-      !previous ||
-      p.difficult.numerator * previous.denominator !==
-        previous.numerator * p.difficult.denominator
-    )
-      currentRank = i + 1;
-    return {
-      playerId: p.playerId,
-      name: p.name,
-      rank: currentRank,
-      value: Number(p.difficult.numerator) / Number(p.difficult.denominator),
-    };
-  });
+  };
   return {
     correct: board("correct"),
-    fastest: board("fastest"),
-    difficult: difficultBoard,
+    fastest: fractionBoard("fastest"),
+    difficult: fractionBoard("difficult"),
     friendship: board("friendship"),
     validQuestions: valid.length,
   };
