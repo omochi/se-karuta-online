@@ -241,7 +241,7 @@ describe("3画面の進行案内", () => {
     expect(html).toContain("接続中 2画面");
     expect(html).not.toContain("準備完了 1画面");
     expect(html).not.toContain("共有画面の準備を待っています");
-    expect(html).toContain("開始時には待ち合わせません");
+    expect(html).not.toContain("開始時には待ち合わせません");
     expect(html).toContain("Display monitor");
     expect(html).toContain("Display satellite");
     expect(html).toContain("http://test/e/game/display</a>");
@@ -411,5 +411,5 @@ it("管理画面は待ち合わせ人数と回答人数を分け、参加者ご�
   expect(html).toContain('role="switch" aria-checked="true"');
   expect(html).toContain('role="switch" aria-checked="false"');
   expect(html).toContain("開始を待たない");
-  expect(html).toContain("次の問題から反映");
+  expect(html).not.toContain("開始を待たない設定は");
 });
