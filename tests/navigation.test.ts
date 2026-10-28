@@ -651,7 +651,6 @@ it("終了済み大会のQRで新規登録を案内せず、既存セッショ�
       difficult: [],
       friendship: [{ playerId: "p", name: "参加者", rank: 3, value: 1 }],
       validQuestions: 3,
-      difficultQuestions: 1,
     },
   });
   await navigation;

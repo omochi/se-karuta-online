@@ -142,8 +142,6 @@ it("途中参加前も未回答として分母に含め、無効・未出題は�
   expect(
     report.rounds[0].answers.find((a) => a.playerId === "p3")?.status,
   ).toBe("unanswered");
-  expect(report.rounds[1].difficult).toBe(false);
-  expect(report.rounds[0].difficult).toBe(false);
   expect(report.rounds[2]).toMatchObject({
     status: "voided",
     correctRate: null,
@@ -231,7 +229,7 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
     averageRank: 1,
     averageCorrectElapsed: 3000,
     fastestCorrect: 1000,
-    difficultCorrect: 0,
+    difficultScore: 0,
     friendshipMatches: 2,
     titles: [
       { key: "correct", title: "正答王", rank: 1 },
@@ -256,30 +254,15 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
   expect(JSON.stringify(report)).not.toContain("PRIVATE_HASH");
   expect(JSON.stringify(report)).not.toContain("sessionHash");
 });
-it("最多得票以外の正解だけを問題別レポート・参加者・最終表彰に共通で加算する", () => {
+it("難問王の得点を回答対象者から集計し、レポートと個人成績に反映する", () => {
   const g = fixture();
-  g.rounds[1].answers.p1 = { choice: "A", receivedAt: 21000 };
-  g.rounds[1].answers.p2 = { choice: "A", receivedAt: 22000 };
-  Object.assign(g, { difficultyThreshold: 0 });
   const report = tournamentReport(g);
-  expect(report.rounds[1]).toMatchObject({
-    difficult: true,
-    correctRate: 1 / 6,
-    distribution: { A: 2, B: 1, C: 0, D: 0 },
-  });
-  expect(report.results.difficult).toEqual([
-    { playerId: "p0", name: "同名", rank: 1, value: 1 },
-  ]);
-  expect(report.players[0].difficultCorrect).toBe(1);
-  expect(report.players[0].friendshipMatches).toBe(1);
-  expect(report.players[1].friendshipMatches).toBe(2);
-  expect(report.players[2].friendshipMatches).toBe(1);
-  expect(report).not.toHaveProperty("difficultyThreshold");
-  g.rounds[1].answers.p2.choice = "B";
-  const majority = tournamentReport(g);
-  expect(majority.rounds[1].difficult).toBe(false);
-  expect(majority.results.difficult).toEqual([]);
-  expect(majority.players[0].difficultCorrect).toBe(0);
+  expect(report.results.difficult[0].value).toBeCloseTo(3 / 5 + 5 / 6);
+  expect(report.players[0].difficultScore).toBeCloseTo(3 / 5 + 5 / 6);
+  expect(personalResult(g, "p0").player.difficultScore).toBeCloseTo(
+    3 / 5 + 5 / 6,
+  );
+  expect(report.players[1].difficultScore).toBeCloseTo(3 / 5);
 });
 it("偶数件の中央値と0ミリ秒の回答を欠損値と区別する", () => {
   const g = fixture();

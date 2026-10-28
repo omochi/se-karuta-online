@@ -28,7 +28,6 @@ export interface ReportRound {
   unanswered: number;
   ineligible: number;
   correctRate: number | null;
-  difficult: boolean;
   distribution: Record<Choice, number>;
   averageElapsed: number | null;
   medianElapsed: number | null;
@@ -51,7 +50,7 @@ export interface ReportPlayer {
   fastestCorrect: number | null;
   firstPlaces: number;
   averageRank: number | null;
-  difficultCorrect: number;
+  difficultScore: number;
   friendshipMatches: number;
 }
 export interface TournamentReport {
