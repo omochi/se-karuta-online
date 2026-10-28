@@ -13,6 +13,7 @@ import TournamentReport from "./TournamentReport";
 import TournamentReview from "./TournamentReview";
 import PersonalResult from "./PersonalResult";
 import EventsPage from "./EventsPage";
+import BotPage from "./BotPage";
 import DebugSession, {
   DebugSessionStart,
   DebugSessionBanner,
@@ -95,6 +96,11 @@ export function createAppRoutes(
           path: "e/:id/review",
           loader: loaders.review,
           Component: TournamentReview,
+        },
+        {
+          path: "e/:id/control/bots",
+          loader: loaders.bots,
+          Component: BotPage,
         },
         {
           path: "e/:id/control/report",

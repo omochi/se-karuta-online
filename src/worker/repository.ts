@@ -46,7 +46,7 @@ export async function loadGame(
       .bind(id),
     db
       .prepare(
-        "SELECT id, name, joined_at FROM players WHERE tournament_id = ? ORDER BY joined_at, id",
+        "SELECT id, name, joined_at, is_bot FROM players WHERE tournament_id = ? ORDER BY joined_at, id",
       )
       .bind(id),
     db
@@ -85,6 +85,7 @@ export async function loadGame(
         id: row.id,
         name: row.name,
         joinedAt: row.joined_at,
+        ...(row.is_bot === 1 ? { isBot: true } : {}),
       }) as Player,
   );
   const rounds = new Map(game.rounds.map((r) => [r.id, r]));
@@ -143,9 +144,15 @@ async function persistGame(
       statements.push(
         db
           .prepare(
-            "INSERT INTO players (id,tournament_id,name,joined_at) VALUES (?,?,?,?)",
+            "INSERT INTO players (id,tournament_id,name,joined_at,is_bot) VALUES (?,?,?,?,?)",
           )
-          .bind(player.id, after.id, player.name, player.joinedAt),
+          .bind(
+            player.id,
+            after.id,
+            player.name,
+            player.joinedAt,
+            player.isBot ? 1 : 0,
+          ),
       );
   }
   if (registration)

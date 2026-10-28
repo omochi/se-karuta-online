@@ -36,6 +36,12 @@ export interface GameData {
   session: RoomSession | null;
   finished: boolean;
 }
+export interface BotsData {
+  id: string;
+  name: string;
+  publicOrigin: string;
+  bots: { id: string; name: string }[];
+}
 export interface ReportData {
   id: string;
   report: TournamentReport | null;
@@ -195,6 +201,21 @@ export function createRouteLoaders() {
         args.request.signal.removeEventListener("abort", abort);
       }
     };
+  async function bots(args: LoaderFunctionArgs): Promise<BotsData> {
+    const { publicOrigin } = await configuration(args);
+    const id = args.params.id!;
+    const data = await api<{ bots: { id: string; name: string }[] }>(
+      `/api/e/${id}/bots`,
+      undefined,
+      args.request.signal,
+    );
+    const event = await api<{ name: string }>(
+      `/api/e/${id}`,
+      undefined,
+      args.request.signal,
+    );
+    return { id, name: event.name, publicOrigin, bots: data.bots };
+  }
   async function report(args: LoaderFunctionArgs): Promise<ReportData> {
     await configuration(args);
     const id = args.params.id!;
@@ -270,6 +291,7 @@ export function createRouteLoaders() {
     viewer,
     debugSession,
     debugStart,
+    bots,
     game,
     report,
     review,

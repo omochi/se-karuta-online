@@ -1,0 +1,1 @@
+ALTER TABLE players ADD COLUMN is_bot INTEGER NOT NULL DEFAULT 0 CHECK (is_bot IN (0, 1));

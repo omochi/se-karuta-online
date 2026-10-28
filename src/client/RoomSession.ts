@@ -32,7 +32,7 @@ function requestId() {
   ).join("");
 }
 // loaderで初回stateを待ち、同じ接続をReactに引き渡す。
-// 準備完了通知は描画後のuseRoomだけが送る。先読みだけでは大会を進めない。
+// 準備完了通知は利用画面が送る。先読みだけでは大会を進めない。
 export class RoomSession {
   private readonly clock = new ServerClock();
   readonly serverNow = this.clock.now;
@@ -64,6 +64,7 @@ export class RoomSession {
     readonly id: string,
     readonly role: Role,
     private origin: string,
+    readonly botId?: string,
   ) {
     this.ready = new Promise((resolve, reject) => {
       this.resolveReady = resolve;
@@ -93,8 +94,13 @@ export class RoomSession {
     }, 10000);
     void this.connect(false);
   }
+  private get connectionQuery() {
+    const query = new URLSearchParams({ role: this.role });
+    if (this.botId) query.set("botId", this.botId);
+    return query;
+  }
   private get storageKey() {
-    return `se-pending-${this.id}`;
+    return `se-pending-${this.id}${this.botId ? `-bot-${this.botId}` : ""}`;
   }
   getSnapshot = () => this.snapshot;
   subscribe = (listener: () => void) => {
@@ -139,7 +145,7 @@ export class RoomSession {
     if (checkSession) {
       try {
         await api(
-          `/api/e/${this.id}/session?role=${this.role}`,
+          `/api/e/${this.id}/session?${this.connectionQuery}`,
           undefined,
           this.requests.signal,
         );
@@ -156,7 +162,10 @@ export class RoomSession {
       }
     }
     if (this.stopped) return;
-    const url = new URL(`/api/e/${this.id}/ws?role=${this.role}`, this.origin);
+    const url = new URL(
+      `/api/e/${this.id}/ws?${this.connectionQuery}`,
+      this.origin,
+    );
     url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
     let ws: WebSocket;
     try {

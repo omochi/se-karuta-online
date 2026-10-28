@@ -9,6 +9,7 @@ import {
 import joinCodeMigration from "../migrations/0002_join_code.sql?raw";
 import sessionMigration from "../migrations/0004_client_sessions.sql?raw";
 import resultMigration from "../migrations/0005_result_sharing.sql?raw";
+import botMigration from "../migrations/0007_player_bots.sql?raw";
 import debugMigration from "../migrations/0006_debug_player_sessions.sql?raw";
 import worker from "../src/worker/index";
 import readyWaitMigration from "../migrations/0003_unify_resting_with_unanswered.sql?raw";
@@ -235,7 +236,7 @@ beforeAll(async () => {
     ).bind(legacyGame.id, round.id, player.id, "B", 150),
   ]);
   await bindings.DB.batch(
-    (sessionMigration + resultMigration + debugMigration)
+    (sessionMigration + resultMigration + debugMigration + botMigration)
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean)
@@ -1973,4 +1974,269 @@ it("確認セッション保存に失敗したら短期URLの消費もロール�
   expect(
     (await debugRequest("/api/debug/session/redeem", "", { ticket })).status,
   ).toBe(200);
+});
+
+it("管理者Cookieだけで10体追加でき、ボット指定は対象大会のボットだけに制限する", async () => {
+  const game = fixture();
+  const other = fixture();
+  other.players[0].isBot = true;
+  await saveGame(bindings.DB, null, game, "hash");
+  await saveGame(bindings.DB, null, other, "hash");
+  const admin = await sessionFixture({ role: "admin" });
+  const player = await sessionFixture({
+    role: "player",
+    eventId: game.id,
+    playerId: game.players[0].id,
+  });
+  const cookie = `se_session=${admin.token}`;
+  const path = `/api/e/${game.id}/bots`;
+  for (const credentials of ["", `se_session=${player.token}`]) {
+    expect((await request(path, credentials)).status).toBe(401);
+    expect((await request(path, credentials, { count: 10 })).status).toBe(401);
+  }
+  for (const count of [0, 11, 1.5, "10", null])
+    expect((await request(path, cookie, { count })).status).toBe(400);
+  const created = await request(path, cookie, { count: 10 });
+  expect(created.status).toBe(200);
+  expect(created.headers.get("Set-Cookie")).toBeNull();
+  const { bots } = (await created.json()) as {
+    bots: { id: string; name: string }[];
+  };
+  expect(bots).toHaveLength(10);
+  expect(new Set(bots.map((b) => b.id)).size).toBe(10);
+  expect(new Set(bots.map((b) => b.name)).size).toBe(10);
+  expect(bots.every((b) => b.name !== game.players[0].name)).toBe(true);
+  expect(
+    (await loadGame(bindings.DB, game.id))!.players.filter((p) => p.isBot),
+  ).toHaveLength(10);
+  expect(await (await request(path, cookie)).json()).toEqual({ bots });
+  expect(
+    (await request(`/api/e/${game.id}/session?role=control`, cookie)).status,
+  ).toBe(200);
+  for (const bot of bots)
+    expect(
+      (
+        await request(
+          `/api/e/${game.id}/session?role=player&botId=${bot.id}`,
+          cookie,
+        )
+      ).status,
+    ).toBe(200);
+  for (const botId of [game.players[0].id, other.players[0].id, "unknown", ""])
+    expect(
+      (
+        await request(
+          `/api/e/${game.id}/session?role=player&botId=${botId}`,
+          cookie,
+        )
+      ).status,
+    ).toBe(401);
+  expect(
+    (
+      await request(
+        `/api/e/${game.id}/session?role=control&botId=${bots[0].id}`,
+        cookie,
+      )
+    ).status,
+  ).toBe(401);
+  expect(
+    (
+      await request(
+        `/api/e/${game.id}/session?role=player&botId=${bots[0].id}`,
+        `se_session=${player.token}`,
+      )
+    ).status,
+  ).toBe(401);
+  const forged = await exports.default.fetch(
+    new Request(`http://test/api/e/${game.id}/bots`, {
+      method: "POST",
+      headers: { Origin: "https://elsewhere.example", Cookie: cookie },
+      body: JSON.stringify({ count: 10 }),
+    }),
+  );
+  expect(forged.status).toBe(403);
+  expect(
+    (await loadGame(bindings.DB, game.id))!.players
+      .filter((p) => p.isBot)
+      .map(({ id, name }) => ({ id, name }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  ).toEqual([...bots].sort((a, b) => a.id.localeCompare(b.id)));
+});
+
+it("ボット接続は個別の準備・回答を扱い、進行操作を拒否し、管理者失効で全接続を閉じる", async () => {
+  const game = fixture();
+  // 2体だけで準備確認から回答まで進める。
+  game.players = [];
+  game.timing.countdownSeconds = 1;
+  game.timing.readingSeconds = 1;
+  await saveGame(bindings.DB, null, game, "hash");
+  const admin = await sessionFixture({ role: "admin" });
+  const cookie = `se_session=${admin.token}`;
+  const { bots } = (await (
+    await request(`/api/e/${game.id}/bots`, cookie, { count: 2 })
+  ).json()) as { bots: { id: string }[] };
+  const sockets: WebSocket[] = [];
+  const states: RoomView[] = [];
+  async function receive(
+    ws: WebSocket,
+    predicate: (m: any) => boolean,
+  ): Promise<any> {
+    return new Promise((resolve) => {
+      const listener = (event: MessageEvent) => {
+        const message = JSON.parse(event.data as string);
+        if (predicate(message)) {
+          ws.removeEventListener("message", listener);
+          resolve(message);
+        }
+      };
+      ws.addEventListener("message", listener);
+    });
+  }
+  try {
+    for (const [index, bot] of bots.entries()) {
+      const response = await exports.default.fetch(
+        new Request(
+          `http://test/api/e/${game.id}/ws?role=player&botId=${bot.id}`,
+          {
+            headers: {
+              Origin: "http://test",
+              Cookie: cookie,
+              Upgrade: "websocket",
+            },
+          },
+        ),
+      );
+      expect(response.status).toBe(101);
+      const ws = response.webSocket!;
+      const initial = receive(ws, (m) => m.type === "state");
+      ws.addEventListener("message", (event) => {
+        const m = JSON.parse(event.data as string);
+        if (m.type === "state") states[index] = m;
+      });
+      ws.accept();
+      expect((await initial).me.id).toBe(bot.id);
+      sockets.push(ws);
+    }
+    const denied = receive(
+      sockets[0],
+      (m) => m.type === "error" && m.requestId === "forbidden",
+    );
+    sockets[0].send(
+      JSON.stringify({
+        type: "command",
+        requestId: "forbidden",
+        command: "start",
+        revision: 0,
+      }),
+    );
+    expect((await denied).message).toBe("進行役だけが操作できます。");
+    const control = await connectTestSocket(game.id, cookie, "control");
+    sockets.push(control);
+    const preparing = receive(
+      sockets[0],
+      (m) => m.type === "state" && m.phase === "choicesPreparing",
+    );
+    control.send(
+      JSON.stringify({
+        type: "command",
+        requestId: "start-bots",
+        command: "start",
+        revision: 0,
+      }),
+    );
+    await preparing;
+    for (const ws of sockets.slice(0, 2))
+      ws.send(
+        JSON.stringify({
+          type: "ready",
+          roundId: states[0].question!.id,
+          epoch: states[0].epoch,
+        }),
+      );
+    await receive(
+      sockets[0],
+      (m) => m.type === "state" && m.phase === "countdown",
+    );
+    const stub = bindings.ROOMS.get(bindings.ROOMS.idFromName(game.id));
+    // 実時間待ちを避けて、同じゲームタイマーの期限処理を進める。
+    await runInDurableObject(stub, async (instance) => {
+      const room = instance as any;
+      room.game.phaseEndsAt = Date.now() - 1;
+    });
+    await runDurableObjectAlarm(stub);
+    await runInDurableObject(stub, async (instance) => {
+      const room = instance as any;
+      room.game.phaseEndsAt = Date.now() - 1;
+    });
+    const accepting = receive(
+      sockets[0],
+      (m) => m.type === "state" && m.phase === "acceptingAnswers",
+    );
+    await runDurableObjectAlarm(stub);
+    await accepting;
+    for (const [i, ws] of sockets.slice(0, 2).entries()) {
+      const ack = receive(
+        ws,
+        (m) => m.type === "ack" && m.requestId === `answer-${i}`,
+      );
+      ws.send(
+        JSON.stringify({
+          type: "answer",
+          requestId: `answer-${i}`,
+          roundId: states[i].question!.id,
+          choice: i === 0 ? "A" : "B",
+        }),
+      );
+      await ack;
+    }
+    const saved = (await loadGame(bindings.DB, game.id))!;
+    expect(saved.rounds[0].answers[bots[0].id].choice).toBe("A");
+    expect(saved.rounds[0].answers[bots[1].id].choice).toBe("B");
+    const closed = sockets.map(
+      (ws) =>
+        new Promise<number>((resolve) =>
+          ws.addEventListener("close", (event) => resolve(event.code), {
+            once: true,
+          }),
+        ),
+    );
+    await bindings.DB.prepare("UPDATE clients SET is_admin = 0 WHERE id = ?")
+      .bind(admin.session.clientId)
+      .run();
+    await runDurableObjectAlarm(stub);
+    expect(await Promise.all(closed)).toEqual([4001, 4001, 4001]);
+    expect(
+      (
+        await request(
+          `/api/e/${game.id}/session?role=player&botId=${bots[0].id}`,
+          cookie,
+        )
+      ).status,
+    ).toBe(401);
+  } finally {
+    for (const ws of sockets) ws.close();
+  }
+});
+
+it("上限を超えるボット一括追加は部分登録せず、終了した大会へは追加しない", async () => {
+  const game = fixture();
+  for (let i = 1; i < 95; i++)
+    addPlayer(game, {
+      id: crypto.randomUUID(),
+      name: `P${i}`,
+      joinedAt: Date.now(),
+    });
+  await saveGame(bindings.DB, null, game, "hash");
+  const admin = await sessionFixture({ role: "admin" });
+  const cookie = `se_session=${admin.token}`;
+  expect(
+    (await request(`/api/e/${game.id}/bots`, cookie, { count: 10 })).status,
+  ).toBe(409);
+  expect((await loadGame(bindings.DB, game.id))!.players).toHaveLength(95);
+  const ended = fixture();
+  ended.phase = "finished";
+  await saveGame(bindings.DB, null, ended, "hash");
+  expect(
+    (await request(`/api/e/${ended.id}/bots`, cookie, { count: 1 })).status,
+  ).toBe(409);
 });
