@@ -208,7 +208,10 @@ export function FinalResults({
       subtitle: "正解が少ないほど高得点（小数第3位まで表示）",
       unit: "点",
     },
-    friendship: { subtitle: "みんなと一番答えがそろった人", unit: "回" },
+    friendship: {
+      subtitle: "答えがそろうほど高得点（小数第3位まで表示）",
+      unit: "点",
+    },
   };
   return (
     <div className={`final-results ${compact ? "compact" : ""}`}>

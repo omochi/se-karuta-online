@@ -388,55 +388,68 @@ describe("権限と公開段階", () => {
   });
 });
 describe("表彰と無効問題", () => {
-  it.each([
-    { choices: ["A", "A", "B"], expected: ["p0", "p1"] },
-    { choices: ["B", "B", "A"], expected: ["p0", "p1"] },
-    { choices: ["A", "A", "B", "B", "C"], expected: ["p0", "p1", "p2", "p3"] },
-    { choices: ["A", "B", "C", "D"], expected: ["p0", "p1", "p2", "p3"] },
-    { choices: [], expected: [] },
-  ] as const)(
-    "友情王は正誤に関係なく最多得票（同率を含む）の $choices を選んだ人に加算する",
-    ({ choices, expected }) => {
-      const g = fixture(6);
-      open(g);
-      const r = currentRound(g)!;
-      choices.forEach((choice, i) =>
-        receiveAnswer(g, `p${i}`, r.id, choice, 20100 + i),
-      );
-      expect(finalResults(g).friendship).toEqual([]);
-      command(g, "close", 21000);
-      expect(finalResults(g).friendship).toEqual(
-        expected.map((id) => ({
-          playerId: id,
-          name: `Player ${id.slice(1)}`,
-          rank: 1,
-          value: 1,
-        })),
-      );
-      r.isVoided = true;
-      expect(finalResults(g).friendship).toEqual([]);
-    },
-  );
-  it("友情王は対象外の回答を票にも加点にも含めず、最多得票を選んだ回数で順位を決める", () => {
-    const g = fixture(4);
-    for (let i = 0; i < 3; i++) {
-      open(g, i * 40000);
-      const r = currentRound(g)!;
-      receiveAnswer(g, "p0", r.id, "A", i * 40000 + 20100);
-      if (i === 0) receiveAnswer(g, "p1", r.id, "A", 20200);
-      if (i > 0) receiveAnswer(g, "p2", r.id, "A", i * 40000 + 20200);
-      delete r.participants.p3;
-      r.answers.p3 = { choice: "B", receivedAt: i * 40000 + 20300 };
-      r.answers.unknown = { choice: "B", receivedAt: i * 40000 + 20400 };
-      command(g, "close", i * 40000 + 21000);
-      command(g, "reveal");
-      command(g, "ranking");
-    }
+  it("友情王は回答者に同じ選択肢の得票割合を加算し、正誤を問わない", () => {
+    const g = fixture(6);
+    open(g);
+    const r = currentRound(g)!;
+    for (const [i, choice] of (["A", "A", "B", "C"] as const).entries())
+      receiveAnswer(g, `p${i}`, r.id, choice, 20100 + i);
+    delete r.participants.p4;
+    r.answers.p4 = { choice: "C", receivedAt: 20200 };
+    r.answers.unknown = { choice: "B", receivedAt: 20200 };
+    expect(finalResults(g).friendship).toEqual([]);
+    command(g, "close", 21000);
     expect(finalResults(g).friendship).toEqual([
-      { playerId: "p0", name: "Player 0", rank: 1, value: 3 },
-      { playerId: "p2", name: "Player 2", rank: 2, value: 2 },
-      { playerId: "p1", name: "Player 1", rank: 3, value: 1 },
+      { playerId: "p0", name: "Player 0", rank: 1, value: 0.5 },
+      { playerId: "p1", name: "Player 1", rank: 1, value: 0.5 },
+      { playerId: "p2", name: "Player 2", rank: 3, value: 0.25 },
+      { playerId: "p3", name: "Player 3", rank: 3, value: 0.25 },
     ]);
+    r.isVoided = true;
+    expect(finalResults(g).friendship).toEqual([]);
+  });
+  it("全員同じ回答なら1点、全員未回答なら受賞者なし", () => {
+    const g = fixture(3);
+    open(g);
+    const r = currentRound(g)!;
+    command(g, "close", 21000);
+    expect(finalResults(g).friendship).toEqual([]);
+    for (const p of g.players)
+      r.answers[p.id] = { choice: "B", receivedAt: 20200 };
+    expect(
+      finalResults(g).friendship.map((row) => [row.rank, row.value]),
+    ).toEqual([
+      [1, 1],
+      [1, 1],
+      [1, 1],
+    ]);
+  });
+  it("異なる得票割合の合計が等しい場合は同順位にする", () => {
+    const g = fixture(7);
+    const choices = [
+      ["A", null, "B", "B"],
+      ["A", null, "B", "B", "B", "B", "B"],
+      [null, "A", "B"],
+    ] as const;
+    g.rounds.forEach((r, i) => {
+      r.openedAt = 1;
+      r.closedAt = 2;
+      r.participants = Object.fromEntries(
+        g.players.map((p) => [p.id, "eligible"]),
+      );
+      r.answers = Object.fromEntries(
+        choices[i].flatMap((choice, n) =>
+          choice ? [[`p${n}`, { choice, receivedAt: 2 }]] : [],
+        ),
+      );
+    });
+    const rows = finalResults(g).friendship;
+    const a = rows.find((row) => row.playerId === "p0")!;
+    const b = rows.find((row) => row.playerId === "p1")!;
+    // p0 は 1/3 + 1/6、p1 は最後の問題にだけ回答して 1/2 点。
+    expect(a.value).toBe(0.5);
+    expect(b.value).toBe(0.5);
+    expect(a.rank).toBe(b.rank);
   });
   it("未回答を含む対象者の正答率で難問王を集計する", () => {
     const g = fixture(5);

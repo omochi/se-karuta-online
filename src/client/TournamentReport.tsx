@@ -187,7 +187,7 @@ function ReportContent({ report }: { report: Report }) {
           <section className="report-section">
             <h2>最終表彰</h2>
             <p className="muted">
-              同点は同順位。友情王は正誤に関係なく、最多得票の選択肢を選んだ回数です。同率最多も対象です。
+              同点は同順位。友情王は正誤に関係なく、回答者のうち同じ選択肢を選んだ割合を加算します。
             </p>
             <FinalResults results={report.results} />
           </section>
@@ -392,9 +392,9 @@ function ReportContent({ report }: { report: Report }) {
                   ? "—"
                   : `${player.averageRank.toFixed(2)} 位`}{" "}
                 · 難問王 {player.difficultScore.toFixed(3)}{" "}
-                点（小数第3位まで表示） · みんなと同じ答え{" "}
-                {player.friendshipMatches} 回 · 最速正解{" "}
-                {seconds(player.fastestCorrect)}
+                点（小数第3位まで表示） · 友情王{" "}
+                {player.friendshipScore.toFixed(3)} 点（小数第3位まで表示） ·
+                最速正解 {seconds(player.fastestCorrect)}
               </p>
               <p className="muted">
                 不正解 {player.incorrect} 問 · 未回答 {player.unanswered} 問
