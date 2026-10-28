@@ -1810,19 +1810,24 @@ button.choice:not(:disabled):active {
   white-space: nowrap;
 }
 .medal-1 {
-  color: #704d0b;
+  --medal-ink: #704d0b;
   background: linear-gradient(135deg, #fff1b7, #e7bb4b);
   border-color: #c2942f;
 }
 .medal-2 {
-  color: #46555e;
+  --medal-ink: #46555e;
   background: linear-gradient(135deg, #f8fafb, #c5d0d6);
   border-color: #a3b0b7;
 }
 .medal-3 {
-  color: #713d23;
+  --medal-ink: #713d23;
   background: linear-gradient(135deg, #ffe2cf, #d49a76);
   border-color: #b77c59;
+}
+/* Displayの順位文字色よりメダルの濃い文字色を優先する。 */
+.medal,
+.ranking .rank.medal {
+  color: var(--medal-ink);
 }
 .award .rank.medal {
   width: 32px;
