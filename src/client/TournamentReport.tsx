@@ -228,7 +228,6 @@ function ReportContent({ report }: { report: Report }) {
               </h2>
               <p className="muted">
                 難易度 {round.question.difficulty} · {roundLabels[round.status]}
-                {round.difficult ? " · 難問王の対象" : ""}
               </p>
               {round.status !== "scored" && (
                 <p className="report-notice">
@@ -390,7 +389,8 @@ function ReportContent({ report }: { report: Report }) {
                 {player.averageRank === null
                   ? "—"
                   : `${player.averageRank.toFixed(2)} 位`}{" "}
-                · 難問正解 {player.difficultCorrect} 問 · みんなと同じ答え{" "}
+                · 難問王 {player.difficultScore.toFixed(3)}{" "}
+                点（小数第3位まで表示） · みんなと同じ答え{" "}
                 {player.friendshipMatches} 回 · 最速正解{" "}
                 {seconds(player.fastestCorrect)}
               </p>

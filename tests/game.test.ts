@@ -6,7 +6,6 @@ import {
   beginCountdownIfReady,
   currentRound,
   finalResults,
-  isDifficultRound,
   newGame,
   receiveAnswer,
   roundRanking,
@@ -439,87 +438,69 @@ describe("表彰と無効問題", () => {
       { playerId: "p1", name: "Player 1", rank: 3, value: 1 },
     ]);
   });
-  it("最多得票以外の正解を難問王に加算し、早い誤答を早押し王に加算しない", () => {
+  it("未回答を含む対象者の正答率で難問王を集計する", () => {
     const g = fixture(5);
-    command(g, "start");
-    command(g, "setReadyWait", 0, { waitForReady: false, playerId: "p4" });
-    beginCountdownIfReady(g, new Set(["p0", "p1", "p2", "p3"]), 0);
-    advanceTimer(g, 5000);
-    advanceTimer(g, 20000);
+    open(g);
     const r = currentRound(g)!;
     receiveAnswer(g, "p0", r.id, "B", 20200);
     receiveAnswer(g, "p1", r.id, "A", 20100);
     receiveAnswer(g, "p2", r.id, "A", 20300);
+    delete r.participants.p4;
+    r.answers.p4 = { choice: "B", receivedAt: 20400 };
     command(g, "close", 21000);
-    const result = finalResults(g);
-    expect(result.difficultQuestions).toBe(1);
-    expect(result.difficult[0].playerId).toBe("p0");
-    expect(result.fastest).toEqual([
-      { playerId: "p0", name: "Player 0", rank: 1, value: 1 },
+    expect(finalResults(g).difficult).toEqual([
+      { playerId: "p0", name: "Player 0", rank: 1, value: 0.75 },
     ]);
+    expect(finalResults(g).fastest[0].playerId).toBe("p0");
+    r.isVoided = true;
+    expect(finalResults(g).difficult).toEqual([]);
   });
-  it("未回答が多くても、正解が最多得票なら難問にしない", () => {
-    const g = fixture(4);
-    command(g, "start");
-    command(g, "setReadyWait", 0, { waitForReady: false, playerId: "p3" });
-    beginCountdownIfReady(g, new Set(["p0", "p1", "p2"]), 0);
-    advanceTimer(g, 5000);
-    advanceTimer(g, 20000);
-    receiveAnswer(g, "p0", currentRound(g)!.id, "B", 20200);
-    command(g, "close", 21000);
-    expect(finalResults(g).difficultQuestions).toBe(0);
-  });
-  it.each([
-    { counts: [8, 7, 3, 2], difficult: true },
-    { counts: [8, 8, 2, 2], difficult: false },
-    { counts: [5, 5, 5, 5], difficult: false },
-    { counts: [2, 3, 0, 0], difficult: false },
-    { counts: [0, 1, 0, 0], difficult: false },
-    { counts: [1, 0, 0, 0], difficult: true },
-    { counts: [0, 0, 0, 0], difficult: false },
-  ])(
-    "締切時の票数 $counts で難問判定が $difficult になる",
-    ({ counts, difficult }) => {
-      const g = fixture(20);
-      open(g);
-      const r = currentRound(g)!;
-      let player = 0;
-      for (const [index, count] of counts.entries())
-        for (let i = 0; i < count; i++)
-          receiveAnswer(
-            g,
-            `p${player++}`,
-            r.id,
-            (["A", "B", "C", "D"] as const)[index],
-            20100 + player,
-          );
-      expect(isDifficultRound(r)).toBe(false);
-      command(g, "close", 21000);
-      const results = finalResults(g);
-      expect(isDifficultRound(r)).toBe(difficult);
-      expect(results.difficultQuestions).toBe(difficult ? 1 : 0);
-      expect(results.difficult).toHaveLength(difficult ? counts[1] : 0);
-      expect(
-        results.difficult.every((row) => row.value === 1 && row.rank === 1),
-      ).toBe(true);
-      r.isVoided = true;
-      expect(isDifficultRound(r)).toBe(false);
-      expect(finalResults(g).difficult).toEqual([]);
-    },
-  );
-  it("対象外の票や旧正答率しきい値を難問王の判定に使わない", () => {
+  it("正解が最多でも加点し、全員正解や全員未回答では受賞者を作らない", () => {
     const g = fixture(4);
     open(g);
     const r = currentRound(g)!;
     receiveAnswer(g, "p0", r.id, "B", 20100);
-    receiveAnswer(g, "p1", r.id, "A", 20200);
+    receiveAnswer(g, "p1", r.id, "B", 20200);
     receiveAnswer(g, "p2", r.id, "A", 20300);
-    delete r.participants.p3;
-    r.answers.p3 = { choice: "B", receivedAt: 20400 };
-    r.answers.late = { choice: "B", receivedAt: 20400 };
     command(g, "close", 21000);
-    Object.assign(g, { difficultyThreshold: 0 });
-    expect(isDifficultRound(r)).toBe(true);
+    expect(
+      finalResults(g).difficult.map((row) => [row.rank, row.value]),
+    ).toEqual([
+      [1, 0.5],
+      [1, 0.5],
+    ]);
+    r.answers.p2.choice = "B";
+    r.answers.p3 = { choice: "B", receivedAt: 20400 };
+    expect(finalResults(g).difficult).toEqual([]);
+    r.answers = {};
+    expect(finalResults(g).difficult).toEqual([]);
+  });
+  it("分数の合計が等しい場合は計算順によらず同順位にする", () => {
+    const g = fixture(6);
+    const correct = [
+      [0, 2, 3, 4],
+      [0, 2, 3, 4, 5],
+      [1, 2, 3],
+    ];
+    g.rounds.forEach((r, i) => {
+      r.openedAt = 1;
+      r.closedAt = 2;
+      r.participants = Object.fromEntries(
+        g.players.map((p) => [p.id, "eligible"]),
+      );
+      r.answers = Object.fromEntries(
+        g.players.map((p, n) => [
+          p.id,
+          { choice: correct[i].includes(n) ? "B" : "A", receivedAt: 2 },
+        ]),
+      );
+    });
+    const rows = finalResults(g).difficult;
+    const a = rows.find((row) => row.playerId === "p0")!;
+    const b = rows.find((row) => row.playerId === "p1")!;
+    expect(a.value).toBe(0.5);
+    expect(b.value).toBe(0.5);
+    expect(a.rank).toBe(b.rank);
   });
   it("同着1位を全員に加算し、最速になった回数で早押し王を決める", () => {
     const g = fixture(2);

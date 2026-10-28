@@ -320,17 +320,36 @@ function rank(rows: Omit<RankRow, "rank">[], ascending: boolean): RankRow[] {
 export function isScoredRound(r: Round): boolean {
   return !r.isVoided && r.closedAt !== null && r.openedAt !== null;
 }
-export function isDifficultRound(r: Round): boolean {
-  const { counts } = roundAnswerDistribution(r);
-  return (
-    isScoredRound(r) &&
-    counts[r.question.correctChoice] < Math.max(...Object.values(counts))
+// 分数で集計し、足し順による誤差で同点が崩れるのを防ぐ。
+type Fraction = { numerator: bigint; denominator: bigint };
+function gcd(a: bigint, b: bigint): bigint {
+  while (b !== 0n) [a, b] = [b, a % b];
+  return a;
+}
+function addFraction(a: Fraction, b: Fraction): Fraction {
+  const numerator = a.numerator * b.denominator + b.numerator * a.denominator;
+  const denominator = a.denominator * b.denominator;
+  const divisor = gcd(numerator, denominator);
+  return { numerator: numerator / divisor, denominator: denominator / divisor };
+}
+export function difficultRoundScore(r: Round): Fraction {
+  if (!isScoredRound(r)) return { numerator: 0n, denominator: 1n };
+  const { counts, unanswered } = roundAnswerDistribution(r);
+  const eligible = Object.values(counts).reduce(
+    (sum, count) => sum + count,
+    unanswered,
   );
+  return eligible === 0
+    ? { numerator: 0n, denominator: 1n }
+    : {
+        numerator: BigInt(eligible - counts[r.question.correctChoice]),
+        denominator: BigInt(eligible),
+      };
 }
 export function finalResults(g: Game): Results {
   const valid = g.rounds.filter(isScoredRound);
   const rankings = valid.map((r) => roundRanking(g, r));
-  const hard = valid.map(isDifficultRound);
+  const weights = valid.map(difficultRoundScore);
   const majorityChoices = valid.map((r) => {
     const { counts } = roundAnswerDistribution(r);
     const mostVotes = Math.max(...Object.values(counts));
@@ -346,7 +365,13 @@ export function finalResults(g: Game): Results {
       name: p.name,
       correct,
       fastest: rows.filter((r) => r?.rank === 1).length,
-      difficult: rows.filter((r, i) => r && hard[i]).length,
+      difficult: rows.reduce<Fraction>(
+        (sum, row, i) =>
+          row && valid[i].participants[p.id] === "eligible"
+            ? addFraction(sum, weights[i])
+            : sum,
+        { numerator: 0n, denominator: 1n },
+      ),
       friendship: valid.filter((r, i) => {
         const answer = r.answers[p.id];
         return (
@@ -357,20 +382,47 @@ export function finalResults(g: Game): Results {
       }).length,
     };
   });
-  const board = (key: "correct" | "fastest" | "difficult" | "friendship") =>
+  const board = (key: "correct" | "fastest" | "friendship") =>
     rank(
       scores
         .filter((p) => p[key] > 0)
         .map((p) => ({ playerId: p.playerId, name: p.name, value: p[key] })),
       false,
     );
+  const difficult = scores
+    .filter((p) => p.difficult.numerator > 0n)
+    .sort((a, b) => {
+      const difference =
+        a.difficult.numerator * b.difficult.denominator -
+        b.difficult.numerator * a.difficult.denominator;
+      return difference > 0n
+        ? -1
+        : difference < 0n
+          ? 1
+          : a.playerId.localeCompare(b.playerId);
+    });
+  let currentRank = 0;
+  const difficultBoard = difficult.map((p, i) => {
+    const previous = difficult[i - 1]?.difficult;
+    if (
+      !previous ||
+      p.difficult.numerator * previous.denominator !==
+        previous.numerator * p.difficult.denominator
+    )
+      currentRank = i + 1;
+    return {
+      playerId: p.playerId,
+      name: p.name,
+      rank: currentRank,
+      value: Number(p.difficult.numerator) / Number(p.difficult.denominator),
+    };
+  });
   return {
     correct: board("correct"),
     fastest: board("fastest"),
-    difficult: board("difficult"),
+    difficult: difficultBoard,
     friendship: board("friendship"),
     validQuestions: valid.length,
-    difficultQuestions: hard.filter(Boolean).length,
   };
 }
 export function viewFor(

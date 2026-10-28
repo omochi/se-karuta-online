@@ -16,7 +16,6 @@ const results: Results = {
     { playerId: "p", name: "参加者", rank: 3, value: 2 },
   ],
   validQuestions: 10,
-  difficultQuestions: 2,
 };
 
 it("本人の3位以内の称号だけを表彰順に取得し、4番目に並ぶ同率3位も含める", () => {

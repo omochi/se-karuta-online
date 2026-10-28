@@ -6,12 +6,7 @@ import type {
   ReportRound,
   TournamentReport,
 } from "../shared/report";
-import {
-  finalResults,
-  isScoredRound,
-  isDifficultRound,
-  roundRanking,
-} from "./game";
+import { finalResults, isScoredRound, roundRanking } from "./game";
 
 const average = (values: number[]) =>
   values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : null;
@@ -81,7 +76,6 @@ export function tournamentReport(g: Game): TournamentReport {
       unanswered: answers.filter((a) => a.status === "unanswered").length,
       ineligible: answers.filter((a) => a.status === "ineligible").length,
       correctRate: scored ? ratio(correct, eligible) : null,
-      difficult: isDifficultRound(r),
       distribution: roundAnswerDistribution(r).counts,
       averageElapsed: average(elapsed),
       medianElapsed: median(elapsed),
@@ -117,7 +111,7 @@ export function tournamentReport(g: Game): TournamentReport {
       averageRank: average(
         correctAnswers.flatMap((a) => (a.rank === null ? [] : [a.rank])),
       ),
-      difficultCorrect:
+      difficultScore:
         results.difficult.find((row) => row.playerId === p.id)?.value ?? 0,
       friendshipMatches:
         results.friendship.find((row) => row.playerId === p.id)?.value ?? 0,

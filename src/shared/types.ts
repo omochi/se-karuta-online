@@ -84,7 +84,6 @@ export interface Results {
   difficult: RankRow[];
   friendship: RankRow[];
   validQuestions: number;
-  difficultQuestions: number;
 }
 export interface Presence {
   onlinePlayers: Set<string>;

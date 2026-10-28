@@ -119,8 +119,8 @@ export function ResultSummary({
             </>
           )}
         </Metric>
-        <Metric label="難問正解">
-          {p.difficultCorrect} <small>問</small>
+        <Metric label="難問王の得点（小数第3位まで表示）">
+          {p.difficultScore.toFixed(3)} <small>点</small>
         </Metric>
         <Metric label="みんなと同じ答え">
           {p.friendshipMatches} <small>回</small>

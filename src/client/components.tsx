@@ -177,7 +177,11 @@ export function Ranking({
           <span className={`rank rank-${row.rank}`}>{row.rank}</span>
           <strong>{row.name}</strong>
           <span className="rank-value">
-            {unit === "sec" ? (row.value / 1000).toFixed(3) : row.value}
+            {unit === "sec"
+              ? (row.value / 1000).toFixed(3)
+              : unit === "点"
+                ? row.value.toFixed(3)
+                : row.value}
             <small>{unit}</small>
           </span>
         </li>
@@ -198,8 +202,8 @@ export function FinalResults({
     correct: { subtitle: "知識でつかんだ正解", unit: "問" },
     fastest: { subtitle: "誰よりも早く、正確に", unit: "回" },
     difficult: {
-      subtitle: `最多得票以外が正解の ${results.difficultQuestions} 問`,
-      unit: "問",
+      subtitle: "正解が少ないほど高得点（小数第3位まで表示）",
+      unit: "点",
     },
     friendship: { subtitle: "みんなと一番答えがそろった人", unit: "回" },
   };
