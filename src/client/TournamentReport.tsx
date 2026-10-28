@@ -385,7 +385,9 @@ function ReportContent({ report }: { report: Report }) {
                 </Metric>
               </div>
               <p>
-                正解者内1位 {player.firstPlaces} 回 · 平均順位{" "}
+                正解者内1位 {player.firstPlaces} 回 · 早押し王{" "}
+                {player.fastestScore.toFixed(3)} 点（小数第3位まで表示） ·
+                平均順位{" "}
                 {player.averageRank === null
                   ? "—"
                   : `${player.averageRank.toFixed(2)} 位`}{" "}

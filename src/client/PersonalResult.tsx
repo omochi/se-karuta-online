@@ -110,6 +110,9 @@ export function ResultSummary({
         <Metric label="正解者内1位">
           {p.firstPlaces} <small>回</small>
         </Metric>
+        <Metric label="早押し王の得点（小数第3位まで表示）">
+          {p.fastestScore.toFixed(3)} <small>点</small>
+        </Metric>
         <Metric label="平均順位（正解者内）">
           {p.averageRank === null ? (
             "—"

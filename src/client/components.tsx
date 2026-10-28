@@ -200,7 +200,10 @@ export function FinalResults({
 }) {
   const descriptions = {
     correct: { subtitle: "知識でつかんだ正解", unit: "問" },
-    fastest: { subtitle: "誰よりも早く、正確に", unit: "回" },
+    fastest: {
+      subtitle: "正解者内の順位が高いほど高得点（小数第3位まで表示）",
+      unit: "点",
+    },
     difficult: {
       subtitle: "正解が少ないほど高得点（小数第3位まで表示）",
       unit: "点",

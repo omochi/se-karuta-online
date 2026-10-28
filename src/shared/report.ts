@@ -49,6 +49,7 @@ export interface ReportPlayer {
   averageCorrectElapsed: number | null;
   fastestCorrect: number | null;
   firstPlaces: number;
+  fastestScore: number;
   averageRank: number | null;
   difficultScore: number;
   friendshipMatches: number;

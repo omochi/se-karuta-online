@@ -106,7 +106,8 @@ export function tournamentReport(g: Game): TournamentReport {
       averageElapsed: average(times(answers)),
       averageCorrectElapsed: average(times(correctAnswers)),
       fastestCorrect: minimum(times(correctAnswers)),
-      firstPlaces:
+      firstPlaces: correctAnswers.filter((a) => a.rank === 1).length,
+      fastestScore:
         results.fastest.find((row) => row.playerId === p.id)?.value ?? 0,
       averageRank: average(
         correctAnswers.flatMap((a) => (a.rank === null ? [] : [a.rank])),

@@ -502,7 +502,7 @@ describe("表彰と無効問題", () => {
     expect(b.value).toBe(0.5);
     expect(a.rank).toBe(b.rank);
   });
-  it("同着1位を全員に加算し、最速になった回数で早押し王を決める", () => {
+  it("同着1位にはそれぞれ1点を加算する", () => {
     const g = fixture(2);
     for (let i = 0; i < 3; i++) {
       open(g, i * 40000);
@@ -518,6 +518,49 @@ describe("表彰と無効問題", () => {
       { playerId: "p0", name: "Player 0", rank: 1, value: 3 },
       { playerId: "p1", name: "Player 1", rank: 2, value: 1 },
     ]);
+  });
+  it("正解者内の順位に応じて得点し、誤答と未回答を除外する", () => {
+    const g = fixture(6);
+    open(g);
+    const r = currentRound(g)!;
+    receiveAnswer(g, "p0", r.id, "B", 20100);
+    receiveAnswer(g, "p1", r.id, "B", 20200);
+    receiveAnswer(g, "p2", r.id, "B", 20200);
+    receiveAnswer(g, "p3", r.id, "B", 20300);
+    receiveAnswer(g, "p4", r.id, "A", 20050);
+    expect(finalResults(g).fastest).toEqual([]);
+    command(g, "close", 21000);
+    expect(finalResults(g).fastest).toEqual([
+      { playerId: "p0", name: "Player 0", rank: 1, value: 1 },
+      { playerId: "p1", name: "Player 1", rank: 2, value: 0.5 },
+      { playerId: "p2", name: "Player 2", rank: 2, value: 0.5 },
+      { playerId: "p3", name: "Player 3", rank: 4, value: 0.25 },
+    ]);
+    r.isVoided = true;
+    expect(finalResults(g).fastest).toEqual([]);
+  });
+  it("異なる順位の組み合わせでも分数の合計が同じなら同順位", () => {
+    const g = fixture(4);
+    g.rounds.forEach((r, i) => {
+      r.openedAt = 1;
+      r.closedAt = 10;
+      r.participants = Object.fromEntries(
+        g.players.map((p) => [p.id, "eligible"]),
+      );
+      r.answers = {
+        ...(i === 0
+          ? { p0: { choice: "B", receivedAt: 2 } }
+          : { p3: { choice: "B", receivedAt: 2 } }),
+        p2: { choice: "B", receivedAt: 2 },
+        p1: { choice: "B", receivedAt: 3 },
+      };
+    });
+    const rows = finalResults(g).fastest;
+    const first = rows.find((row) => row.playerId === "p0")!;
+    const thirds = rows.find((row) => row.playerId === "p1")!;
+    expect(first.value).toBe(1);
+    expect(thirds.value).toBe(1);
+    expect(first.rank).toBe(thirds.rank);
   });
   it("無効問題と未出題問題を全集計から除外する", () => {
     const g = fixture();

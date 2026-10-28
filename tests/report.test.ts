@@ -226,6 +226,7 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
   expect(report.players[0]).toMatchObject({
     correct: 2,
     firstPlaces: 2,
+    fastestScore: 2,
     averageRank: 1,
     averageCorrectElapsed: 3000,
     fastestCorrect: 1000,
@@ -254,6 +255,17 @@ it("同着順位と表彰の集計を一致させ、誤答の速さを最速正�
   });
   expect(JSON.stringify(report)).not.toContain("PRIVATE_HASH");
   expect(JSON.stringify(report)).not.toContain("sessionHash");
+});
+it("早押し王の得点と1位回数を個別に集計する", () => {
+  const g = fixture();
+  g.rounds[0].answers.p2.choice = "B";
+  const report = tournamentReport(g);
+  expect(report.players[2].firstPlaces).toBe(0);
+  expect(report.players[2].fastestScore).toBeCloseTo(1 / 3);
+  expect(
+    report.results.fastest.find((row) => row.playerId === "p2")?.value,
+  ).toBeCloseTo(1 / 3);
+  expect(personalResult(g, "p2").player.fastestScore).toBeCloseTo(1 / 3);
 });
 it("難問王の得点を回答対象者から集計し、レポートと個人成績に反映する", () => {
   const g = fixture();
