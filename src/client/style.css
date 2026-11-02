@@ -1219,6 +1219,11 @@ button.choice:not(:disabled):active {
   --muted: #b5a99f;
   --accent: #ffb49c;
 }
+/* 表彰は人数に応じてページ全体を伸ばし、フッターをカードの下へ置く。 */
+.display-page.display-page-finished {
+  height: auto;
+  min-height: 100dvh;
+}
 .display-header {
   display: flex;
   align-items: center;
